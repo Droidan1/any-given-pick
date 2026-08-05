@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-05T18:15:00-04:00",
+  "title": "Design System: Any Given Pick",
+  "extensions": {
+    "colorMeta": {
+      "field-950": {
+        "role": "neutral",
+        "displayName": "Sideline Field Deep",
+        "canonical": "oklch(21% 0.052 163)",
+        "tonalRamp": ["oklch(15% 0.052 163)", "oklch(26% 0.052 163)", "oklch(37% 0.052 163)", "oklch(48% 0.052 163)", "oklch(59% 0.052 163)", "oklch(70% 0.052 163)", "oklch(82% 0.052 163)", "oklch(95% 0.052 163)"]
+      },
+      "field-900": {
+        "role": "neutral",
+        "displayName": "Sideline Field",
+        "canonical": "oklch(27% 0.066 162)",
+        "tonalRamp": ["oklch(15% 0.066 162)", "oklch(26% 0.066 162)", "oklch(37% 0.066 162)", "oklch(48% 0.066 162)", "oklch(59% 0.066 162)", "oklch(70% 0.066 162)", "oklch(82% 0.066 162)", "oklch(95% 0.066 162)"]
+      },
+      "field-800": {
+        "role": "neutral",
+        "displayName": "Sideline Field Raised",
+        "canonical": "oklch(34% 0.068 162)",
+        "tonalRamp": ["oklch(15% 0.068 162)", "oklch(26% 0.068 162)", "oklch(37% 0.068 162)", "oklch(48% 0.068 162)", "oklch(59% 0.068 162)", "oklch(70% 0.068 162)", "oklch(82% 0.068 162)", "oklch(95% 0.068 162)"]
+      },
+      "paper-100": {
+        "role": "neutral",
+        "displayName": "Warm Play Sheet",
+        "canonical": "oklch(96% 0.021 92)",
+        "tonalRamp": ["oklch(15% 0.021 92)", "oklch(26% 0.021 92)", "oklch(37% 0.021 92)", "oklch(48% 0.021 92)", "oklch(59% 0.021 92)", "oklch(70% 0.021 92)", "oklch(82% 0.021 92)", "oklch(95% 0.021 92)"]
+      },
+      "paper-200": {
+        "role": "neutral",
+        "displayName": "Warm Play Sheet Muted",
+        "canonical": "oklch(91% 0.028 90)",
+        "tonalRamp": ["oklch(15% 0.028 90)", "oklch(26% 0.028 90)", "oklch(37% 0.028 90)", "oklch(48% 0.028 90)", "oklch(59% 0.028 90)", "oklch(70% 0.028 90)", "oklch(82% 0.028 90)", "oklch(95% 0.028 90)"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Deep Green Ink",
+        "canonical": "oklch(25% 0.055 163)",
+        "tonalRamp": ["oklch(15% 0.055 163)", "oklch(26% 0.055 163)", "oklch(37% 0.055 163)", "oklch(48% 0.055 163)", "oklch(59% 0.055 163)", "oklch(70% 0.055 163)", "oklch(82% 0.055 163)", "oklch(95% 0.055 163)"]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Green Ink",
+        "canonical": "oklch(42% 0.046 160)",
+        "tonalRamp": ["oklch(15% 0.046 160)", "oklch(26% 0.046 160)", "oklch(37% 0.046 160)", "oklch(48% 0.046 160)", "oklch(59% 0.046 160)", "oklch(70% 0.046 160)", "oklch(82% 0.046 160)", "oklch(95% 0.046 160)"]
+      },
+      "maize": {
+        "role": "primary",
+        "displayName": "Commitment Maize",
+        "canonical": "oklch(84% 0.168 94)",
+        "tonalRamp": ["oklch(15% 0.168 94)", "oklch(26% 0.168 94)", "oklch(37% 0.168 94)", "oklch(48% 0.168 94)", "oklch(59% 0.168 94)", "oklch(70% 0.168 94)", "oklch(82% 0.168 94)", "oklch(95% 0.168 94)"]
+      },
+      "maize-deep": {
+        "role": "primary",
+        "displayName": "Commitment Maize Deep",
+        "canonical": "oklch(76% 0.166 85)",
+        "tonalRamp": ["oklch(15% 0.166 85)", "oklch(26% 0.166 85)", "oklch(37% 0.166 85)", "oklch(48% 0.166 85)", "oklch(59% 0.166 85)", "oklch(70% 0.166 85)", "oklch(82% 0.166 85)", "oklch(95% 0.166 85)"]
+      },
+      "clay": {
+        "role": "secondary",
+        "displayName": "Deadline Clay",
+        "canonical": "oklch(56% 0.145 42)",
+        "tonalRamp": ["oklch(15% 0.145 42)", "oklch(26% 0.145 42)", "oklch(37% 0.145 42)", "oklch(48% 0.145 42)", "oklch(59% 0.145 42)", "oklch(70% 0.145 42)", "oklch(82% 0.145 42)", "oklch(95% 0.145 42)"]
+      },
+      "clay-deep": {
+        "role": "secondary",
+        "displayName": "Deadline Clay Deep",
+        "canonical": "oklch(46% 0.13 38)",
+        "tonalRamp": ["oklch(15% 0.13 38)", "oklch(26% 0.13 38)", "oklch(37% 0.13 38)", "oklch(48% 0.13 38)", "oklch(59% 0.13 38)", "oklch(70% 0.13 38)", "oklch(82% 0.13 38)", "oklch(95% 0.13 38)"]
+      },
+      "sage": {
+        "role": "neutral",
+        "displayName": "Worn Sage Rule",
+        "canonical": "oklch(69% 0.045 92)",
+        "tonalRamp": ["oklch(15% 0.045 92)", "oklch(26% 0.045 92)", "oklch(37% 0.045 92)", "oklch(48% 0.045 92)", "oklch(59% 0.045 92)", "oklch(70% 0.045 92)", "oklch(82% 0.045 92)", "oklch(95% 0.045 92)"]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "High-Visibility Focus",
+        "canonical": "oklch(86% 0.17 94)",
+        "tonalRamp": ["oklch(15% 0.17 94)", "oklch(26% 0.17 94)", "oklch(37% 0.17 94)", "oklch(48% 0.17 94)", "oklch(59% 0.17 94)", "oklch(70% 0.17 94)", "oklch(82% 0.17 94)", "oklch(95% 0.17 94)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Call", "purpose": "Short page commands and decisive outcomes only." },
+      "headline": { "displayName": "Panel Headline", "purpose": "Review, receipt, rules, and empty-state headings." },
+      "title": { "displayName": "Action Title", "purpose": "Primary actions and compact operational statements." },
+      "body": { "displayName": "Hyperlegible Body", "purpose": "Instructions, explanations, status, and receipts." },
+      "label": { "displayName": "Field Label", "purpose": "Navigation, time, eligibility, and measurement captions." },
+      "brand-small": { "displayName": "Brand Small", "purpose": "The Any Given line in the stacked desktop wordmark." },
+      "brand-large": { "displayName": "Brand Large", "purpose": "The Pick line in the stacked desktop wordmark." }
+    },
+    "shadows": [
+      { "name": "shell-ambient", "value": "0 18px 50px oklch(12% 0.035 160 / 0.28)", "purpose": "Separates the bounded desktop application shell from the browser canvas." },
+      { "name": "paper-lift", "value": "0 8px 22px oklch(12% 0.035 160 / 0.28)", "purpose": "Lifts review and receipt panels when the interaction state changes." },
+      { "name": "utility-lift", "value": "0 6px 18px oklch(12% 0.035 160 / 0.28)", "purpose": "Keeps install and offline utilities legible above the working surface." }
+    ],
+    "motion": [
+      { "name": "state-quick", "value": "180ms ease-out", "purpose": "Color and pressed-state feedback for navigation, choices, and actions." },
+      { "name": "progress-measure", "value": "220ms ease-out", "purpose": "Transform-only growth of the yard-scale progress fill." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Collapses transitions and animations when reduced motion is requested." }
+    ],
+    "breakpoints": [
+      { "name": "density-tighten", "value": "72rem" },
+      { "name": "mobile-navigation", "value": "61.25rem" },
+      { "name": "compact-phone", "value": "40rem" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Any Given Pick Brand Signature",
+      "kind": "custom",
+      "refersTo": "brand-signature",
+      "description": "The abstract route mark and condensed product wordmark used in the desktop rail and mobile brand bar.",
+      "html": "<div class=\"ds-brand-signature\"><svg viewBox=\"0 0 72 72\" aria-hidden=\"true\"><path d=\"M10 58c7-25 24-42 49-47\"></path><path d=\"m48 5 12 6-9 10\"></path><circle cx=\"11\" cy=\"58\" r=\"6\"></circle><path d=\"m20 20 10 10m0-10L20 30\"></path></svg><span><small>Any Given</small><strong>Pick</strong></span></div>",
+      "css": ".ds-brand-signature { display: inline-grid; justify-items: center; gap: 0.2rem; padding: 0.45rem 1rem; background: var(--field-950, oklch(21% 0.052 163)); font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); text-transform: uppercase; } .ds-brand-signature svg { width: 3.5rem; height: 3.5rem; fill: none; stroke: var(--maize, oklch(84% 0.168 94)); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; } .ds-brand-signature span { display: grid; justify-items: center; line-height: 0.8; } .ds-brand-signature small { color: var(--sage, oklch(69% 0.045 92)); font-size: 0.82rem; font-weight: 600; letter-spacing: 0.08em; } .ds-brand-signature strong { color: var(--maize, oklch(84% 0.168 94)); font-size: 1.65rem; letter-spacing: 0.08em; }"
+    },
+    {
+      "name": "Primary Review Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The forward action for reviewing or committing one complete weekly entry.",
+      "html": "<button class=\"ds-primary-action\" type=\"button\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"13\" r=\"5\"></circle><path d=\"M13 10h7l-2 5h-5M5 9 3 5h7l2 4\"></path></svg><span>Review 8 picks</span><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M14 7l5 5-5 5\"></path></svg></button>",
+      "css": ".ds-primary-action { width: min(100%, 34rem); min-height: 4.9rem; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.8rem; padding: 0.85rem 2.6rem 0.85rem 1.35rem; border: 0; background: var(--maize, oklch(84% 0.168 94)); color: var(--field-950, oklch(21% 0.052 163)); clip-path: polygon(0 0, calc(100% - 1.45rem) 0, 100% 50%, calc(100% - 1.45rem) 100%, 0 100%); cursor: pointer; font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 1.55rem; font-weight: 700; letter-spacing: 0.045em; text-transform: uppercase; transition: background-color 180ms ease-out, transform 180ms ease-out; } .ds-primary-action svg { width: 1.75rem; height: 1.75rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; } .ds-primary-action:hover { background: var(--maize-deep, oklch(76% 0.166 85)); } .ds-primary-action:active { transform: translateY(2px); } .ds-primary-action:focus-visible { outline: 3px solid var(--focus, oklch(86% 0.17 94)); outline-offset: 3px; } @media (prefers-reduced-motion: reduce) { .ds-primary-action { transition-duration: 0.01ms; } }"
+    },
+    {
+      "name": "Text Edit Action",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "A subordinate edit or back action that does not compete with the forward commitment.",
+      "html": "<button class=\"ds-text-action\" type=\"button\">Back to picks</button>",
+      "css": ".ds-text-action { min-height: 2.75rem; border: 0; background: transparent; color: var(--ink, oklch(25% 0.055 163)); cursor: pointer; font-family: var(--font-ui, \"Atkinson Hyperlegible\", Verdana, sans-serif); font-weight: 700; text-decoration: underline; text-decoration-color: var(--clay, oklch(56% 0.145 42)); text-underline-offset: 0.25em; } .ds-text-action:hover { text-decoration-thickness: 2px; } .ds-text-action:active { transform: translateY(1px); } .ds-text-action:focus-visible { outline: 3px solid var(--focus, oklch(86% 0.17 94)); outline-offset: 3px; } @media (prefers-reduced-motion: reduce) { .ds-text-action { transition-duration: 0.01ms; } }"
+    },
+    {
+      "name": "Team Choice",
+      "kind": "button",
+      "refersTo": "team-choice",
+      "description": "An unselected matchup cell optimized for fast abbreviation-first scanning.",
+      "html": "<button class=\"ds-team-choice\" type=\"button\" aria-pressed=\"false\"><span>IND</span><small>Indianapolis</small></button>",
+      "css": ".ds-team-choice { position: relative; min-width: 9rem; min-height: 5.5rem; display: grid; align-content: center; justify-items: center; gap: 0.05rem; padding: 0.75rem; border: 0; background: var(--paper-100, oklch(96% 0.021 92)); color: var(--ink, oklch(25% 0.055 163)); cursor: pointer; transition: background-color 180ms ease-out, color 180ms ease-out, transform 180ms ease-out; } .ds-team-choice > span { font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 2.9rem; font-weight: 700; letter-spacing: 0.01em; line-height: 0.9; } .ds-team-choice small { color: var(--ink-soft, oklch(42% 0.046 160)); font-family: var(--font-ui, \"Atkinson Hyperlegible\", Verdana, sans-serif); font-size: 0.76rem; } .ds-team-choice:hover { background: var(--paper-200, oklch(91% 0.028 90)); } .ds-team-choice:active { transform: scale(0.985); } .ds-team-choice:focus-visible { outline: 3px solid var(--focus, oklch(86% 0.17 94)); outline-offset: -3px; } @media (prefers-reduced-motion: reduce) { .ds-team-choice { transition-duration: 0.01ms; } }"
+    },
+    {
+      "name": "Selected Team Choice",
+      "kind": "button",
+      "refersTo": "team-choice-selected",
+      "description": "A committed pick whose color, check mark, and clipped edge redundantly communicate selection.",
+      "html": "<button class=\"ds-team-choice-selected\" type=\"button\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>IND</span><small>Indianapolis</small></button>",
+      "css": ".ds-team-choice-selected { position: relative; min-width: 9rem; min-height: 5.5rem; display: grid; align-content: center; justify-items: center; gap: 0.05rem; padding: 0.75rem 1.4rem 0.75rem 0.75rem; border: 0; background: var(--maize, oklch(84% 0.168 94)); color: var(--field-950, oklch(21% 0.052 163)); clip-path: polygon(0 0, calc(100% - 0.9rem) 0, 100% 50%, calc(100% - 0.9rem) 100%, 0 100%); cursor: pointer; transition: background-color 180ms ease-out, transform 180ms ease-out; } .ds-team-choice-selected > span { font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 2.9rem; font-weight: 700; letter-spacing: 0.01em; line-height: 0.9; } .ds-team-choice-selected small { color: var(--field-800, oklch(34% 0.068 162)); font-family: var(--font-ui, \"Atkinson Hyperlegible\", Verdana, sans-serif); font-size: 0.76rem; } .ds-team-choice-selected svg { position: absolute; left: 0.55rem; top: 50%; width: 1.6rem; height: 1.6rem; transform: translateY(-50%); fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; } .ds-team-choice-selected:hover { background: var(--maize-deep, oklch(76% 0.166 85)); } .ds-team-choice-selected:active { transform: scale(0.985); } .ds-team-choice-selected:focus-visible { outline: 3px solid var(--focus, oklch(86% 0.17 94)); outline-offset: -3px; } @media (prefers-reduced-motion: reduce) { .ds-team-choice-selected { transition-duration: 0.01ms; } }"
+    },
+    {
+      "name": "Monday Total Input",
+      "kind": "input",
+      "refersTo": "number-input",
+      "description": "A compact attached stepper for the required whole-number Monday tiebreaker.",
+      "html": "<div class=\"ds-number-control\"><button type=\"button\" aria-label=\"Increase Monday total\">+</button><input aria-label=\"Monday total\" inputmode=\"numeric\" type=\"number\" value=\"44\"><button type=\"button\" aria-label=\"Decrease Monday total\">−</button></div>",
+      "css": ".ds-number-control { width: 9rem; display: grid; grid-template-rows: 2.25rem 4rem 2.25rem; padding: 0.6rem; background: var(--paper-100, oklch(96% 0.021 92)); } .ds-number-control input { min-width: 0; width: 100%; border: 1px solid var(--clay, oklch(56% 0.145 42)); background: var(--paper-100, oklch(96% 0.021 92)); color: var(--ink, oklch(25% 0.055 163)); font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 3.75rem; font-weight: 700; line-height: 1; text-align: center; appearance: textfield; } .ds-number-control button { border: 0; background: transparent; color: var(--clay, oklch(56% 0.145 42)); cursor: pointer; font-family: var(--font-ui, \"Atkinson Hyperlegible\", Verdana, sans-serif); font-size: 1.4rem; } .ds-number-control button:hover { background: var(--paper-200, oklch(91% 0.028 90)); } .ds-number-control button:active { transform: scale(0.96); } .ds-number-control button:focus-visible, .ds-number-control input:focus-visible { outline: 3px solid var(--focus, oklch(86% 0.17 94)); outline-offset: 3px; } @media (prefers-reduced-motion: reduce) { .ds-number-control button, .ds-number-control input { transition-duration: 0.01ms; } }"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "refersTo": "navigation-item",
+      "description": "An icon-over-label destination with a persistent maize active state and edge marker.",
+      "html": "<button class=\"ds-nav-item ds-nav-item-active\" type=\"button\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"5\" y=\"4\" width=\"14\" height=\"17\" rx=\"1.5\"></rect><path d=\"M9 4V2h6v2M8.5 9h7M8.5 13h3M14 13l1.2 1.2L18 11.5M8.5 17h7\"></path></svg><span>Picks</span></button>",
+      "css": ".ds-nav-item { position: relative; width: 7.25rem; min-height: 5.25rem; display: grid; place-items: center; align-content: center; gap: 0.3rem; padding: 0.75rem 0.35rem; border: 0; background: var(--field-950, oklch(21% 0.052 163)); color: var(--sage, oklch(69% 0.045 92)); cursor: pointer; font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 1rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; transition: color 180ms ease-out, background-color 180ms ease-out; } .ds-nav-item::before { content: \"\"; position: absolute; left: 0; top: 20%; width: 0.25rem; height: 60%; background: transparent; } .ds-nav-item svg { width: 1.8rem; height: 1.8rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; } .ds-nav-item:hover { color: var(--paper-100, oklch(96% 0.021 92)); background: oklch(38% 0.06 162 / 0.34); } .ds-nav-item-active { color: var(--maize, oklch(84% 0.168 94)); } .ds-nav-item-active::before { background: var(--maize, oklch(84% 0.168 94)); } .ds-nav-item:active { transform: scale(0.985); } .ds-nav-item:focus-visible { outline: 3px solid var(--focus, oklch(86% 0.17 94)); outline-offset: -3px; } @media (prefers-reduced-motion: reduce) { .ds-nav-item { transition-duration: 0.01ms; } }"
+    },
+    {
+      "name": "Progress Measure",
+      "kind": "custom",
+      "description": "A readable pick count paired with a yard-scale progress rail and transform-only fill.",
+      "html": "<div class=\"ds-progress\" aria-label=\"5 of 8 picks selected\"><div class=\"ds-progress-copy\"><strong>5</strong><span>of 8 selected</span></div><div class=\"ds-yard-scale\" aria-hidden=\"true\"><span class=\"ds-yard-fill\"></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class=\"ds-scale-labels\" aria-hidden=\"true\"><span>0</span><span>4</span><span>8</span></div></div>",
+      "css": ".ds-progress { position: relative; width: min(100%, 36rem); display: grid; grid-template-columns: auto minmax(8rem, 1fr); align-items: center; gap: 1.4rem; min-height: 5.6rem; padding: 1rem 2rem; background: var(--field-900, oklch(27% 0.066 162)); color: var(--paper-100, oklch(96% 0.021 92)); } .ds-progress-copy { display: flex; align-items: baseline; gap: 0.4rem; white-space: nowrap; font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); text-transform: uppercase; } .ds-progress-copy strong { color: var(--maize, oklch(84% 0.168 94)); font-size: 2rem; } .ds-progress-copy span { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.06em; } .ds-yard-scale { position: relative; height: 1.45rem; display: flex; justify-content: space-between; align-items: end; border-bottom: 2px solid var(--paper-200, oklch(91% 0.028 90)); } .ds-yard-scale i { width: 1px; height: 0.55rem; background: var(--paper-200, oklch(91% 0.028 90)); z-index: 1; } .ds-yard-scale i:first-of-type, .ds-yard-scale i:nth-of-type(5), .ds-yard-scale i:last-of-type { height: 1.1rem; } .ds-yard-fill { position: absolute; left: 0; bottom: 0; width: 100%; height: 0.82rem; background: var(--maize, oklch(84% 0.168 94)); transform: scaleX(0.625); transform-origin: left center; transition: transform 220ms ease-out; } .ds-scale-labels { position: absolute; right: 2rem; bottom: 0.25rem; width: calc(100% - 2rem - 12rem); display: flex; justify-content: space-between; font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 0.8rem; } @media (prefers-reduced-motion: reduce) { .ds-yard-fill { transition-duration: 0.01ms; } }"
+    },
+    {
+      "name": "Deadline Marker",
+      "kind": "custom",
+      "description": "A clay operational banner that keeps the lock date, time, and timezone explicit.",
+      "html": "<div class=\"ds-deadline-marker\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path d=\"M12 7v6l4 2\"></path></svg><span>Target lock · Wed · 6:00 PM ET</span></div>",
+      "css": ".ds-deadline-marker { min-height: 3.65rem; display: inline-flex; align-items: center; gap: 0.75rem; padding: 0.65rem 3.2rem 0.65rem 1.35rem; background: var(--clay, oklch(56% 0.145 42)); color: var(--paper-100, oklch(96% 0.021 92)); clip-path: polygon(0 0, calc(100% - 1.5rem) 0, 100% 50%, calc(100% - 1.5rem) 100%, 0 100%); font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 1.45rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; } .ds-deadline-marker svg { width: 1.55rem; height: 1.55rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }"
+    },
+    {
+      "name": "Review Sheet",
+      "kind": "card",
+      "refersTo": "sheet-card",
+      "description": "A temporary lifted paper panel for confirming picks before receipt creation.",
+      "html": "<section class=\"ds-review-sheet\"><h2>Review your entry</h2><div class=\"ds-review-grid\"><span>IND</span><span>BUF</span><span>DET</span><span>DAL</span></div><p>Monday Total <strong>44</strong></p></section>",
+      "css": ".ds-review-sheet { width: min(100%, 24rem); padding: 1.25rem; background: var(--paper-100, oklch(96% 0.021 92)); color: var(--ink, oklch(25% 0.055 163)); box-shadow: 0 8px 22px oklch(12% 0.035 160 / 0.28); font-family: var(--font-ui, \"Atkinson Hyperlegible\", Verdana, sans-serif); } .ds-review-sheet h2 { margin: 0 0 0.75rem; font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 1.75rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; } .ds-review-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin: 0.75rem 0; } .ds-review-grid span { display: grid; place-items: center; min-height: 2.4rem; background: var(--maize, oklch(84% 0.168 94)); color: var(--field-950, oklch(21% 0.052 163)); font-family: var(--font-display, \"Barlow Condensed\", \"Arial Narrow\", sans-serif); font-size: 1.25rem; font-weight: 700; } .ds-review-sheet p { margin: 0.75rem 0 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Coach's Call Sheet",
+    "overview": "Any Given Pick turns weekly choices into the feeling of calling a game plan: decisive, legible, tactile, and accountable. Deep field-green framing holds warm paper surfaces, while maize commitments and clay deadline cues make the user's next action unmistakable. The voice is energetic without becoming a sportsbook, and competitive without borrowing official team marks.\n\nThe visual hierarchy behaves like a working sideline document rather than a generic dashboard. Condensed uppercase type carries calls, counts, and headings; hyperlegible body text carries explanations and status. Yard-scale measurement, route-diagram linework, clipped tabs, ruled dividers, and check marks provide the football character. These motifs are a reusable vocabulary, not a mandate to repeat the Week 1 composition on every screen.",
+    "keyCharacteristics": [
+      "Deep field-green framing around warm, paper-like task surfaces.",
+      "Condensed, uppercase command typography paired with accessible body copy.",
+      "Maize reserved for selections, progress, active navigation, and primary actions.",
+      "Clay reserved for deadlines, timed drills, and urgent operational cues.",
+      "Flat ruled layouts with clipped call-sheet geometry and sparse ambient shadow.",
+      "Football energy communicated through abstract play-diagram marks, never licensed team artwork."
+    ],
+    "rules": [
+      { "name": "The Commitment Color Rule", "body": "Maize means chosen, progressing, active, or ready to commit; do not spend it on passive decoration.", "section": "colors" },
+      { "name": "The Clay Clock Rule", "body": "Clay belongs to time pressure and operational emphasis, not selections or generic promotion.", "section": "colors" },
+      { "name": "The No Sportsbook Rule", "body": "Do not introduce neon odds colors, financial red/green semantics, dark trading-card chrome, or wagering cues.", "section": "colors" },
+      { "name": "The Call-and-Explain Rule", "body": "Condensed type gives the call; hyperlegible type explains what it means.", "section": "typography" },
+      { "name": "The Short Command Rule", "body": "Display type is for short, forceful phrases. Never use the compressed uppercase face for paragraphs or legal detail.", "section": "typography" },
+      { "name": "The One Sheet Rule", "body": "A primary workflow should read as one ordered, scannable sheet; do not fragment it into a mosaic of unrelated cards.", "section": "layout" },
+      { "name": "The Responsive Subtraction Rule", "body": "On narrow screens, remove secondary detail before shrinking core labels or touch targets.", "section": "layout" },
+      { "name": "The Ruled-First Rule", "body": "Establish hierarchy with tone, borders, and adjacency before adding a shadow.", "section": "elevation" },
+      { "name": "The Clipped Direction Rule", "body": "Use the angled call-sheet edge only for a choice, deadline, or forward action with clear directionality.", "section": "shapes" },
+      { "name": "The No Soft Card Rule", "body": "Do not introduce rounded, floating SaaS cards into the core workflow.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do use Maize only for commitments, active state, progress, and primary actions.",
+      "Do pair every selected color state with a check, shape change, label, or other non-color cue.",
+      "Do use abstract route lines, yard ticks, whistles, shields, and rule marks to create football character.",
+      "Do keep deadlines, eligibility, review, and receipt status in direct, plain language.",
+      "Do preserve generous touch targets and visible focus outlines from 360px upward.",
+      "Do honor reduced motion by collapsing transitions and disabling smooth scrolling."
+    ],
+    "donts": [
+      "Don't resemble a sportsbook: no odds, betting slips, monetary balances, casino glow, or red/green win-loss trading semantics.",
+      "Don't depend on NFL logos, team crests, jerseys, or protected team artwork.",
+      "Don't scatter the core workflow across rounded floating cards.",
+      "Don't use clipped tabs or clay accents as decoration without semantic purpose.",
+      "Don't place paragraphs in condensed uppercase type.",
+      "Don't shrink essential labels or touch targets to preserve desktop detail on mobile."
+    ]
+  }
+}
