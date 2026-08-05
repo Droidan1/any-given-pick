@@ -4,6 +4,8 @@ A free-entry weekly professional-football pick'em PWA built around the Coach's C
 
 Production domain: [anygivenpick.app](https://anygivenpick.app)
 
+Source repository: [github.com/Droidan1/any-given-pick](https://github.com/Droidan1/any-given-pick)
+
 ## Run locally
 
 ```bash
@@ -12,6 +14,12 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Deployment and environments
+
+The GitHub repository is connected directly to the Vercel `any-given-pick` project. Pushes to `main` create Production deployments, while pushes to other branches and pull requests create isolated Preview deployments.
+
+The prototype currently requires no application-specific environment variables. Keep future secrets in Vercel with separate Production, Preview, and Development scopes; local secrets belong in `.env.local`, which is ignored by Git.
 
 ## Included in this milestone
 
