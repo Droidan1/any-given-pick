@@ -5,7 +5,7 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 // security boundary.
 export default clerkMiddleware({
   frontendApiProxy: {
-    enabled: true,
+    enabled: Boolean(process.env.NEXT_PUBLIC_CLERK_PROXY_URL),
   },
 });
 
