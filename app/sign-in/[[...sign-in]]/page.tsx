@@ -43,8 +43,8 @@ export default function SignInPage() {
             </li>
           </ol>
           <p className="auth-game-plan__note">
-            The current prototype saves picks on this device. Official schedules and contest
-            submission are coming in a later milestone.
+            Published schedules feed your call sheet automatically. Drafts sync securely, and
+            your latest submitted version before the deadline is the official entry.
           </p>
         </div>
       </section>

@@ -480,6 +480,13 @@ button:disabled {
   transform: scale(0.985);
 }
 
+.team-choice:disabled,
+.number-control button:disabled,
+.number-control input:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .team-choice > span {
   font-family: var(--font-display);
   font-size: 2.9rem;
@@ -710,6 +717,18 @@ button:disabled {
   transform: translateY(2px);
 }
 
+.review-action:disabled,
+.commit-action:disabled,
+.text-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.review-action:disabled:hover,
+.commit-action:disabled:hover {
+  background: var(--maize);
+}
+
 .review-action svg {
   width: 1.75rem;
   height: 1.75rem;
@@ -814,6 +833,10 @@ button:disabled {
   color: var(--ink-soft);
   font-size: 1.2rem;
   line-height: 1.55;
+}
+
+.no-week-view .empty-state {
+  max-width: 36rem;
 }
 
 .single-view .route-sketch {

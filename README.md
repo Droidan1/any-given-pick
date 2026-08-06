@@ -27,10 +27,12 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 ## Included in this milestone
 
 - Responsive mobile and desktop app shell
-- Interactive eight-game picks flow
+- Commissioner-published weekly schedule feeding the player call sheet
+- Variable-size weekly picks flow using imported matchup data
 - Monday combined-score tiebreaker
-- Local draft persistence
-- Inline review and prototype receipt states
+- Local recovery plus authenticated server-side draft sync
+- Explicit submit/edit flow with immutable version history and timestamped receipts
+- Database-time deadline enforcement for drafts and submissions
 - Sample home, standings, groups, and profile surfaces
 - Web app manifest, generated PWA icons, and offline service worker shell
 - Any Given Pick wordmark, route-mark icon, social-sharing image, and install identity
@@ -41,10 +43,11 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Server-calculated age eligibility and session-time Indiana verification
 - Read-only fallbacks for denied, unavailable, stale, outside-state, or indeterminate location
 - Postgres roles, eligibility history, and append-only application audit events
-- Drizzle schema, committed migrations, seed task, and eligibility unit tests
+- Provider-neutral CSV/JSON schedule importer and admin week operations
+- Drizzle schema, committed migrations, seed task, and eligibility/entry rule tests
 
 ## Not connected yet
 
-Sports-data ingestion, real deadlines, contest joins and entry submission, scoring, notifications, prizes, moderation, and admin tools remain future milestones. Draft picks are still stored only on the current device and the UI does not claim a contest submission.
+Automated licensed sports-data ingestion, scoring, standings, notifications, prizes, private groups, and moderation remain future milestones. The current importer stays provider-neutral so an approved data source can be connected without rebuilding the contest engine.
 
 Product truth is recorded in [PRODUCT.md](./PRODUCT.md). Design references are stored under `design/`.

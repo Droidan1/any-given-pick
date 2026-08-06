@@ -53,6 +53,14 @@ export const gameStatusEnum = pgEnum("game_status", [
   "canceled",
 ]);
 
+export const entryStatusEnum = pgEnum("entry_status", [
+  "draft",
+  "submitted",
+  "locked",
+  "scored",
+  "disqualified",
+]);
+
 export const users = pgTable(
   "users",
   {
@@ -250,5 +258,87 @@ export const games = pgTable(
       sql`(${table.awayScore} is null or ${table.awayScore} >= 0) and (${table.homeScore} is null or ${table.homeScore} >= 0)`,
     ),
     check("games_distinct_teams_check", sql`${table.awayTeamCode} <> ${table.homeTeamCode}`),
+  ],
+);
+
+export const contestEntries = pgTable(
+  "contest_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    contestWeekId: uuid("contest_week_id")
+      .notNull()
+      .references(() => contestWeeks.id, { onDelete: "restrict" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    status: entryStatusEnum("status").notNull().default("draft"),
+    draftPicks: jsonb("draft_picks").$type<Record<string, string>>().notNull().default({}),
+    draftMondayPrediction: integer("draft_monday_prediction"),
+    currentVersionNumber: integer("current_version_number").notNull().default(0),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("contest_entries_week_user_unique").on(table.contestWeekId, table.userId),
+    index("contest_entries_week_status_idx").on(table.contestWeekId, table.status),
+    check(
+      "contest_entries_monday_prediction_nonnegative_check",
+      sql`${table.draftMondayPrediction} is null or ${table.draftMondayPrediction} >= 0`,
+    ),
+    check(
+      "contest_entries_version_nonnegative_check",
+      sql`${table.currentVersionNumber} >= 0`,
+    ),
+  ],
+);
+
+export const entryVersions = pgTable(
+  "entry_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    contestEntryId: uuid("contest_entry_id")
+      .notNull()
+      .references(() => contestEntries.id, { onDelete: "restrict" }),
+    versionNumber: integer("version_number").notNull(),
+    submissionKey: uuid("submission_key").notNull(),
+    action: varchar("action", { length: 16 }).notNull(),
+    mondayPrediction: integer("monday_prediction").notNull(),
+    eligibilitySnapshot: jsonb("eligibility_snapshot")
+      .$type<{
+        reason: string;
+        locationResult: string | null;
+        locationCheckedAt: string | null;
+      }>()
+      .notNull(),
+    committedAt: timestamp("committed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("entry_versions_entry_version_unique").on(
+      table.contestEntryId,
+      table.versionNumber,
+    ),
+    uniqueIndex("entry_versions_submission_key_unique").on(table.submissionKey),
+    check("entry_versions_version_positive_check", sql`${table.versionNumber} > 0`),
+    check("entry_versions_monday_prediction_nonnegative_check", sql`${table.mondayPrediction} >= 0`),
+    check("entry_versions_action_check", sql`${table.action} in ('submit', 'edit')`),
+  ],
+);
+
+export const entryVersionPicks = pgTable(
+  "entry_version_picks",
+  {
+    entryVersionId: uuid("entry_version_id")
+      .notNull()
+      .references(() => entryVersions.id, { onDelete: "restrict" }),
+    gameId: uuid("game_id")
+      .notNull()
+      .references(() => games.id, { onDelete: "restrict" }),
+    selectedTeamCode: varchar("selected_team_code", { length: 5 }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.entryVersionId, table.gameId] }),
+    index("entry_version_picks_game_idx").on(table.gameId),
   ],
 );

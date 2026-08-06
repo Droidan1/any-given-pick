@@ -1,15 +1,24 @@
 import { redirect } from "next/navigation";
 import { PickemApp } from "@/components/pickem-app";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
-import { getOptionalAccountSummary } from "@/lib/auth/app-user";
+import { requireAppUser } from "@/lib/auth/app-user";
+import { getAccountSummary } from "@/lib/eligibility/service";
+import { getCurrentPlayerWeek } from "@/lib/entries/service";
+import { auth } from "@clerk/nextjs/server";
 
 export default async function Home() {
-  const account = await getOptionalAccountSummary();
-  if (!account) redirect("/sign-in");
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const appUser = await requireAppUser();
+  const [account, week] = await Promise.all([
+    getAccountSummary(appUser.id),
+    getCurrentPlayerWeek(appUser.id),
+  ]);
 
   return (
     <>
-      <PickemApp account={account} />
+      <PickemApp account={account} week={week} />
       <ServiceWorkerRegistration />
     </>
   );
