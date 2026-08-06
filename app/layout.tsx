@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
 import "@fontsource/barlow-condensed/500.css";
@@ -62,7 +63,26 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body data-design-seed="a6de992d">
         <template dangerouslySetInnerHTML={{ __html: designContract }} />
-        {children}
+        <ClerkProvider
+          dynamic
+          appearance={{
+            variables: {
+              colorPrimary: "oklch(84% 0.168 94)",
+              colorPrimaryForeground: "oklch(21% 0.052 163)",
+              colorBackground: "oklch(21% 0.052 163)",
+              colorForeground: "oklch(96% 0.021 92)",
+              colorMuted: "oklch(27% 0.066 162)",
+              colorMutedForeground: "oklch(79% 0.035 92)",
+              colorInput: "oklch(27% 0.066 162)",
+              colorInputForeground: "oklch(96% 0.021 92)",
+              colorBorder: "oklch(69% 0.045 92)",
+              borderRadius: "0.6rem",
+              fontFamily: '"Atkinson Hyperlegible", Verdana, sans-serif',
+            },
+          }}
+        >
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );

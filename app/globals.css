@@ -924,6 +924,391 @@ button:disabled {
   display: none;
 }
 
+.surface {
+  position: relative;
+}
+
+.surface-account {
+  display: none;
+}
+
+.account-dock {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.account-dock > a {
+  display: grid;
+  gap: 0.05rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.account-dock > a:hover,
+.account-dock > a:focus-visible {
+  color: var(--maize);
+}
+
+.account-dock small {
+  color: var(--sage);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+.account-dock__primary {
+  padding: 0.45rem 0.65rem;
+  background: var(--maize);
+  color: var(--field-950) !important;
+}
+
+.account-dock--compact {
+  min-height: 4rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: 0.75rem;
+  border-top: 1px solid oklch(80% 0.06 92 / 0.38);
+  font-size: 0.86rem;
+}
+
+.account-dock--compact > a:not(.account-dock__primary) {
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-actions {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+}
+
+.profile-actions .review-action,
+.profile-view > .review-action {
+  width: fit-content;
+  min-width: 14rem;
+  display: inline-flex;
+  justify-content: center;
+  margin: 1rem 0 0;
+  text-decoration: none;
+}
+
+.text-link {
+  color: var(--maize-deep);
+  font-weight: 700;
+  text-underline-offset: 0.25em;
+}
+
+.text-action--link {
+  display: block;
+  text-align: center;
+}
+
+.auth-shell {
+  width: min(100%, 82rem);
+  min-height: 100vh;
+  min-height: 100svh;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) minmax(22rem, 28rem);
+  align-content: center;
+  align-items: center;
+  gap: 3rem;
+  padding: 4rem;
+  background: var(--field-900);
+}
+
+.auth-brand {
+  position: absolute;
+  left: max(1.5rem, calc((100vw - 82rem) / 2 + 2rem));
+  top: 1.5rem;
+  color: var(--paper-100);
+  text-decoration: none;
+}
+
+.auth-brand .brand-lockup {
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.auth-brand .brand-lockup__mark {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.auth-brand .brand-lockup__type {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.auth-brand .brand-lockup__type > span,
+.auth-brand .brand-lockup__type strong {
+  font-size: 1.05rem;
+}
+
+.auth-copy h1 {
+  max-width: 10ch;
+  margin: 0;
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 7vw, 6.5rem);
+  line-height: 0.88;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.auth-copy > p:last-child {
+  max-width: 34rem;
+  color: var(--paper-200);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.account-shell {
+  min-height: 100vh;
+  min-height: 100svh;
+  background: var(--field-900);
+}
+
+.account-header {
+  min-height: 5.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem max(1rem, calc((100vw - 88rem) / 2));
+  border-bottom: 1px solid oklch(80% 0.06 92 / 0.38);
+  background: var(--field-950);
+}
+
+.account-brand {
+  color: var(--paper-100);
+  text-decoration: none;
+}
+
+.account-brand .brand-lockup {
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.account-brand .brand-lockup__mark {
+  width: 2.6rem;
+  height: 2.6rem;
+}
+
+.account-brand .brand-lockup__type {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.account-brand .brand-lockup__type > span,
+.account-brand .brand-lockup__type strong {
+  font-size: 1rem;
+}
+
+.account-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.account-header__actions .text-link {
+  color: var(--paper-100);
+}
+
+.account-sheet {
+  width: min(100% - 2rem, 88rem);
+  margin: 0 auto;
+  padding: 3.5rem 0 5rem;
+}
+
+.account-intro {
+  max-width: 58rem;
+  margin-bottom: 2.5rem;
+}
+
+.account-intro h1 {
+  margin: 0;
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  font-size: clamp(3.25rem, 7vw, 6rem);
+  line-height: 0.88;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.account-intro > p:last-child {
+  max-width: 48rem;
+  color: var(--paper-200);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.profile-card,
+.eligibility-card {
+  position: relative;
+  padding: 2rem;
+  border: 1px solid var(--sage);
+  border-radius: var(--radius);
+  background: var(--paper-100);
+  color: var(--ink);
+  box-shadow: 0 12px 36px var(--shadow);
+}
+
+.profile-card:first-child {
+  grid-row: span 2;
+}
+
+.card-number {
+  position: absolute;
+  right: 1.25rem;
+  top: 1rem;
+  color: var(--paper-200);
+  font-family: var(--font-display);
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.card-kicker {
+  margin: 0 0 0.25rem;
+  color: var(--clay-deep);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.profile-card h2,
+.eligibility-card h2 {
+  position: relative;
+  max-width: 14ch;
+  margin: 0 0 1.5rem;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.profile-card > p {
+  line-height: 1.55;
+}
+
+.profile-form {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.profile-form label {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.profile-form input {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--sage);
+  border-radius: 6px;
+  background: var(--paper-100);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  text-transform: none;
+}
+
+.profile-form input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.field-help,
+.field-error,
+.form-result {
+  min-height: 1.2rem;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.field-help {
+  color: var(--ink-soft);
+}
+
+.field-error,
+.form-result--error {
+  color: var(--danger);
+}
+
+.form-result--success {
+  color: var(--field-800);
+  font-weight: 700;
+}
+
+.profile-form .commit-action {
+  margin-top: 1.25rem;
+}
+
+.profile-card--location .review-action {
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.eligibility-gates {
+  border-top: 2px solid var(--ink);
+}
+
+.eligibility-gate {
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--sage);
+}
+
+.eligibility-gate strong {
+  color: var(--field-800);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+}
+
+.eligibility-verdict {
+  margin: 1.5rem 0 0;
+  padding: 0.8rem;
+  background: var(--field-900);
+  color: var(--maize);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
 .pwa-utilities {
   position: fixed;
   right: 1rem;
@@ -991,6 +1376,18 @@ button:disabled {
 
   .side-nav {
     display: none;
+  }
+
+  .surface-account {
+    position: absolute;
+    right: 0.75rem;
+    top: 0.65rem;
+    z-index: 12;
+    display: block;
+  }
+
+  .surface-account .account-dock {
+    font-size: 0.8rem;
   }
 
   .mobile-brand {
@@ -1115,6 +1512,56 @@ button:disabled {
 }
 
 @media (max-width: 40rem) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 6rem 1rem 2rem;
+  }
+
+  .auth-brand {
+    left: 1rem;
+    top: 1rem;
+  }
+
+  .auth-copy h1 {
+    font-size: 3.5rem;
+  }
+
+  .account-header {
+    min-height: 4.5rem;
+  }
+
+  .account-header__actions .text-link {
+    display: none;
+  }
+
+  .account-sheet {
+    padding-top: 2rem;
+  }
+
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-card:first-child {
+    grid-row: auto;
+  }
+
+  .profile-card,
+  .eligibility-card {
+    padding: 1.35rem;
+  }
+
+  .card-number {
+    font-size: 3rem;
+  }
+
+  .surface-account .account-dock > a span,
+  .surface-account .account-dock > a small,
+  .surface-account .account-dock > a:not(.account-dock__primary) {
+    display: none;
+  }
+
   .pick-header {
     padding: 1.55rem 1rem 1.1rem;
   }

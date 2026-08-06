@@ -10,6 +10,9 @@ Source repository: [github.com/Droidan1/any-given-pick](https://github.com/Droid
 
 ```bash
 npm install
+npx vercel env pull .env.local
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
@@ -19,7 +22,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 The GitHub repository is connected directly to the Vercel `any-given-pick` project. Pushes to `main` create Production deployments, while pushes to other branches and pull requests create isolated Preview deployments.
 
-The prototype currently requires no application-specific environment variables. Keep future secrets in Vercel with separate Production, Preview, and Development scopes; local secrets belong in `.env.local`, which is ignored by Git.
+The Vercel project has Clerk Hobby and Neon Free resources connected to Production, Preview, and Development. Pull their environment variables into `.env.local`; never commit the generated file. Variable names are documented in `.env.example`.
 
 ## Included in this milestone
 
@@ -32,9 +35,16 @@ The prototype currently requires no application-specific environment variables. 
 - Web app manifest, generated PWA icons, and offline service worker shell
 - Any Given Pick wordmark, route-mark icon, social-sharing image, and install identity
 - Original visual system with no NFL or team marks
+- Clerk email/password and Google authentication surfaces
+- Internal Postgres user IDs mapped to verified Clerk identities
+- Unique case-normalized player names with 30-day history enforcement
+- Server-calculated age eligibility and session-time Indiana verification
+- Read-only fallbacks for denied, unavailable, stale, outside-state, or indeterminate location
+- Postgres roles, eligibility history, and append-only application audit events
+- Drizzle schema, committed migrations, seed task, and eligibility unit tests
 
 ## Not connected yet
 
-Authentication, server-side eligibility, sports-data ingestion, real deadlines, server submission, scoring, notifications, prizes, moderation, and admin tools remain future milestones. The UI labels illustrative data explicitly and does not claim a server submission.
+Sports-data ingestion, real deadlines, contest joins and entry submission, scoring, notifications, prizes, moderation, and admin tools remain future milestones. Draft picks are still stored only on the current device and the UI does not claim a contest submission.
 
 Product truth is recorded in [PRODUCT.md](./PRODUCT.md). Design references are stored under `design/`.

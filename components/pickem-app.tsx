@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { games, initialPicks } from "@/lib/games";
+import type { AccountSummary } from "@/lib/account-types";
 import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
 
@@ -27,7 +30,7 @@ const standings = [
   { rank: 5, name: "Two Minute", correct: 5, delta: 8 },
 ];
 
-export function PickemApp() {
+export function PickemApp({ account }: { account: AccountSummary | null }) {
   const [view, setView] = useState<View>("picks");
   const [picks, setPicks] = useState<Picks>(initialPicks);
   const [mondayTotal, setMondayTotal] = useState(44);
@@ -95,6 +98,13 @@ export function PickemApp() {
   };
 
   const createReceipt = () => {
+    if (!account || account.overallResult !== "eligible") {
+      setStatus(account?.reasonLabel ?? "Sign in and clear eligibility before participating.");
+      setView("profile");
+      setReviewing(false);
+      return;
+    }
+
     const formatter = new Intl.DateTimeFormat("en-US", {
       dateStyle: "medium",
       timeStyle: "short",
@@ -125,9 +135,11 @@ export function PickemApp() {
             </button>
           ))}
         </div>
+        <AccountDock account={account} compact />
       </aside>
 
       <section className="surface">
+        <div className="surface-account"><AccountDock account={account} /></div>
         <button className="mobile-brand" type="button" onClick={() => setView("home")} aria-label="Any Given Pick home">
           <BrandLockup />
         </button>
@@ -145,15 +157,16 @@ export function PickemApp() {
             onMondayTotal={setMondayTotal}
             onReview={beginReview}
             onReceipt={createReceipt}
+            account={account}
             onEdit={() => { setReviewing(false); setReceiptTime(null); setStatus("Edit mode restored. Your draft remains saved."); }}
           />
         )}
         {view === "home" && (
-          <HomeView selectedCount={selectedCount} onContinue={() => setView("picks")} />
+          <HomeView selectedCount={selectedCount} onContinue={() => setView("picks")} account={account} />
         )}
         {view === "standings" && <StandingsView />}
         {view === "groups" && <GroupsView />}
-        {view === "profile" && <ProfileView selectedTeams={selectedTeams} />}
+        {view === "profile" && <ProfileView selectedTeams={selectedTeams} account={account} />}
       </section>
 
       <nav className="bottom-nav" aria-label="Primary navigation">
@@ -188,6 +201,7 @@ type PicksViewProps = {
   onReview: () => void;
   onReceipt: () => void;
   onEdit: () => void;
+  account: AccountSummary | null;
 };
 
 function PicksView(props: PicksViewProps) {
@@ -205,7 +219,7 @@ function PicksView(props: PicksViewProps) {
           </div>
           <div className="eligibility-line">
             <Icon name="shield" />
-            <span>Eligibility demo · Indiana · 21+</span>
+            <span>{props.account?.reasonLabel ?? "Sign in to verify eligibility"}</span>
           </div>
         </header>
 
@@ -270,7 +284,13 @@ function PicksView(props: PicksViewProps) {
         {props.receiptTime ? (
           <Receipt time={props.receiptTime} picks={props.picks} mondayTotal={props.mondayTotal} onEdit={props.onEdit} />
         ) : props.reviewing ? (
-          <ReviewPanel picks={props.picks} mondayTotal={props.mondayTotal} onReceipt={props.onReceipt} onEdit={props.onEdit} />
+          <ReviewPanel
+            picks={props.picks}
+            mondayTotal={props.mondayTotal}
+            onReceipt={props.onReceipt}
+            onEdit={props.onEdit}
+            account={props.account}
+          />
         ) : (
           <button className="review-action" type="button" onClick={props.onReview}>
             <Icon name="whistle" />
@@ -323,7 +343,20 @@ function MondayTotal({ value, onChange }: { value: number; onChange: (value: num
   );
 }
 
-function ReviewPanel({ picks, mondayTotal, onReceipt, onEdit }: { picks: Picks; mondayTotal: number; onReceipt: () => void; onEdit: () => void }) {
+function ReviewPanel({
+  picks,
+  mondayTotal,
+  onReceipt,
+  onEdit,
+  account,
+}: {
+  picks: Picks;
+  mondayTotal: number;
+  onReceipt: () => void;
+  onEdit: () => void;
+  account: AccountSummary | null;
+}) {
+  const canParticipate = account?.overallResult === "eligible";
   return (
     <section className="review-panel" aria-labelledby="review-title">
       <h2 id="review-title">Review your entry</h2>
@@ -331,7 +364,14 @@ function ReviewPanel({ picks, mondayTotal, onReceipt, onEdit }: { picks: Picks; 
         {games.map((game) => <span key={game.id}>{picks[game.id]}</span>)}
       </div>
       <p>Monday Total <strong>{mondayTotal}</strong></p>
-      <button className="commit-action" type="button" onClick={onReceipt}>Create prototype receipt</button>
+      <button className="commit-action" type="button" onClick={onReceipt} disabled={!canParticipate}>
+        {canParticipate ? "Create prototype receipt" : "Eligibility required"}
+      </button>
+      {!canParticipate && (
+        <Link className="text-action text-action--link" href={account ? "/profile" : "/sign-in"}>
+          {account?.reasonLabel ?? "Sign in to participate"}
+        </Link>
+      )}
       <button className="text-action" type="button" onClick={onEdit}>Back to picks</button>
     </section>
   );
@@ -345,13 +385,21 @@ function Receipt({ time, picks, mondayTotal, onEdit }: { time: string; picks: Pi
       <p>{Object.values(picks).join(" · ")}</p>
       <p>Monday Total <strong>{mondayTotal}</strong></p>
       <time>{time} ET</time>
-      <small>No server submission occurred. Backend connection is the next milestone.</small>
+      <small>No contest entry was submitted. Pick submission is a later milestone.</small>
       <button className="text-action" type="button" onClick={onEdit}>Edit draft</button>
     </section>
   );
 }
 
-function HomeView({ selectedCount, onContinue }: { selectedCount: number; onContinue: () => void }) {
+function HomeView({
+  selectedCount,
+  onContinue,
+  account,
+}: {
+  selectedCount: number;
+  onContinue: () => void;
+  account: AccountSummary | null;
+}) {
   return (
     <section className="single-view home-view">
       <RouteSketch /><RouteSketch mirrored />
@@ -360,7 +408,7 @@ function HomeView({ selectedCount, onContinue }: { selectedCount: number; onCont
       <p className="lead">Finish your prototype entry before the planned Wednesday deadline.</p>
       <div className="home-status">
         <Icon name="shield" />
-        <span>Eligibility demo</span>
+        <span>{account?.reasonLabel ?? "Sign in to verify eligibility"}</span>
         <strong>{selectedCount}/8 picks</strong>
       </div>
       <button className="review-action" type="button" onClick={onContinue}>
@@ -400,17 +448,66 @@ function GroupsView() {
   );
 }
 
-function ProfileView({ selectedTeams }: { selectedTeams: string[] }) {
+function ProfileView({
+  selectedTeams,
+  account,
+}: {
+  selectedTeams: string[];
+  account: AccountSummary | null;
+}) {
+  if (!account) {
+    return (
+      <section className="single-view profile-view">
+        <p className="week-label">Profile & access</p>
+        <h1>Join the roster</h1>
+        <p className="lead">Sign in with email and password or Google to create one player account.</p>
+        <div className="profile-actions">
+          <Link className="review-action" href="/sign-up">Create account</Link>
+          <Link className="text-link" href="/sign-in">Already have an account? Sign in</Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="single-view profile-view">
       <p className="week-label">Profile & access</p>
-      <h1>Prototype access check</h1>
+      <h1>{account.displayName ?? "Finish your player card"}</h1>
       <div className="access-lines">
-        <div><Icon name="shield" /><span>Indiana location</span><strong>Planned</strong></div>
-        <div><Icon name="check" /><span>Age requirement</span><strong>21+</strong></div>
+        <div><Icon name="shield" /><span>Indiana location</span><strong>{account.locationResult === "in_state" ? "Cleared" : "Open"}</strong></div>
+        <div><Icon name="check" /><span>Age requirement</span><strong>{account.ageEligible ? "Cleared" : "Open"}</strong></div>
+        <div><Icon name="profile" /><span>Verified sign-in</span><strong>{account.verifiedAuth ? "Cleared" : "Open"}</strong></div>
         <div><Icon name="picks" /><span>Draft selections</span><strong>{selectedTeams.length}/8</strong></div>
       </div>
-      <p className="prototype-note">Prototype eligibility is illustrative. Production participation checks will be enforced on the server.</p>
+      <p className="prototype-note">{account.reasonLabel}. Eligibility evidence is evaluated on the server.</p>
+      <Link className="review-action" href="/profile">Open player card</Link>
     </section>
+  );
+}
+
+function AccountDock({
+  account,
+  compact = false,
+}: {
+  account: AccountSummary | null;
+  compact?: boolean;
+}) {
+  if (!account) {
+    return (
+      <div className={`account-dock${compact ? " account-dock--compact" : ""}`}>
+        <Link href="/sign-in">Sign in</Link>
+        <Link href="/sign-up" className="account-dock__primary">Join</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`account-dock${compact ? " account-dock--compact" : ""}`}>
+      <UserButton />
+      <Link href="/profile">
+        <span>{account.displayName ?? "Player card"}</span>
+        <small>{account.overallResult === "eligible" ? "Eligible" : "Read-only"}</small>
+      </Link>
+    </div>
   );
 }

@@ -12,6 +12,7 @@
 .DS_Store
 *.pem
 .env*
+!.env.example
 
 # logs
 npm-debug.log*
@@ -34,3 +35,7 @@ yarn-error.log*
 .impeccable/live/cache/
 .impeccable/live/*.png
 .vercel
+
+# Agent-installed integration guidance (local only)
+/.agents/
+/skills-lock.json
