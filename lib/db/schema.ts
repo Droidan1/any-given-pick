@@ -45,6 +45,8 @@ export const contestWeekStatusEnum = pgEnum("contest_week_status", [
   "final",
 ]);
 
+export const seasonPhaseEnum = pgEnum("season_phase", ["preseason", "regular"]);
+
 export const gameStatusEnum = pgEnum("game_status", [
   "scheduled",
   "in_progress",
@@ -196,6 +198,7 @@ export const contestWeeks = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     season: integer("season").notNull(),
+    seasonPhase: seasonPhaseEnum("season_phase").notNull().default("regular"),
     weekNumber: integer("week_number").notNull(),
     label: varchar("label", { length: 80 }),
     status: contestWeekStatusEnum("status").notNull().default("draft"),
@@ -208,9 +211,16 @@ export const contestWeeks = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("contest_weeks_season_week_unique").on(table.season, table.weekNumber),
+    uniqueIndex("contest_weeks_season_phase_week_unique").on(
+      table.season,
+      table.seasonPhase,
+      table.weekNumber,
+    ),
     index("contest_weeks_status_deadline_idx").on(table.status, table.entryDeadline),
-    check("contest_weeks_week_number_check", sql`${table.weekNumber} between 1 and 22`),
+    check(
+      "contest_weeks_week_number_check",
+      sql`(${table.seasonPhase} = 'preseason' and ${table.weekNumber} between 1 and 4) or (${table.seasonPhase} = 'regular' and ${table.weekNumber} between 1 and 22)`,
+    ),
     check("contest_weeks_season_check", sql`${table.season} between 2020 and 2100`),
   ],
 );

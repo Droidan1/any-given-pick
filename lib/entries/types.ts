@@ -21,6 +21,7 @@ export type PlayerEntry = {
 export type PlayerWeek = {
   id: string;
   season: number;
+  seasonPhase: "preseason" | "regular";
   weekNumber: number;
   label: string;
   entryDeadline: string;

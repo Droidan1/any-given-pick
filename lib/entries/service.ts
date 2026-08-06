@@ -1,6 +1,7 @@
 import "server-only";
 
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getDb } from "@/lib/db";
 import { contestEntries, contestWeeks, games } from "@/lib/db/schema";
 import type { PlayerWeek } from "./types";
@@ -39,7 +40,11 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
     .select()
     .from(contestWeeks)
     .where(eq(contestWeeks.status, "published"))
-    .orderBy(desc(contestWeeks.season), desc(contestWeeks.weekNumber))
+    .orderBy(
+      desc(contestWeeks.season),
+      desc(sql<number>`case when ${contestWeeks.seasonPhase} = 'regular' then 1 else 0 end`),
+      desc(contestWeeks.weekNumber),
+    )
     .limit(1);
 
   if (!week) return null;
@@ -68,8 +73,9 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
   return {
     id: week.id,
     season: week.season,
+    seasonPhase: week.seasonPhase,
     weekNumber: week.weekNumber,
-    label: week.label || `Week ${week.weekNumber}`,
+    label: week.label || formatWeekName(week.seasonPhase, week.weekNumber),
     entryDeadline: week.entryDeadline.toISOString(),
     deadlineLabel: formatDeadline(week.entryDeadline),
     isLocked: now >= week.entryDeadline,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseScheduleText,
+  PRESEASON_SCHEDULE_TEMPLATE,
   SCHEDULE_TEMPLATE,
   validateWeekDetails,
 } from "./schedule-import";
@@ -66,6 +67,7 @@ describe("validateWeekDetails", () => {
     const issues = validateWeekDetails(
       {
         season: new Date().getUTCFullYear(),
+        seasonPhase: "regular",
         weekNumber: 1,
         label: "Opening week",
         entryDeadline: "2026-09-12T12:00:00-04:00",
@@ -74,5 +76,37 @@ describe("validateWeekDetails", () => {
     );
 
     expect(issues).toContainEqual(expect.objectContaining({ code: "kickoff_before_deadline" }));
+  });
+
+  it("accepts preseason weeks 1–4 and a non-Monday tiebreaker", () => {
+    const games = parseScheduleText(PRESEASON_SCHEDULE_TEMPLATE).games;
+    const issues = validateWeekDetails(
+      {
+        season: new Date().getUTCFullYear(),
+        seasonPhase: "preseason",
+        weekNumber: 4,
+        label: "Preseason finale",
+        entryDeadline: "2026-08-05T18:00:00-04:00",
+      },
+      games,
+    );
+
+    expect(issues).toEqual([]);
+  });
+
+  it("rejects a preseason week above four", () => {
+    const games = parseScheduleText(PRESEASON_SCHEDULE_TEMPLATE).games;
+    const issues = validateWeekDetails(
+      {
+        season: new Date().getUTCFullYear(),
+        seasonPhase: "preseason",
+        weekNumber: 5,
+        label: "",
+        entryDeadline: "2026-08-05T18:00:00-04:00",
+      },
+      games,
+    );
+
+    expect(issues).toContainEqual(expect.objectContaining({ code: "invalid_week" }));
   });
 });

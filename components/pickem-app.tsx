@@ -299,6 +299,7 @@ type PicksViewProps = {
 };
 
 function PicksView(props: PicksViewProps) {
+  const tiebreakerLabel = props.week.seasonPhase === "preseason" ? "Tiebreaker" : "Monday";
   return (
     <div className="picks-layout">
       <section className="pick-sheet" aria-labelledby="picks-title">
@@ -335,16 +336,16 @@ function PicksView(props: PicksViewProps) {
 
       <aside className="game-panel" aria-label="Entry controls">
         <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} /></div>
-        <MondayTotal value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isLocked || props.isPending} />
+        <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isLocked || props.isPending} />
         <div className="rules-note">
           <RouteSketch mirrored /><h2>How this week works</h2>
-          <ul><li>Pick one team in each matchup.</li><li>Each correct pick counts as one point.</li><li>Monday Total breaks a tie.</li><li>Your latest submitted version before the deadline is official.</li></ul>
+          <ul><li>Pick one team in each matchup.</li><li>Each correct pick counts as one point.</li><li>{tiebreakerLabel} Total breaks a tie.</li><li>Your latest submitted version before the deadline is official.</li></ul>
         </div>
 
         {props.receipt ? (
-          <Receipt receipt={props.receipt} picks={props.picks} mondayTotal={props.mondayTotal} onEdit={props.onEdit} locked={props.isLocked} />
+          <Receipt receipt={props.receipt} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={props.isLocked} />
         ) : props.reviewing ? (
-          <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} isPending={props.isPending} isLocked={props.isLocked} hasSubmitted={props.hasSubmitted} />
+          <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} isPending={props.isPending} isLocked={props.isLocked} hasSubmitted={props.hasSubmitted} />
         ) : (
           <button className="review-action" type="button" onClick={props.onReview} disabled={props.isPending || props.isLocked}>
             <Icon name="whistle" /><span>{props.isLocked ? "Entry locked" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
@@ -367,27 +368,27 @@ function ProgressMeasure({ selected, total }: { selected: number; total: number 
   );
 }
 
-function MondayTotal({ value, onChange, disabled }: { value: number; onChange: (value: number) => void; disabled: boolean }) {
+function MondayTotal({ label, value, onChange, disabled }: { label: string; value: number; onChange: (value: number) => void; disabled: boolean }) {
   return (
     <div className="monday-total">
       <div className="drill-tag"><span>2-min</span><span>drill</span></div>
-      <label htmlFor="monday-total">Monday <strong>Total</strong></label>
+      <label htmlFor="monday-total">{label} <strong>Total</strong></label>
       <div className="number-control">
-        <button type="button" onClick={() => onChange(Math.min(200, value + 1))} aria-label="Increase Monday total" disabled={disabled}>+</button>
+        <button type="button" onClick={() => onChange(Math.min(200, value + 1))} aria-label={`Increase ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>+</button>
         <input id="monday-total" min="0" max="200" step="1" inputMode="numeric" type="number" value={value} disabled={disabled} onChange={(event) => { const nextValue = Number.parseInt(event.target.value, 10); onChange(Number.isFinite(nextValue) ? Math.min(200, Math.max(0, nextValue)) : 0); }} />
-        <button type="button" onClick={() => onChange(Math.max(0, value - 1))} aria-label="Decrease Monday total" disabled={disabled}>−</button>
+        <button type="button" onClick={() => onChange(Math.max(0, value - 1))} aria-label={`Decrease ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>−</button>
       </div>
     </div>
   );
 }
 
-function ReviewPanel({ games, picks, mondayTotal, onReceipt, onEdit, account, isPending, isLocked, hasSubmitted }: { games: PlayerGame[]; picks: Picks; mondayTotal: number; onReceipt: () => void; onEdit: () => void; account: AccountSummary; isPending: boolean; isLocked: boolean; hasSubmitted: boolean }) {
+function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, onEdit, account, isPending, isLocked, hasSubmitted }: { games: PlayerGame[]; picks: Picks; mondayTotal: number; tiebreakerLabel: string; onReceipt: () => void; onEdit: () => void; account: AccountSummary; isPending: boolean; isLocked: boolean; hasSubmitted: boolean }) {
   const canParticipate = account.overallResult === "eligible" && !isLocked;
   return (
     <section className="review-panel" aria-labelledby="review-title">
       <h2 id="review-title">Review your entry</h2>
       <div className="review-grid">{games.map((game) => <span key={game.id}>{picks[game.id]}</span>)}</div>
-      <p>Monday Total <strong>{mondayTotal}</strong></p>
+      <p>{tiebreakerLabel} Total <strong>{mondayTotal}</strong></p>
       <button className="commit-action" type="button" onClick={onReceipt} disabled={!canParticipate || isPending}>{isPending ? "Submitting…" : canParticipate ? (hasSubmitted ? "Submit changes" : "Submit official entry") : isLocked ? "Entry locked" : "Eligibility required"}</button>
       {!canParticipate && !isLocked && <Link className="text-action text-action--link" href="/profile">{account.reasonLabel}</Link>}
       <button className="text-action" type="button" onClick={onEdit} disabled={isPending}>Back to picks</button>
@@ -395,12 +396,12 @@ function ReviewPanel({ games, picks, mondayTotal, onReceipt, onEdit, account, is
   );
 }
 
-function Receipt({ receipt, picks, mondayTotal, onEdit, locked }: { receipt: ReceiptData; picks: Picks; mondayTotal: number; onEdit: () => void; locked: boolean }) {
+function Receipt({ receipt, picks, mondayTotal, tiebreakerLabel, onEdit, locked }: { receipt: ReceiptData; picks: Picks; mondayTotal: number; tiebreakerLabel: string; onEdit: () => void; locked: boolean }) {
   const time = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Indiana/Indianapolis" }).format(new Date(receipt.committedAt));
   return (
     <section className="receipt" aria-labelledby="receipt-title">
       <Icon name="check" /><h2 id="receipt-title">Entry {receipt.action === "edit" ? "updated" : "submitted"}</h2>
-      <p>{Object.values(picks).join(" · ")}</p><p>Monday Total <strong>{mondayTotal}</strong></p>
+      <p>{Object.values(picks).join(" · ")}</p><p>{tiebreakerLabel} Total <strong>{mondayTotal}</strong></p>
       <time>{time} ET</time><small>Official version {receipt.versionNumber} · Keep this timestamp as your receipt.</small>
       {!locked && <button className="text-action" type="button" onClick={onEdit}>Edit and resubmit</button>}
     </section>

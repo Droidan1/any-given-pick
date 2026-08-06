@@ -2,7 +2,12 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { parseScheduleText, validateWeekDetails } from "@/lib/admin/schedule-import";
+import {
+  formatWeekName,
+  parseScheduleText,
+  validateWeekDetails,
+  type SeasonPhase,
+} from "@/lib/admin/schedule-import";
 import { requireAdminUser } from "@/lib/auth/admin";
 import { getDb } from "@/lib/db";
 import { auditEvents, contestWeeks, games } from "@/lib/db/schema";
@@ -16,6 +21,7 @@ export type AdminActionResult = {
 
 export type SaveWeekDraftInput = {
   season: number;
+  seasonPhase: SeasonPhase;
   weekNumber: number;
   label: string;
   entryDeadline: string;
@@ -30,6 +36,7 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
     ...validateWeekDetails(
       {
         season: input.season,
+        seasonPhase: input.seasonPhase,
         weekNumber: input.weekNumber,
         label: input.label.trim(),
         entryDeadline: input.entryDeadline,
@@ -58,6 +65,7 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
       .where(
         and(
           eq(contestWeeks.season, input.season),
+          eq(contestWeeks.seasonPhase, input.seasonPhase),
           eq(contestWeeks.weekNumber, input.weekNumber),
         ),
       )
@@ -74,6 +82,7 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
       .insert(contestWeeks)
       .values({
         season: input.season,
+        seasonPhase: input.seasonPhase,
         weekNumber: input.weekNumber,
         label: input.label.trim() || null,
         entryDeadline,
@@ -81,7 +90,7 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
         updatedAt: now,
       })
       .onConflictDoUpdate({
-        target: [contestWeeks.season, contestWeeks.weekNumber],
+        target: [contestWeeks.season, contestWeeks.seasonPhase, contestWeeks.weekNumber],
         set: {
           label: input.label.trim() || null,
           entryDeadline,
@@ -113,6 +122,7 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
       entityId: week.id,
       metadata: {
         season: input.season,
+        season_phase: input.seasonPhase,
         week_number: input.weekNumber,
         game_count: parsed.games.length,
         import_provider: "manual",
@@ -128,7 +138,7 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
   return {
     ok: true,
     weekId: result.weekId,
-    message: `Week ${input.weekNumber} saved as a ${parsed.games.length}-game draft.`,
+    message: `${formatWeekName(input.seasonPhase, input.weekNumber)} saved as a ${parsed.games.length}-game draft.`,
   };
 }
 
@@ -162,7 +172,12 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
       return { ok: false as const, message: "Every kickoff must occur after the entry deadline." };
     }
     if (weekGames.filter((game) => game.isMondayTiebreaker).length !== 1) {
-      return { ok: false as const, message: "Designate exactly one Monday tiebreaker." };
+      return {
+        ok: false as const,
+        message: week.seasonPhase === "preseason"
+          ? "Designate exactly one preseason tiebreaker game."
+          : "Designate exactly one Monday tiebreaker.",
+      };
     }
 
     await transaction
@@ -176,12 +191,16 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
       entityId: week.id,
       metadata: {
         season: week.season,
+        season_phase: week.seasonPhase,
         week_number: week.weekNumber,
         game_count: weekGames.length,
       },
     });
 
-    return { ok: true as const, message: `Week ${week.weekNumber} is published.` };
+    return {
+      ok: true as const,
+      message: `${formatWeekName(week.seasonPhase, week.weekNumber)} is published.`,
+    };
   });
 
   if (result.ok) revalidatePath("/admin/weeks");

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
+import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getAdminWeek, listAdminWeeks } from "@/lib/admin/weeks";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
@@ -112,8 +113,8 @@ export default async function AdminWeeksPage({
                     href={`/admin/weeks?week=${week.id}`}
                     aria-current={selectedWeek?.id === week.id ? "page" : undefined}
                   >
-                    <span>{week.season} · Week {week.weekNumber}</span>
-                    <strong>{week.label || `Week ${week.weekNumber}`}</strong>
+                    <span>{week.season} · {week.seasonPhase === "preseason" ? "Preseason" : "Regular season"}</span>
+                    <strong>{week.label || formatWeekName(week.seasonPhase, week.weekNumber)}</strong>
                     <small>{week.gameCount} games · {week.status}</small>
                   </Link>
                 </li>
@@ -128,6 +129,7 @@ export default async function AdminWeeksPage({
               ? {
                   id: selectedWeek.id,
                   season: selectedWeek.season,
+                  seasonPhase: selectedWeek.seasonPhase,
                   weekNumber: selectedWeek.weekNumber,
                   label: selectedWeek.label ?? "",
                   entryDeadline: selectedWeek.entryDeadline,

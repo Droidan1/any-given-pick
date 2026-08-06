@@ -1,12 +1,13 @@
 import "server-only";
 
-import { asc, count, desc, eq } from "drizzle-orm";
+import { asc, count, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { contestWeeks, games } from "@/lib/db/schema";
 
 export type AdminWeekSummary = {
   id: string;
   season: number;
+  seasonPhase: "preseason" | "regular";
   weekNumber: number;
   label: string | null;
   status: "draft" | "published" | "locked" | "final";
@@ -41,6 +42,7 @@ export async function listAdminWeeks(): Promise<AdminWeekSummary[]> {
     .select({
       id: contestWeeks.id,
       season: contestWeeks.season,
+      seasonPhase: contestWeeks.seasonPhase,
       weekNumber: contestWeeks.weekNumber,
       label: contestWeeks.label,
       status: contestWeeks.status,
@@ -51,7 +53,11 @@ export async function listAdminWeeks(): Promise<AdminWeekSummary[]> {
     .from(contestWeeks)
     .leftJoin(games, eq(games.contestWeekId, contestWeeks.id))
     .groupBy(contestWeeks.id)
-    .orderBy(desc(contestWeeks.season), desc(contestWeeks.weekNumber))
+    .orderBy(
+      desc(contestWeeks.season),
+      desc(sql<number>`case when ${contestWeeks.seasonPhase} = 'regular' then 1 else 0 end`),
+      desc(contestWeeks.weekNumber),
+    )
     .limit(24);
 
   return rows.map((row) => ({
@@ -80,6 +86,7 @@ export async function getAdminWeek(weekId: string): Promise<AdminWeekDetail | nu
   return {
     id: week.id,
     season: week.season,
+    seasonPhase: week.seasonPhase,
     weekNumber: week.weekNumber,
     label: week.label,
     status: week.status,

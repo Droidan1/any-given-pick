@@ -47,7 +47,7 @@ function selectionFailure(
     code: complete && hasMissing ? "incomplete" : "invalid_pick",
     message:
       complete && hasMissing
-        ? "Pick every game and enter a valid Monday total before submitting."
+        ? "Pick every game and enter a valid tiebreaker total before submitting."
         : "One or more selections do not belong to this week.",
   };
 }

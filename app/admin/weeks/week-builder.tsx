@@ -3,22 +3,37 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  formatWeekName,
   parseScheduleText,
+  PRESEASON_SCHEDULE_TEMPLATE,
   SCHEDULE_TEMPLATE,
   validateWeekDetails,
   type ScheduleIssue,
+  type SeasonPhase,
 } from "@/lib/admin/schedule-import";
 import { publishWeek, saveWeekDraft, type AdminActionResult } from "./actions";
 
 type InitialWeek = {
   id: string;
   season: number;
+  seasonPhase: SeasonPhase;
   weekNumber: number;
   label: string;
   entryDeadline: string;
   scheduleText: string;
   status: "draft" | "published" | "locked" | "final";
 };
+
+function weekFingerprint(input: {
+  season: number;
+  seasonPhase: SeasonPhase;
+  weekNumber: number;
+  label: string;
+  entryDeadline: string;
+  scheduleText: string;
+}): string {
+  return JSON.stringify({ ...input, label: input.label.trim(), scheduleText: input.scheduleText.trim() });
+}
 
 function toLocalDateTime(isoDate: string): string {
   const date = new Date(isoDate);
@@ -43,6 +58,10 @@ function formatKickoff(isoDate: string): string {
   }).format(new Date(isoDate));
 }
 
+function defaultSeasonPhase(): SeasonPhase {
+  return [6, 7].includes(new Date().getMonth()) ? "preseason" : "regular";
+}
+
 function StepMark({ complete }: { complete: boolean }) {
   return complete ? (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -62,6 +81,7 @@ function ActionArrow() {
 export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | null }) {
   const router = useRouter();
   const [season, setSeason] = useState(initialWeek?.season ?? new Date().getFullYear());
+  const [seasonPhase, setSeasonPhase] = useState<SeasonPhase>(initialWeek?.seasonPhase ?? defaultSeasonPhase());
   const [weekNumber, setWeekNumber] = useState(initialWeek?.weekNumber ?? 1);
   const [label, setLabel] = useState(initialWeek?.label ?? "");
   const [entryDeadline, setEntryDeadline] = useState(
@@ -69,19 +89,37 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
   );
   const [scheduleText, setScheduleText] = useState(initialWeek?.scheduleText ?? "");
   const [weekId, setWeekId] = useState(initialWeek?.id ?? "");
+  const [savedFingerprint, setSavedFingerprint] = useState(() => initialWeek
+    ? weekFingerprint({
+        season: initialWeek.season,
+        seasonPhase: initialWeek.seasonPhase,
+        weekNumber: initialWeek.weekNumber,
+        label: initialWeek.label,
+        entryDeadline: initialWeek.entryDeadline,
+        scheduleText: initialWeek.scheduleText,
+      })
+    : "");
   const [result, setResult] = useState<AdminActionResult | null>(null);
   const [isPending, startTransition] = useTransition();
   const readOnly = initialWeek ? initialWeek.status !== "draft" : false;
 
   const preview = useMemo(() => parseScheduleText(scheduleText), [scheduleText]);
   const entryDeadlineIso = toIsoDateTime(entryDeadline);
+  const currentFingerprint = weekFingerprint({
+    season,
+    seasonPhase,
+    weekNumber,
+    label,
+    entryDeadline: entryDeadlineIso,
+    scheduleText,
+  });
   const weekIssues = useMemo(
     () =>
       validateWeekDetails(
-        { season, weekNumber, label: label.trim(), entryDeadline: entryDeadlineIso },
+        { season, seasonPhase, weekNumber, label: label.trim(), entryDeadline: entryDeadlineIso },
         preview.games,
       ),
-    [season, weekNumber, label, entryDeadlineIso, preview.games],
+    [season, seasonPhase, weekNumber, label, entryDeadlineIso, preview.games],
   );
   const allIssues = scheduleText ? [...preview.issues, ...weekIssues] : [];
   const errors = allIssues.filter((issue) => issue.severity === "error");
@@ -89,6 +127,7 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
   const detailsComplete = Boolean(entryDeadlineIso) && weekIssues.every((issue) => !["invalid_season", "invalid_week", "invalid_label", "invalid_deadline"].includes(issue.code));
   const importComplete = scheduleText.length > 0 && preview.games.length > 0;
   const reviewComplete = importComplete && errors.length === 0;
+  const savedAndCurrent = Boolean(weekId && savedFingerprint === currentFingerprint);
   const publishComplete = initialWeek?.status === "published" || initialWeek?.status === "locked" || initialWeek?.status === "final";
   const stepStates = [
     { name: "Week details", complete: detailsComplete },
@@ -104,10 +143,12 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
 
   function handleSave() {
     setResult(null);
+    const fingerprint = currentFingerprint;
     startTransition(async () => {
       try {
         const nextResult = await saveWeekDraft({
           season,
+          seasonPhase,
           weekNumber,
           label,
           entryDeadline: entryDeadlineIso,
@@ -116,6 +157,7 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
         setResult(nextResult);
         if (nextResult.ok && nextResult.weekId) {
           setWeekId(nextResult.weekId);
+          setSavedFingerprint(fingerprint);
           router.replace(`/admin/weeks?week=${nextResult.weekId}`);
           router.refresh();
         }
@@ -145,11 +187,24 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
     setResult(null);
   }
 
+  function loadExample() {
+    setScheduleText(seasonPhase === "preseason" ? PRESEASON_SCHEDULE_TEMPLATE : SCHEDULE_TEMPLATE);
+    setResult(null);
+  }
+
+  function handleSeasonPhase(nextPhase: SeasonPhase) {
+    setSeasonPhase(nextPhase);
+    setWeekNumber((current) => nextPhase === "preseason" ? Math.min(current, 4) : current);
+    setResult(null);
+  }
+
+  const weekName = formatWeekName(seasonPhase, weekNumber);
+
   return (
     <section className="admin-sheet">
       <header className="admin-sheet__intro">
         <div>
-          <h1>{initialWeek ? `Week ${initialWeek.weekNumber} call sheet` : "Call the next week"}</h1>
+          <h1>{initialWeek ? `${weekName} call sheet` : "Call the next week"}</h1>
           <p>
             Set the lock, bring in the slate, inspect every matchup, then publish one
             clean sheet to every player.
@@ -184,6 +239,17 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
           </div>
         </div>
         <div className="admin-detail-fields">
+          <label className="admin-field--phase">
+            <span>Season phase</span>
+            <select
+              value={seasonPhase}
+              onChange={(event) => handleSeasonPhase(event.target.value as SeasonPhase)}
+              disabled={readOnly}
+            >
+              <option value="preseason">Preseason</option>
+              <option value="regular">Regular season</option>
+            </select>
+          </label>
           <label>
             <span>Season</span>
             <input
@@ -200,7 +266,7 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
             <input
               type="number"
               min="1"
-              max="22"
+              max={seasonPhase === "preseason" ? 4 : 22}
               value={weekNumber}
               onChange={(event) => setWeekNumber(Number(event.target.value))}
               disabled={readOnly}
@@ -211,7 +277,7 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
             <input
               type="text"
               maxLength={80}
-              placeholder="Opening week"
+              placeholder={seasonPhase === "preseason" ? "Preseason opener" : "Opening week"}
               value={label}
               onChange={(event) => setLabel(event.target.value)}
               disabled={readOnly}
@@ -247,8 +313,8 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
           </div>
         </div>
         <div className="admin-import-tools">
-          <button type="button" onClick={() => setScheduleText(SCHEDULE_TEMPLATE)} disabled={readOnly}>
-            Load example format
+          <button type="button" onClick={loadExample} disabled={readOnly}>
+            Load {seasonPhase === "preseason" ? "preseason " : ""}example
           </button>
           <label className="admin-file-control">
             <span>Open CSV or TSV</span>
@@ -275,8 +341,9 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
           <summary>Required columns and time format</summary>
           <p>
             Required: kickoff_at, away_code, away_name, home_code, home_name, and
-            monday_tiebreaker. Use an ISO kickoff with Z or an offset such as
-            2026-09-10T20:20:00-04:00. provider_game_key is optional.
+            monday_tiebreaker. Set exactly one row to true; during preseason it may be
+            any designated tiebreaker game. Use an ISO kickoff with Z or an offset such as
+            2026-08-13T20:00:00-04:00. provider_game_key is optional.
           </p>
         </details>
       </div>
@@ -323,7 +390,7 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
                 <span role="cell"><strong>{game.awayTeamCode}</strong><small>{game.awayTeamName}</small></span>
                 <span role="cell"><strong>{game.homeTeamCode}</strong><small>{game.homeTeamName}</small></span>
                 <span role="cell" className={game.isMondayTiebreaker ? "admin-tiebreaker" : ""}>
-                  {game.isMondayTiebreaker ? "Monday total" : "Standard"}
+                  {game.isMondayTiebreaker ? (seasonPhase === "preseason" ? "Tiebreaker total" : "Monday total") : "Standard"}
                 </span>
               </div>
             ))}
@@ -367,9 +434,9 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
               type="button"
               className="admin-publish"
               onClick={handlePublish}
-              disabled={isPending || !weekId || !reviewComplete}
+              disabled={isPending || !savedAndCurrent || !reviewComplete}
             >
-              <span>{isPending ? "Working…" : weekId ? "Publish week" : "Save draft first"}</span>
+              <span>{isPending ? "Working…" : savedAndCurrent ? `Publish ${weekName.toLocaleLowerCase("en-US")}` : weekId ? "Save changes first" : "Save draft first"}</span>
               <ActionArrow />
             </button>
           )}

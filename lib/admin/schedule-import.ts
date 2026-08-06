@@ -22,8 +22,15 @@ export type ScheduleParseResult = {
   delimiter: "comma" | "tab" | null;
 };
 
+export type SeasonPhase = "preseason" | "regular";
+
+export function formatWeekName(seasonPhase: SeasonPhase, weekNumber: number): string {
+  return seasonPhase === "preseason" ? `Preseason Week ${weekNumber}` : `Week ${weekNumber}`;
+}
+
 export type WeekDetailsInput = {
   season: number;
+  seasonPhase: SeasonPhase;
   weekNumber: number;
   label: string;
   entryDeadline: string;
@@ -258,14 +265,6 @@ export function parseScheduleText(rawText: string): ScheduleParseResult {
     };
     games.push(normalizedGame);
 
-    if (normalizedGame.isMondayTiebreaker && easternWeekday(normalizedGame.kickoffAt) !== "Monday") {
-      issues.push({
-        severity: "warning",
-        code: "tiebreaker_not_monday",
-        row,
-        message: "The designated tiebreaker does not kick off on Monday in Eastern Time.",
-      });
-    }
   });
 
   const tiebreakerCount = games.filter((game) => game.isMondayTiebreaker).length;
@@ -297,12 +296,13 @@ export function validateWeekDetails(
       message: `Season must be between ${currentYear - 1} and ${currentYear + 2}.`,
     });
   }
-  if (!Number.isInteger(details.weekNumber) || details.weekNumber < 1 || details.weekNumber > 22) {
+  const maximumWeek = details.seasonPhase === "preseason" ? 4 : 22;
+  if (!Number.isInteger(details.weekNumber) || details.weekNumber < 1 || details.weekNumber > maximumWeek) {
     issues.push({
       severity: "error",
       code: "invalid_week",
       field: "week_number",
-      message: "Week must be a whole number from 1 to 22.",
+      message: `${details.seasonPhase === "preseason" ? "Preseason week" : "Week"} must be a whole number from 1 to ${maximumWeek}.`,
     });
   }
   if (details.label.length > 80) {
@@ -335,9 +335,26 @@ export function validateWeekDetails(
     }
   }
 
+  if (details.seasonPhase === "regular") {
+    const tiebreakerIndex = games.findIndex((game) => game.isMondayTiebreaker);
+    const tiebreaker = games[tiebreakerIndex];
+    if (tiebreaker && easternWeekday(tiebreaker.kickoffAt) !== "Monday") {
+      issues.push({
+        severity: "warning",
+        code: "tiebreaker_not_monday",
+        row: tiebreakerIndex + 2,
+        message: "The designated tiebreaker does not kick off on Monday in Eastern Time.",
+      });
+    }
+  }
+
   return issues;
 }
 
 export const SCHEDULE_TEMPLATE = `kickoff_at,away_code,away_name,home_code,home_name,monday_tiebreaker,provider_game_key
 2026-09-11T20:20:00-04:00,DAL,Dallas Cowboys,PHI,Philadelphia Eagles,false,example-001
 2026-09-14T20:15:00-04:00,BAL,Baltimore Ravens,CLE,Cleveland Browns,true,example-002`;
+
+export const PRESEASON_SCHEDULE_TEMPLATE = `kickoff_at,away_code,away_name,home_code,home_name,monday_tiebreaker,provider_game_key
+2026-08-06T20:00:00-04:00,LAC,Los Angeles Chargers,DET,Detroit Lions,false,preseason-example-001
+2026-08-09T16:00:00-04:00,IND,Indianapolis Colts,MIN,Minnesota Vikings,true,preseason-example-002`;

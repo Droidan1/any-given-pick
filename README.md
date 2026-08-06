@@ -28,6 +28,7 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 
 - Responsive mobile and desktop app shell
 - Commissioner-published weekly schedule feeding the player call sheet
+- Separate preseason and regular-season week numbering, including preseason weeks 1–4
 - Variable-size weekly picks flow using imported matchup data
 - Monday combined-score tiebreaker
 - Local recovery plus authenticated server-side draft sync

@@ -2194,7 +2194,7 @@ button:disabled {
 
 .admin-detail-fields {
   display: grid;
-  grid-template-columns: minmax(6rem, 0.55fr) minmax(6rem, 0.55fr) minmax(14rem, 1.5fr);
+  grid-template-columns: minmax(9rem, 1fr) minmax(6rem, 0.55fr) minmax(6rem, 0.55fr) minmax(14rem, 1.5fr);
   gap: 1rem;
 }
 
@@ -2276,6 +2276,7 @@ button:disabled {
 }
 
 .admin-detail-fields input,
+.admin-detail-fields select,
 .admin-schedule-field textarea {
   width: 100%;
   min-height: 3.4rem;
@@ -2287,6 +2288,12 @@ button:disabled {
   caret-color: var(--clay-deep);
 }
 
+.admin-detail-fields select {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 .admin-detail-fields input[type="number"] {
   font-family: var(--font-display);
   font-size: 1.55rem;
@@ -2295,6 +2302,7 @@ button:disabled {
 }
 
 .admin-detail-fields input:disabled,
+.admin-detail-fields select:disabled,
 .admin-schedule-field textarea:disabled {
   background: var(--paper-200);
   color: var(--ink-soft);
@@ -2793,7 +2801,9 @@ button:disabled {
 
   .admin-sheet__intro {
     min-height: auto;
+    flex-direction: column;
     align-items: start;
+    gap: 1rem;
     padding: 2rem 1.25rem;
   }
 
@@ -2852,6 +2862,7 @@ button:disabled {
   }
 
   .admin-field--wide,
+  .admin-field--phase,
   .admin-field--deadline {
     grid-column: 1 / -1;
   }
