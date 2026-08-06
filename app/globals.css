@@ -1071,6 +1071,84 @@ button:disabled {
   line-height: 1.6;
 }
 
+.auth-game-plan {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.6fr) minmax(0, 1.4fr);
+  align-items: start;
+  gap: 3rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid oklch(69% 0.045 92 / 0.52);
+}
+
+.auth-game-plan h2 {
+  max-width: 9ch;
+  margin: 0;
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  font-size: 3.35rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 0.9;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.auth-game-plan__details {
+  min-width: 0;
+}
+
+.auth-game-plan ol {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid oklch(69% 0.045 92 / 0.52);
+  counter-reset: game-plan;
+  list-style: none;
+}
+
+.auth-game-plan li {
+  min-height: 3.6rem;
+  display: grid;
+  grid-template-columns: 2rem minmax(10rem, 0.7fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid oklch(69% 0.045 92 / 0.52);
+  counter-increment: game-plan;
+}
+
+.auth-game-plan li::before {
+  content: counter(game-plan);
+  color: var(--sage);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.auth-game-plan li strong {
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.auth-game-plan li span {
+  color: var(--paper-200);
+  line-height: 1.5;
+}
+
+.auth-game-plan__note {
+  max-width: 68ch;
+  margin: 0.85rem 0 0;
+  color: var(--sage);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .account-shell {
   min-height: 100vh;
   min-height: 100svh;
@@ -1369,6 +1447,22 @@ button:disabled {
 }
 
 @media (max-width: 61.25rem) {
+  .auth-shell {
+    width: min(100%, 42rem);
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 6rem 2rem 2.5rem;
+  }
+
+  .auth-game-plan {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .auth-game-plan h2 {
+    max-width: none;
+  }
+
   .app-shell {
     display: block;
     padding-bottom: calc(5rem + env(safe-area-inset-bottom));
@@ -1513,8 +1607,6 @@ button:disabled {
 
 @media (max-width: 40rem) {
   .auth-shell {
-    grid-template-columns: 1fr;
-    gap: 2rem;
     padding: 6rem 1rem 2rem;
   }
 
@@ -1525,6 +1617,28 @@ button:disabled {
 
   .auth-copy h1 {
     font-size: 3.5rem;
+  }
+
+  .auth-game-plan {
+    padding-top: 1.5rem;
+  }
+
+  .auth-game-plan h2 {
+    font-size: 1.75rem;
+  }
+
+  .auth-game-plan li {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    gap: 0.35rem 0.75rem;
+  }
+
+  .auth-game-plan li::before {
+    grid-row: 1 / 3;
+  }
+
+  .auth-game-plan li strong,
+  .auth-game-plan li span {
+    grid-column: 2;
   }
 
   .account-header {

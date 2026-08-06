@@ -25,6 +25,29 @@ export default function SignInPage() {
         signUpUrl="/sign-up"
         fallbackRedirectUrl="/profile"
       />
+      <section className="auth-game-plan" aria-labelledby="game-plan-title">
+        <h2 id="game-plan-title">How the game works</h2>
+        <div className="auth-game-plan__details">
+          <ol>
+            <li>
+              <strong>Pick every matchup</strong>
+              <span>Choose one winner in each game. Every correct call earns one point.</span>
+            </li>
+            <li>
+              <strong>Set Monday total</strong>
+              <span>Predict the combined Monday-night score to break standings ties.</span>
+            </li>
+            <li>
+              <strong>Review before lock</strong>
+              <span>Finish every pick and eligibility check before the weekly deadline.</span>
+            </li>
+          </ol>
+          <p className="auth-game-plan__note">
+            The current prototype saves picks on this device. Official schedules and contest
+            submission are coming in a later milestone.
+          </p>
+        </div>
+      </section>
     </main>
   );
 }
