@@ -101,7 +101,10 @@ export default async function AdminWeeksPage({
         <aside className="admin-ledger" aria-label="Contest weeks">
           <div className="admin-ledger__heading">
             <h2>Season board</h2>
-            <Link href="/admin/weeks" className="admin-new-week">New week</Link>
+            <div className="admin-ledger__actions">
+              <Link href="/admin/weeks/import" className="admin-season-import-link">Import season</Link>
+              <Link href="/admin/weeks" className="admin-new-week">New week</Link>
+            </div>
           </div>
           {weeks.length === 0 ? (
             <p className="admin-ledger__empty">No weeks yet. Build the first call sheet.</p>

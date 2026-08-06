@@ -1924,7 +1924,9 @@ button:disabled {
 
 .admin-text-link,
 .admin-return-link,
-.admin-new-week {
+.admin-new-week,
+.admin-season-import-link,
+.season-import-result-link {
   color: var(--paper-100);
   font-weight: 700;
   text-decoration-color: var(--maize);
@@ -1973,6 +1975,22 @@ button:disabled {
   color: var(--maize);
   font-family: var(--font-display);
   letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.admin-ledger__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+}
+
+.admin-season-import-link {
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
   text-transform: uppercase;
 }
 
@@ -2697,6 +2715,197 @@ button:disabled {
   outline-offset: 3px;
 }
 
+/* Season import — one file into private weekly call sheets */
+.admin-steps--season {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.season-import-stage {
+  grid-template-columns: 1fr;
+}
+
+.season-import-stage > :not(.admin-stage__heading) {
+  grid-column: 1;
+}
+
+.season-import-source {
+  display: grid;
+  gap: 1rem;
+}
+
+.season-import-season {
+  width: min(100%, 13rem);
+  display: grid;
+  gap: 0.45rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.season-import-season input {
+  min-height: 3.4rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--sage);
+  border-radius: 0;
+  background: var(--paper-100);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.season-import-playbook ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.season-import-playbook li {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--sage);
+}
+
+.season-import-playbook li strong {
+  color: var(--maize);
+  font-family: var(--font-display);
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.season-import-playbook li span {
+  color: var(--paper-200);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.season-week-board {
+  border-top: 2px solid var(--ink);
+}
+
+.season-week-board__header {
+  min-height: 3.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--sage);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.season-week-row {
+  border-bottom: 1px solid var(--sage);
+}
+
+.season-week-row > summary {
+  min-height: 5.6rem;
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) 5rem minmax(12rem, 1.25fr) minmax(9rem, 0.9fr) 5.5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 2.6rem 0.8rem 0.9rem;
+  cursor: pointer;
+  list-style-position: outside;
+}
+
+.season-week-row > summary:hover {
+  background: var(--paper-200);
+}
+
+.season-week-row > summary > span {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.season-week-row > summary small {
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.season-week-row > summary strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.season-week-row > summary > span:nth-child(3) strong {
+  color: var(--clay-deep);
+}
+
+.season-week-expand {
+  justify-items: center;
+  color: var(--ink-soft);
+}
+
+.season-week-expand svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  transition: transform 180ms ease-out;
+}
+
+.season-week-row[open] .season-week-expand svg {
+  transform: rotate(180deg);
+}
+
+.season-week-row > ol {
+  margin: 0;
+  padding: 0 0 0.5rem;
+  background: var(--paper-200);
+  list-style: none;
+}
+
+.season-week-row > ol li {
+  min-height: 3rem;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.2fr) minmax(10rem, 1fr) 7rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.55rem 0.9rem;
+  border-top: 1px solid var(--sage);
+  font-size: 1rem;
+}
+
+.season-week-row > ol li strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.season-week-row > ol li span {
+  color: var(--clay-deep);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.season-import-result-link {
+  display: inline-block;
+  margin-top: 0.4rem;
+  color: var(--maize);
+}
+
 @media (max-width: 74rem) {
   .admin-workspace {
     grid-template-columns: 15rem minmax(0, 1fr);
@@ -2707,7 +2916,8 @@ button:disabled {
   }
 
   .admin-stage--import > :not(.admin-stage__heading),
-  .admin-stage--review > :not(.admin-stage__heading) {
+  .admin-stage--review > :not(.admin-stage__heading),
+  .season-import-stage > :not(.admin-stage__heading) {
     grid-column: 1;
   }
 
@@ -2749,6 +2959,16 @@ button:disabled {
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.25rem;
+  }
+
+  .season-import-playbook ol {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(11rem, 1fr));
+    overflow-x: auto;
+  }
+
+  .season-import-playbook li {
+    border-right: 1px solid var(--sage);
   }
 
   .admin-week-list {
@@ -2818,6 +3038,10 @@ button:disabled {
 
   .admin-steps {
     grid-template-columns: repeat(4, minmax(3.5rem, 1fr));
+  }
+
+  .admin-steps--season {
+    grid-template-columns: repeat(3, minmax(4.5rem, 1fr));
   }
 
   .admin-step {
@@ -2907,6 +3131,33 @@ button:disabled {
 
   .admin-tiebreaker {
     clip-path: none;
+  }
+
+  .season-week-board__header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .season-week-row > summary {
+    min-height: 7rem;
+    grid-template-columns: minmax(0, 1fr) 3.5rem 4.5rem;
+    gap: 0.7rem;
+    padding-right: 1rem;
+  }
+
+  .season-week-row > summary > span:nth-child(3),
+  .season-week-row > summary > span:nth-child(4) {
+    grid-column: 1 / 3;
+  }
+
+  .season-week-expand {
+    grid-column: 3;
+    grid-row: 1 / 4;
+  }
+
+  .season-week-row > ol li {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
   }
 
   .admin-publish-band {
