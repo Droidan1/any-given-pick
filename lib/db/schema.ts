@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -14,6 +15,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const accountStateEnum = pgEnum("account_state", [
   "active",
@@ -34,6 +36,21 @@ export const locationResultEnum = pgEnum("location_result", [
 export const eligibilityResultEnum = pgEnum("eligibility_result", [
   "eligible",
   "read_only",
+]);
+
+export const contestWeekStatusEnum = pgEnum("contest_week_status", [
+  "draft",
+  "published",
+  "locked",
+  "final",
+]);
+
+export const gameStatusEnum = pgEnum("game_status", [
+  "scheduled",
+  "in_progress",
+  "final",
+  "postponed",
+  "canceled",
 ]);
 
 export const users = pgTable(
@@ -164,4 +181,74 @@ export const auditEvents = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("audit_events_target_created_idx").on(table.targetUserId, table.createdAt)],
+);
+
+export const contestWeeks = pgTable(
+  "contest_weeks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    season: integer("season").notNull(),
+    weekNumber: integer("week_number").notNull(),
+    label: varchar("label", { length: 80 }),
+    status: contestWeekStatusEnum("status").notNull().default("draft"),
+    entryDeadline: timestamp("entry_deadline", { withTimezone: true }).notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("contest_weeks_season_week_unique").on(table.season, table.weekNumber),
+    index("contest_weeks_status_deadline_idx").on(table.status, table.entryDeadline),
+    check("contest_weeks_week_number_check", sql`${table.weekNumber} between 1 and 22`),
+    check("contest_weeks_season_check", sql`${table.season} between 2020 and 2100`),
+  ],
+);
+
+export const games = pgTable(
+  "games",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    contestWeekId: uuid("contest_week_id")
+      .notNull()
+      .references(() => contestWeeks.id, { onDelete: "cascade" }),
+    provider: varchar("provider", { length: 48 }).notNull().default("manual"),
+    providerGameKey: varchar("provider_game_key", { length: 160 }),
+    kickoffAt: timestamp("kickoff_at", { withTimezone: true }).notNull(),
+    awayTeamCode: varchar("away_team_code", { length: 5 }).notNull(),
+    awayTeamName: varchar("away_team_name", { length: 80 }).notNull(),
+    homeTeamCode: varchar("home_team_code", { length: 5 }).notNull(),
+    homeTeamName: varchar("home_team_name", { length: 80 }).notNull(),
+    status: gameStatusEnum("status").notNull().default("scheduled"),
+    awayScore: integer("away_score"),
+    homeScore: integer("home_score"),
+    isMondayTiebreaker: boolean("is_monday_tiebreaker").notNull().default(false),
+    sortOrder: integer("sort_order").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("games_week_kickoff_idx").on(table.contestWeekId, table.kickoffAt),
+    uniqueIndex("games_week_provider_key_unique").on(
+      table.contestWeekId,
+      table.provider,
+      table.providerGameKey,
+    ),
+    uniqueIndex("games_week_matchup_kickoff_unique").on(
+      table.contestWeekId,
+      table.awayTeamCode,
+      table.homeTeamCode,
+      table.kickoffAt,
+    ),
+    uniqueIndex("games_one_monday_tiebreaker_per_week")
+      .on(table.contestWeekId)
+      .where(sql`${table.isMondayTiebreaker} = true`),
+    check(
+      "games_scores_nonnegative_check",
+      sql`(${table.awayScore} is null or ${table.awayScore} >= 0) and (${table.homeScore} is null or ${table.homeScore} >= 0)`,
+    ),
+    check("games_distinct_teams_check", sql`${table.awayTeamCode} <> ${table.homeTeamCode}`),
+  ],
 );

@@ -15,6 +15,13 @@
       "when": 1785974547589,
       "tag": "0001_audit-events-append-only",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786017247515,
+      "tag": "0002_thankful_the_hunter",
+      "breakpoints": true
     }
   ]
 }

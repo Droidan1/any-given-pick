@@ -60,7 +60,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body data-design-seed="a6de992d">
         <template dangerouslySetInnerHTML={{ __html: designContract }} />
         <ClerkProvider

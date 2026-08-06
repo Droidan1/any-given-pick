@@ -3,10 +3,12 @@ import { Pool } from "pg";
 const expectedTables = [
   "audit_events",
   "auth_identities",
+  "contest_weeks",
   "display_name_history",
   "eligibility_checks",
   "profiles",
   "roles",
+  "games",
   "user_roles",
   "users",
 ];
@@ -134,7 +136,7 @@ async function main() {
     await verifyDatabaseGuards(pool);
 
     console.log(
-      "Database verified: 8 tables, 3 roles, unique display names, append-only audit events.",
+      "Database verified: 10 tables, 3 roles, contest-week guards, unique display names, and append-only audit events.",
     );
   } finally {
     await pool.end();
