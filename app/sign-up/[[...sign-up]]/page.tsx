@@ -14,7 +14,10 @@ export default function SignUpPage() {
       <div className="auth-copy">
         <p className="week-label">Join the roster</p>
         <h1>Create your player account.</h1>
-        <p>Use email and password or Google, then clear the eligibility gates.</p>
+        <p>
+          Create your account with email and password. We&apos;ll verify your email before you
+          clear the eligibility gates.
+        </p>
       </div>
       <SignUp
         routing="path"

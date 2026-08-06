@@ -14,7 +14,10 @@ export default function SignInPage() {
       <div className="auth-copy">
         <p className="week-label">Report to the sideline</p>
         <h1>Sign in. Make the call.</h1>
-        <p>Email and password or Google both lead to one Any Given Pick player account.</p>
+        <p>
+          Enter your email and we&apos;ll send a one-time sign-in code. Your password stays
+          available as a backup.
+        </p>
       </div>
       <SignIn
         routing="path"
