@@ -35,7 +35,7 @@ const standings = [
   { rank: 5, name: "Two Minute", correct: 5, delta: 8 },
 ];
 
-export function PickemApp({ account, week }: { account: AccountSummary; week: PlayerWeek | null }) {
+export function PickemApp({ account, week, isAdmin }: { account: AccountSummary; week: PlayerWeek | null; isAdmin: boolean }) {
   const [view, setView] = useState<View>("picks");
   const [picks, setPicks] = useState<Picks>(() => week?.entry?.draftPicks ?? {});
   const [mondayTotal, setMondayTotal] = useState(() => week?.entry?.mondayPrediction ?? 44);
@@ -133,7 +133,7 @@ export function PickemApp({ account, week }: { account: AccountSummary; week: Pl
 
   if (!week) {
     return (
-      <AppFrame view={view} setView={setView} account={account}>
+      <AppFrame view={view} setView={setView} account={account} isAdmin={isAdmin}>
         <section className="single-view no-week-view">
           <RouteSketch /><RouteSketch mirrored />
           <p className="week-label">Coach&apos;s call sheet</p>
@@ -204,7 +204,7 @@ export function PickemApp({ account, week }: { account: AccountSummary; week: Pl
   };
 
   return (
-    <AppFrame view={view} setView={setView} account={account}>
+    <AppFrame view={view} setView={setView} account={account} isAdmin={isAdmin}>
       {view === "picks" && (
         <PicksView
           week={week}
@@ -231,7 +231,7 @@ export function PickemApp({ account, week }: { account: AccountSummary; week: Pl
       {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => setView("picks")} account={account} />}
       {view === "standings" && <StandingsView week={week} />}
       {view === "groups" && <GroupsView />}
-      {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={account} />}
+      {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={account} isAdmin={isAdmin} />}
     </AppFrame>
   );
 }
@@ -240,11 +240,13 @@ function AppFrame({
   view,
   setView,
   account,
+  isAdmin,
   children,
 }: {
   view: View;
   setView: (view: View) => void;
   account: AccountSummary;
+  isAdmin: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -257,6 +259,11 @@ function AppFrame({
               <Icon name={item.icon} /><span>{item.label}</span>
             </button>
           ))}
+          {isAdmin && (
+            <Link className="nav-item nav-item--link" href="/admin">
+              <Icon name="settings" /><span>Admin</span>
+            </Link>
+          )}
         </div>
         <AccountDock account={account} compact />
       </aside>
@@ -265,12 +272,17 @@ function AppFrame({
         <button className="mobile-brand" type="button" onClick={() => setView("home")} aria-label="Any Given Pick home"><BrandLockup /></button>
         {children}
       </section>
-      <nav className="bottom-nav" aria-label="Primary navigation">
+      <nav className={`bottom-nav${isAdmin ? " bottom-nav--admin" : ""}`} aria-label="Primary navigation">
         {navItems.filter((item) => item.view !== "groups").map((item) => (
           <button className={`bottom-nav__item${view === item.view ? " bottom-nav__item--active" : ""}`} key={item.view} type="button" onClick={() => setView(item.view)} aria-current={view === item.view ? "page" : undefined}>
             <Icon name={item.icon} /><span>{item.label}</span>
           </button>
         ))}
+        {isAdmin && (
+          <Link className="bottom-nav__item bottom-nav__item--link" href="/admin">
+            <Icon name="settings" /><span>Admin</span>
+          </Link>
+        )}
       </nav>
     </main>
   );
@@ -424,9 +436,9 @@ function GroupsView() {
   return <section className="single-view groups-view"><p className="week-label">Private groups</p><h1>Your locker room</h1><p className="lead">Private groups are admin-created and keep their entries, rules and standings separate from the public contest.</p><div className="empty-state"><Icon name="groups" /><h2>No group invitations yet</h2><p>An accepted invitation will appear here with its own weekly call sheet.</p></div></section>;
 }
 
-function ProfileView({ selectedTeams, totalGames, account }: { selectedTeams: string[]; totalGames: number; account: AccountSummary }) {
+function ProfileView({ selectedTeams, totalGames, account, isAdmin }: { selectedTeams: string[]; totalGames: number; account: AccountSummary; isAdmin: boolean }) {
   return (
-    <section className="single-view profile-view"><p className="week-label">Profile & access</p><h1>{account.displayName ?? "Finish your player card"}</h1><div className="access-lines"><div><Icon name="shield" /><span>Indiana location</span><strong>{account.locationResult === "in_state" ? "Cleared" : "Open"}</strong></div><div><Icon name="check" /><span>Age requirement</span><strong>{account.ageEligible ? "Cleared" : "Open"}</strong></div><div><Icon name="profile" /><span>Verified sign-in</span><strong>{account.verifiedAuth ? "Cleared" : "Open"}</strong></div><div><Icon name="picks" /><span>Draft selections</span><strong>{selectedTeams.length}/{totalGames}</strong></div></div><p className="prototype-note">{account.reasonLabel}. Eligibility evidence is evaluated on the server.</p><Link className="review-action" href="/profile">Open player card</Link></section>
+    <section className="single-view profile-view"><p className="week-label">Profile & access</p><h1>{account.displayName ?? "Finish your player card"}</h1><div className="access-lines"><div><Icon name="shield" /><span>Indiana location</span><strong>{account.locationResult === "in_state" ? "Cleared" : "Open"}</strong></div><div><Icon name="check" /><span>Age requirement</span><strong>{account.ageEligible ? "Cleared" : "Open"}</strong></div><div><Icon name="profile" /><span>Verified sign-in</span><strong>{account.verifiedAuth ? "Cleared" : "Open"}</strong></div><div><Icon name="picks" /><span>Draft selections</span><strong>{selectedTeams.length}/{totalGames}</strong></div></div><p className="prototype-note">{account.reasonLabel}. Eligibility evidence is evaluated on the server.</p><div className="profile-actions"><Link className="review-action" href="/profile">Open player card</Link>{isAdmin && <Link className="admin-profile-link" href="/admin"><Icon name="settings" />Open admin settings</Link>}</div></section>
   );
 }
 

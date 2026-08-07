@@ -45,6 +45,7 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Read-only fallbacks for denied, unavailable, stale, outside-state, or indeterminate location
 - Postgres roles, eligibility history, and append-only application audit events
 - Provider-neutral CSV/JSON schedule importer and admin week operations
+- Admin-only settings hub with direct links to week management and full-season import
 - Full-season CSV/TSV import that groups preseason and regular-season games into private week drafts
 - Drizzle schema, committed migrations, seed task, and eligibility/entry rule tests
 

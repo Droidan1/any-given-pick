@@ -92,6 +92,7 @@ export default async function AdminWeeksPage({
           <span>Coach&apos;s booth</span>
         </div>
         <div className="admin-header__actions">
+          <Link href="/admin" className="admin-text-link">Admin settings</Link>
           <Link href="/" className="admin-text-link">Player view</Link>
           <UserButton />
         </div>

@@ -54,6 +54,7 @@ export default async function SeasonImportPage() {
           <span>Coach&apos;s booth</span>
         </div>
         <div className="admin-header__actions">
+          <Link href="/admin" className="admin-text-link">Admin settings</Link>
           <Link href="/admin/weeks" className="admin-text-link">Week operations</Link>
           <UserButton />
         </div>
