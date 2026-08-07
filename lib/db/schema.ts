@@ -68,7 +68,7 @@ export const users = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     clerkUserId: varchar("clerk_user_id", { length: 128 }).notNull(),
-    accountState: accountStateEnum("account_state").notNull().default("active"),
+    accountState: accountStateEnum("account_state").notNull().default("read_only"),
     stateReason: text("state_reason"),
     stateChangedAt: timestamp("state_changed_at", { withTimezone: true }),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),

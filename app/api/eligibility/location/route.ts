@@ -66,6 +66,17 @@ async function verifyWithCensus(latitude: number, longitude: number): Promise<Lo
 
 export async function POST(request: Request) {
   const appUser = await requireAppUser();
+  if (appUser.accountState !== "active") {
+    return NextResponse.json(
+      {
+        error:
+          appUser.stateReason === "awaiting_admin_approval"
+            ? "Administrator approval is required before location verification."
+            : "This account cannot verify participation eligibility.",
+      },
+      { status: 403 },
+    );
+  }
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
 
   if (!parsed.success) {

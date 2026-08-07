@@ -46,6 +46,7 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Postgres roles, eligibility history, and append-only application audit events
 - Provider-neutral CSV/JSON schedule importer and admin week operations
 - Admin-only settings hub with direct links to week management and full-season import
+- Pending-first user approval roster with reversible access removal and audit history
 - Full-season CSV/TSV import that groups preseason and regular-season games into private week drafts
 - Drizzle schema, committed migrations, seed task, and eligibility/entry rule tests
 
@@ -54,3 +55,9 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 Automated licensed sports-data ingestion, scoring, standings, notifications, prizes, private groups, and moderation remain future milestones. The current importer stays provider-neutral so an approved data source can be connected without rebuilding the contest engine.
 
 Product truth is recorded in [PRODUCT.md](./PRODUCT.md). Design references are stored under `design/`.
+
+## Temporary player approval gate
+
+New Clerk accounts start in a pending state by default. An administrator must approve the verified identity from **Admin settings → Player access** before that person can create a player card, verify location, make picks, or submit an entry. Removing access is reversible and preserves the player’s account and historical records.
+
+Set `USER_APPROVAL_REQUIRED=false` and redeploy when manual approval is no longer needed. Existing pending accounts still require an administrator to approve them.

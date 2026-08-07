@@ -14,6 +14,7 @@ export async function getAccountSummary(userId: string): Promise<AccountSummary>
     db
       .select({
         accountState: users.accountState,
+        stateReason: users.stateReason,
         displayName: profiles.displayName,
         ageEligible: profiles.ageEligible,
       })
@@ -47,6 +48,7 @@ export async function getAccountSummary(userId: string): Promise<AccountSummary>
   const locationIsFresh = Boolean(location && location.expiresAt > now);
   const reason = deriveEligibilityReason({
     accountState: account.accountState,
+    stateReason: account.stateReason,
     verifiedAuth,
     profileComplete,
     ageEligible: account.ageEligible,
@@ -58,6 +60,7 @@ export async function getAccountSummary(userId: string): Promise<AccountSummary>
     signedIn: true,
     displayName: account.displayName,
     accountState: account.accountState,
+    stateReason: account.stateReason,
     verifiedAuth,
     ageEligible: account.ageEligible,
     locationResult: location?.locationResult ?? null,

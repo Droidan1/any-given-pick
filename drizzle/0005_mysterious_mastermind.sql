@@ -1,0 +1,1 @@
+ALTER TABLE "users" ALTER COLUMN "account_state" SET DEFAULT 'read_only';

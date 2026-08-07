@@ -18,6 +18,8 @@ export default async function Home() {
     hasAdminRole(appUser.id),
   ]);
 
+  if (account.accountState !== "active" && !isAdmin) redirect("/profile");
+
   return (
     <>
       <PickemApp account={account} week={week} isAdmin={isAdmin} />

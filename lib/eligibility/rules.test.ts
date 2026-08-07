@@ -3,6 +3,7 @@ import { deriveEligibilityReason } from "./rules";
 
 const cleared = {
   accountState: "active" as const,
+  stateReason: null,
   verifiedAuth: true,
   profileComplete: true,
   ageEligible: true,
@@ -22,6 +23,14 @@ describe("participation eligibility", () => {
     [{ ...cleared, locationResult: "denied" as const }, "location_denied"],
     [{ ...cleared, locationIsFresh: false }, "location_stale"],
     [{ ...cleared, accountState: "suspended" as const }, "account_inactive"],
+    [
+      { ...cleared, accountState: "read_only" as const, stateReason: "awaiting_admin_approval" },
+      "approval_pending",
+    ],
+    [
+      { ...cleared, accountState: "suspended" as const, stateReason: "removed_by_admin" },
+      "access_removed",
+    ],
   ])("returns read-only reason %#", (input, expected) => {
     expect(deriveEligibilityReason(input)).toBe(expected);
   });

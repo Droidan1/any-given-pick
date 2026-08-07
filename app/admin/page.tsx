@@ -4,20 +4,23 @@ import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
+import { listAdminUsers } from "@/lib/admin/users";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
+import { isUserApprovalRequired } from "@/lib/auth/user-approval";
+import { UserAccessList } from "./user-access-list";
 
 export const metadata: Metadata = {
   title: "Admin settings",
-  description: "Open Any Given Pick commissioner tools and schedule controls.",
+  description: "Approve player access and open Any Given Pick commissioner tools.",
 };
 
 const adminSettingsDesignContract = `<!--
-THESIS: Admin access is one concise coach's booth directory, not a dashboard of decorative metrics.
+THESIS: The coach's booth recognizes every player before opening the season tools, never reducing trust to decorative dashboard metrics.
 OWN-WORLD: Field-green framing, warm ruled paper, maize actions, condensed calls, and hard-edged controls from the Coach's Call Sheet system.
-STORY: Confirm administrator access, choose a schedule task, and move directly into the operational page.
-FIRST VIEWPORT: A compact booth header leads into two full-width ruled action rows; season import is the emphasized shortcut.
-FORM: Protected task directory extending the established admin workspace; incumbent seed dbd731b4.
+STORY: Review verified identities, approve or remove access with an audit trail, then move into schedule operations.
+FIRST VIEWPORT: A compact booth header leads into the pending-first access roster, followed by two full-width schedule action rows.
+FORM: Protected roster and task directory extending the established admin workspace; incumbent seed dbd731b4.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 -->`;
 
@@ -42,6 +45,9 @@ export default async function AdminSettingsPage() {
     );
   }
 
+  const userDirectory = await listAdminUsers(appUser.id);
+  const approvalRequired = isUserApprovalRequired();
+
   return (
     <main className="admin-shell" data-design-seed="dbd731b4">
       <template dangerouslySetInnerHTML={{ __html: adminSettingsDesignContract }} />
@@ -62,12 +68,20 @@ export default async function AdminSettingsPage() {
       <section className="admin-settings-workspace" aria-labelledby="admin-settings-title">
         <div className="admin-settings-intro">
           <div>
-            <h1 id="admin-settings-title">Call the season</h1>
-            <p>Open the schedule tools you use most. Every imported week stays private until you publish it.</p>
+            <h1 id="admin-settings-title">Run the booth</h1>
+            <p>Recognize every player, control account access, and prepare each private call sheet before it reaches the field.</p>
           </div>
-          <span className="admin-status-stamp">Admin access</span>
+          <span className="admin-status-stamp">
+            Approval gate {approvalRequired ? "on" : "off"}
+          </span>
         </div>
 
+        <UserAccessList directory={userDirectory} />
+
+        <header className="admin-settings-section-heading">
+          <h2>Schedule controls</h2>
+          <p>Import the season once, then review and publish each contest week.</p>
+        </header>
         <nav className="admin-settings-list" aria-label="Administrator tools">
           <Link href="/admin/weeks/import" className="admin-settings-call admin-settings-call--primary">
             <Icon name="picks" />

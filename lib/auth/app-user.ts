@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { authIdentities, roles, userRoles, users } from "@/lib/db/schema";
 import { getAccountSummary } from "@/lib/eligibility/service";
+import { getNewUserAccessDefaults } from "@/lib/auth/user-approval";
 
 export type AppUser = typeof users.$inferSelect;
 
@@ -43,11 +44,18 @@ function identitySnapshots(clerkUser: User): IdentitySnapshot[] {
 async function syncClerkUser(clerkUser: User): Promise<AppUser> {
   const db = getDb();
   const now = new Date();
+  const accessDefaults = getNewUserAccessDefaults();
 
   return db.transaction(async (transaction) => {
     const [appUser] = await transaction
       .insert(users)
-      .values({ clerkUserId: clerkUser.id, lastSeenAt: now, updatedAt: now })
+      .values({
+        clerkUserId: clerkUser.id,
+        ...accessDefaults,
+        stateChangedAt: now,
+        lastSeenAt: now,
+        updatedAt: now,
+      })
       .onConflictDoUpdate({
         target: users.clerkUserId,
         set: { lastSeenAt: now, updatedAt: now },

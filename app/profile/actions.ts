@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getDb } from "@/lib/db";
-import { auditEvents, displayNameHistory, profiles } from "@/lib/db/schema";
+import { auditEvents, displayNameHistory, profiles, users } from "@/lib/db/schema";
 import {
   addDays,
   isAtLeast21,
@@ -50,6 +50,15 @@ export async function saveProfileAction(
   }
 
   const appUser = await requireAppUser();
+  if (appUser.accountState !== "active") {
+    return {
+      status: "error",
+      message:
+        appUser.stateReason === "awaiting_admin_approval"
+          ? "An administrator must approve your account before you can create a player card."
+          : "This account cannot create or update a player card right now.",
+    };
+  }
   const db = getDb();
   const now = new Date();
   const displayName = parsed.data.displayName.replace(/\s+/g, " ");
@@ -58,6 +67,17 @@ export async function saveProfileAction(
 
   try {
     await db.transaction(async (transaction) => {
+      const [currentAccount] = await transaction
+        .select({ accountState: users.accountState })
+        .from(users)
+        .where(eq(users.id, appUser.id))
+        .for("update")
+        .limit(1);
+
+      if (!currentAccount || currentAccount.accountState !== "active") {
+        throw new Error("ACCOUNT_ACCESS_RESTRICTED");
+      }
+
       const [existingProfile] = await transaction
         .select()
         .from(profiles)
@@ -139,6 +159,13 @@ export async function saveProfileAction(
         status: "error",
         message: `Your display name can be changed again on ${availableDate}.`,
         fieldErrors: { displayName: ["Display names can be changed once every 30 days."] },
+      };
+    }
+
+    if (error instanceof Error && error.message === "ACCOUNT_ACCESS_RESTRICTED") {
+      return {
+        status: "error",
+        message: "Your account access changed before this player card could be saved.",
       };
     }
 
