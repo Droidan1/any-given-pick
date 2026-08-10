@@ -69,6 +69,7 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
           eq(contestWeeks.weekNumber, input.weekNumber),
         ),
       )
+      .for("update")
       .limit(1);
 
     if (existing && existing.status !== "draft") {
@@ -91,6 +92,7 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
       })
       .onConflictDoUpdate({
         target: [contestWeeks.season, contestWeeks.seasonPhase, contestWeeks.weekNumber],
+        setWhere: eq(contestWeeks.status, "draft"),
         set: {
           label: input.label.trim() || null,
           entryDeadline,
@@ -98,6 +100,13 @@ export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminAct
         },
       })
       .returning({ id: contestWeeks.id });
+
+    if (!week) {
+      return {
+        ok: false as const,
+        message: "This week changed before the draft could be saved. Review it and try again.",
+      };
+    }
 
     await transaction.delete(games).where(eq(games.contestWeekId, week.id));
     await transaction.insert(games).values(
@@ -152,6 +161,7 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
       .select()
       .from(contestWeeks)
       .where(eq(contestWeeks.id, weekId))
+      .for("update")
       .limit(1);
     if (!week) return { ok: false as const, message: "Week not found." };
     if (week.status !== "draft") {
@@ -180,10 +190,14 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
       };
     }
 
-    await transaction
+    const [publishedWeek] = await transaction
       .update(contestWeeks)
       .set({ status: "published", publishedAt: now, updatedAt: now })
-      .where(eq(contestWeeks.id, week.id));
+      .where(and(eq(contestWeeks.id, week.id), eq(contestWeeks.status, "draft")))
+      .returning({ id: contestWeeks.id });
+    if (!publishedWeek) {
+      return { ok: false as const, message: "This week changed before it could be published. Review it and try again." };
+    }
     await transaction.insert(auditEvents).values({
       actorUserId: admin.id,
       action: "contest_week.published",

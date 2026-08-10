@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatWeekName, type ScheduleIssue } from "@/lib/admin/schedule-import";
+import type { ProviderSchedule } from "@/lib/admin/schedule-providers/types";
 import { parseSeasonScheduleText, SEASON_SCHEDULE_TEMPLATE } from "@/lib/admin/season-import";
-import { importSeasonDrafts, type SeasonImportActionResult } from "./actions";
+import {
+  fetchSeasonSchedule,
+  importSeasonDrafts,
+  type SeasonImportActionResult,
+} from "./actions";
 
 function formatDateTime(isoDate: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -39,8 +44,12 @@ export function SeasonImporter() {
   const router = useRouter();
   const [season, setSeason] = useState(new Date().getFullYear());
   const [scheduleText, setScheduleText] = useState("");
+  const [scheduleSource, setScheduleSource] = useState<ProviderSchedule | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [result, setResult] = useState<SeasonImportActionResult | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isImportPending, startImportTransition] = useTransition();
+  const [isSyncPending, startSyncTransition] = useTransition();
+  const syncRequestId = useRef(0);
   const preview = useMemo(
     () => parseSeasonScheduleText(scheduleText, season),
     [scheduleText, season],
@@ -49,7 +58,7 @@ export function SeasonImporter() {
   const errors = visibleIssues.filter((issue) => issue.severity === "error");
   const warnings = visibleIssues.filter((issue) => issue.severity === "warning");
   const automaticTiebreakers = preview.weeks.filter((week) => week.tiebreakerSelection === "automatic").length;
-  const canImport = preview.weeks.length > 0 && errors.length === 0 && !isPending;
+  const canImport = preview.weeks.length > 0 && errors.length === 0 && !isImportPending && !isSyncPending;
   const steps = [
     { name: "Load season", complete: scheduleText.length > 0 },
     { name: "Review weeks", complete: preview.weeks.length > 0 && errors.length === 0 },
@@ -61,22 +70,60 @@ export function SeasonImporter() {
     setResult(null);
   }
 
+  function invalidateScheduleSync() {
+    syncRequestId.current += 1;
+    setScheduleSource(null);
+    setSyncError(null);
+  }
+
   function loadExample() {
     setScheduleText(SEASON_SCHEDULE_TEMPLATE);
+    invalidateScheduleSync();
     resetResult();
   }
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setScheduleText(await file.text());
+    invalidateScheduleSync();
     resetResult();
+  }
+
+  function handleScheduleSync() {
+    const requestedSeason = season;
+    const requestId = syncRequestId.current + 1;
+    syncRequestId.current = requestId;
+    setSyncError(null);
+    resetResult();
+    startSyncTransition(async () => {
+      try {
+        const nextResult = await fetchSeasonSchedule({ season: requestedSeason });
+        if (requestId !== syncRequestId.current) return;
+        if (!nextResult.ok) {
+          setSyncError(nextResult.message);
+          return;
+        }
+        if (nextResult.schedule.season !== requestedSeason) {
+          setSyncError("The schedule provider returned a different season. Your current schedule was left unchanged.");
+          return;
+        }
+        setScheduleSource(nextResult.schedule);
+        setScheduleText(nextResult.schedule.scheduleText);
+      } catch {
+        if (requestId !== syncRequestId.current) return;
+        setSyncError("The actual schedule could not be loaded. Your current schedule was left unchanged. Try again or load a CSV instead.");
+      }
+    });
   }
 
   function handleImport() {
     resetResult();
-    startTransition(async () => {
+    startImportTransition(async () => {
       try {
-        const nextResult = await importSeasonDrafts({ season, scheduleText });
+        const nextResult = await importSeasonDrafts({
+          season,
+          scheduleText,
+        });
         setResult(nextResult);
         if (nextResult.ok) router.refresh();
       } catch {
@@ -123,7 +170,7 @@ export function SeasonImporter() {
           <span>1</span>
           <div>
             <h2>Choose the season</h2>
-            <p>Paste rows from a spreadsheet or open one CSV or TSV file.</p>
+            <p>Pull the actual schedule, or bring your own CSV or TSV file.</p>
           </div>
         </div>
         <div className="season-import-source">
@@ -134,30 +181,74 @@ export function SeasonImporter() {
               min={new Date().getFullYear() - 1}
               max={new Date().getFullYear() + 2}
               value={season}
+              disabled={isSyncPending || isImportPending}
               onChange={(event) => {
                 setSeason(Number(event.target.value));
+                invalidateScheduleSync();
                 resetResult();
               }}
             />
           </label>
+
+          <div className="season-sync-station">
+            <div className="season-sync-station__call">
+              <strong>Actual schedule feed</strong>
+              <p>
+                Load all four preseason slots and 18 regular-season weeks. Preseason
+                Week 1 includes the Hall of Fame Game.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="season-sync-button"
+              onClick={handleScheduleSync}
+              disabled={isSyncPending || isImportPending}
+            >
+              <span>{isSyncPending ? `Loading ${season}…` : `Load actual ${season} schedule`}</span>
+              <ActionArrow />
+            </button>
+            <div className="season-sync-station__status" aria-live="polite">
+              {scheduleSource ? (
+                <>
+                  <strong>{scheduleSource.weekCount} weeks · {scheduleSource.gameCount} games loaded</strong>
+                  <span>
+                    From <a href={scheduleSource.sourceUrl} target="_blank" rel="noreferrer">{scheduleSource.providerLabel}</a>
+                    {" · "}<a href={scheduleSource.verificationUrl} target="_blank" rel="noreferrer">Verify at NFL.com</a>
+                    {" · "}Fetched {formatDateTime(scheduleSource.fetchedAt)}
+                  </span>
+                </>
+              ) : (
+                <span>Nothing is saved or published until you review and create the private drafts.</span>
+              )}
+            </div>
+          </div>
+
+          {syncError ? <p className="season-sync-message season-sync-message--error" role="alert">{syncError}</p> : null}
+          {scheduleSource?.warnings.map((warning) => (
+            <p className="season-sync-message season-sync-message--warning" role="status" key={warning}>{warning}</p>
+          ))}
+
           <div className="admin-import-tools">
-            <button type="button" onClick={loadExample}>Load season example</button>
+            <button type="button" onClick={loadExample} disabled={isSyncPending || isImportPending}>Load demo data</button>
             <label className="admin-file-control">
               <span>Open CSV or TSV</span>
               <input
                 type="file"
                 accept=".csv,.tsv,text/csv,text/tab-separated-values"
+                disabled={isSyncPending || isImportPending}
                 onChange={(event) => void handleFile(event.target.files?.[0])}
               />
             </label>
-            <small>{preview.delimiter ? `${preview.delimiter}-separated detected` : "No season detected"}</small>
+            <small>{preview.delimiter ? `${preview.delimiter}-separated detected` : "No schedule loaded"}</small>
           </div>
           <label className="admin-schedule-field">
             <span>Full-season schedule</span>
             <textarea
               value={scheduleText}
+              disabled={isSyncPending || isImportPending}
               onChange={(event) => {
                 setScheduleText(event.target.value);
+                invalidateScheduleSync();
                 resetResult();
               }}
               placeholder="Paste the header row and every game here…"
@@ -172,6 +263,7 @@ export function SeasonImporter() {
               Use preseason or regular for the phase and an ISO kickoff containing Z or
               a UTC offset.
             </p>
+            <p>The demo rows are fictional formatting examples. Do not publish them as a real schedule.</p>
             <p>
               Blank tiebreakers use the latest Monday game during the regular season and
               the latest game during preseason. If a regular week has no Monday game, mark
@@ -286,7 +378,7 @@ export function SeasonImporter() {
             onClick={handleImport}
             disabled={!canImport}
           >
-            <span>{isPending ? "Creating drafts…" : `Create ${preview.weeks.length} private ${preview.weeks.length === 1 ? "draft" : "drafts"}`}</span>
+            <span>{isImportPending ? "Creating drafts…" : `Create ${preview.weeks.length} private ${preview.weeks.length === 1 ? "draft" : "drafts"}`}</span>
             <ActionArrow />
           </button>
         </div>

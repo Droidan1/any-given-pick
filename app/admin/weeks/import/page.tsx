@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Create private Any Given Pick week drafts from one full-season schedule.",
 };
 
+export const maxDuration = 30;
+
 const seasonImportDesignContract = `<!--
 THESIS: A whole NFL season should become trusted private call sheets in one reviewable move, never a generic data-upload dashboard.
 OWN-WORLD: The incumbent Coach's Call Sheet system—field green booth, warm ruled paper, maize commitments, clay clock cues, condensed calls, and hard-edged controls.
