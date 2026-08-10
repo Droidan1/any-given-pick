@@ -8,19 +8,21 @@ import { espnScheduleProvider } from "@/lib/admin/schedule-providers/espn";
 import type { ProviderSchedule } from "@/lib/admin/schedule-providers/types";
 import { parseSeasonScheduleText } from "@/lib/admin/season-import";
 import { requireAdminUser } from "@/lib/auth/admin";
+import type { AppUser } from "@/lib/auth/app-user";
 import { getDb } from "@/lib/db";
 import { auditEvents, contestWeeks, games } from "@/lib/db/schema";
 
 export type SeasonImportActionResult = {
   ok: boolean;
   message: string;
+  code?: "auth_required" | "admin_required";
   weekIds?: string[];
   issues?: Array<{ code: string; message: string; row?: number; field?: string }>;
 };
 
 export type SeasonScheduleFetchActionResult =
   | { ok: true; schedule: ProviderSchedule }
-  | { ok: false; message: string };
+  | { ok: false; message: string; code?: "auth_required" | "admin_required" };
 
 const seasonSchema = z.number().int().min(2020).max(new Date().getFullYear() + 2);
 const seasonImportSchema = z.object({
@@ -30,10 +32,41 @@ const seasonImportSchema = z.object({
 
 const PROTECTED_WEEK_RACE = "PROTECTED_WEEK_RACE";
 
+type AdminAccessFailure = {
+  ok: false;
+  message: string;
+  code: "auth_required" | "admin_required";
+};
+
+function adminAccessFailure(error: unknown): AdminAccessFailure | null {
+  if (!(error instanceof Error)) return null;
+  if (error.message === "AUTH_REQUIRED") {
+    return {
+      ok: false,
+      code: "auth_required",
+      message: "Your admin session expired before the schedule could be updated. Sign in again, then retry the import.",
+    };
+  }
+  if (error.message === "ADMIN_REQUIRED") {
+    return {
+      ok: false,
+      code: "admin_required",
+      message: "This account no longer has permission to update the schedule.",
+    };
+  }
+  return null;
+}
+
 export async function fetchSeasonSchedule(input: {
   season: number;
 }): Promise<SeasonScheduleFetchActionResult> {
-  await requireAdminUser();
+  try {
+    await requireAdminUser();
+  } catch (error) {
+    const failure = adminAccessFailure(error);
+    if (failure) return failure;
+    throw error;
+  }
   const parsedSeason = seasonSchema.safeParse(input.season);
   if (!parsedSeason.success) {
     return { ok: false, message: "Choose a valid NFL season and try the schedule sync again." };
@@ -55,7 +88,14 @@ export async function importSeasonDrafts(input: {
   season: number;
   scheduleText: string;
 }): Promise<SeasonImportActionResult> {
-  const admin = await requireAdminUser();
+  let admin: AppUser;
+  try {
+    admin = await requireAdminUser();
+  } catch (error) {
+    const failure = adminAccessFailure(error);
+    if (failure) return failure;
+    throw error;
+  }
   const validated = seasonImportSchema.safeParse({
     season: input.season,
     scheduleText: input.scheduleText,
@@ -192,6 +232,6 @@ export async function importSeasonDrafts(input: {
   return {
     ok: true,
     weekIds: result.weekIds,
-    message: `${result.weekIds.length} private week ${result.weekIds.length === 1 ? "draft is" : "drafts are"} ready: ${createdDrafts} created and ${result.replacedDrafts} replaced. Nothing was published.`,
+    message: `${result.weekIds.length} private week ${result.weekIds.length === 1 ? "draft is" : "drafts are"} ready: ${createdDrafts} created and ${result.replacedDrafts} replaced. Publish a week from Week Operations before players can see its games.`,
   };
 }

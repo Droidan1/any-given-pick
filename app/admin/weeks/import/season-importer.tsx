@@ -12,6 +12,8 @@ import {
   type SeasonImportActionResult,
 } from "./actions";
 
+const SIGN_IN_RECOVERY_URL = "/sign-in?redirect_url=%2Fadmin%2Fweeks%2Fimport";
+
 function formatDateTime(isoDate: string): string {
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
@@ -46,6 +48,7 @@ export function SeasonImporter() {
   const [scheduleText, setScheduleText] = useState("");
   const [scheduleSource, setScheduleSource] = useState<ProviderSchedule | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncNeedsSignIn, setSyncNeedsSignIn] = useState(false);
   const [result, setResult] = useState<SeasonImportActionResult | null>(null);
   const [isImportPending, startImportTransition] = useTransition();
   const [isSyncPending, startSyncTransition] = useTransition();
@@ -74,6 +77,7 @@ export function SeasonImporter() {
     syncRequestId.current += 1;
     setScheduleSource(null);
     setSyncError(null);
+    setSyncNeedsSignIn(false);
   }
 
   function loadExample() {
@@ -94,6 +98,7 @@ export function SeasonImporter() {
     const requestId = syncRequestId.current + 1;
     syncRequestId.current = requestId;
     setSyncError(null);
+    setSyncNeedsSignIn(false);
     resetResult();
     startSyncTransition(async () => {
       try {
@@ -101,6 +106,7 @@ export function SeasonImporter() {
         if (requestId !== syncRequestId.current) return;
         if (!nextResult.ok) {
           setSyncError(nextResult.message);
+          setSyncNeedsSignIn(nextResult.code === "auth_required");
           return;
         }
         if (nextResult.schedule.season !== requestedSeason) {
@@ -223,7 +229,12 @@ export function SeasonImporter() {
             </div>
           </div>
 
-          {syncError ? <p className="season-sync-message season-sync-message--error" role="alert">{syncError}</p> : null}
+          {syncError ? (
+            <p className="season-sync-message season-sync-message--error" role="alert">
+              <span>{syncError}</span>
+              {syncNeedsSignIn ? <Link href={SIGN_IN_RECOVERY_URL}>Sign in again</Link> : null}
+            </p>
+          ) : null}
           {scheduleSource?.warnings.map((warning) => (
             <p className="season-sync-message season-sync-message--warning" role="status" key={warning}>{warning}</p>
           ))}
@@ -362,14 +373,18 @@ export function SeasonImporter() {
           <h2>Create the call sheets</h2>
           <p>
             This creates or replaces private drafts only. A published, locked, or final
-            week stops the full import before any draft changes.
+            week stops the full import before any draft changes. Draft games appear to
+            players only after you publish that week from Week Operations.
           </p>
           {result ? (
             <p className={result.ok ? "admin-result admin-result--success" : "admin-result admin-result--error"} role="status">
               {result.message}
             </p>
           ) : null}
-          {result?.ok ? <Link className="season-import-result-link" href="/admin/weeks">Review drafts on the season board</Link> : null}
+          {result?.ok ? <Link className="season-import-result-link" href="/admin/weeks">Review and publish drafts in Week Operations</Link> : null}
+          {result?.code === "auth_required" ? (
+            <Link className="season-import-auth-link" href={SIGN_IN_RECOVERY_URL}>Sign in again to finish the import</Link>
+          ) : null}
         </div>
         <div className="admin-publish-actions">
           <button

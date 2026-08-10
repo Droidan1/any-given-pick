@@ -3218,10 +3218,30 @@ button:disabled {
 }
 
 .season-sync-message {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
   margin: 0;
   padding: 0.85rem 1rem;
   border: 1px solid currentColor;
   line-height: 1.45;
+}
+
+.season-sync-message a,
+.season-import-auth-link {
+  color: currentColor;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-underline-offset: 0.18em;
+  text-transform: uppercase;
+}
+
+.season-import-auth-link {
+  display: inline-block;
+  margin-top: 0.4rem;
+  color: var(--maize);
 }
 
 .season-sync-message--error {
@@ -3689,6 +3709,11 @@ button:disabled {
 
   .season-sync-button {
     width: 100%;
+  }
+
+  .season-sync-message {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .admin-schedule-field textarea {
