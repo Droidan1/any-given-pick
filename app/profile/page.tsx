@@ -7,6 +7,7 @@ import { Icon } from "@/components/icons";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary, getProfileRecord } from "@/lib/eligibility/service";
 import { ProfileForm } from "./profile-form";
+import { ProfilePhotoEditor } from "./profile-photo-editor";
 
 export const metadata: Metadata = {
   title: "Player profile",
@@ -47,6 +48,7 @@ export default async function ProfilePage() {
               : "One verified sign-in, a unique display name, age 21+, and an Indiana location check unlock participation. Everyone else keeps read-only access."}
           </p>
         </div>
+        <ProfilePhotoEditor />
         {accessBlocked ? (
           <section className="account-access-notice" aria-labelledby="account-access-title">
             <Icon name={approvalPending ? "clock" : "shield"} />

@@ -22,7 +22,12 @@ export default async function Home() {
 
   return (
     <>
-      <PickemApp account={account} week={week} isAdmin={isAdmin} />
+      <PickemApp
+        account={account}
+        week={week}
+        isAdmin={isAdmin}
+        draftOwnerId={appUser.id}
+      />
       <ServiceWorkerRegistration />
     </>
   );

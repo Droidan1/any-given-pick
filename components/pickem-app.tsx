@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import type { AccountSummary } from "@/lib/account-types";
 import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
+import { unscopedDraftStorageKeys, userDraftStorageKey } from "@/lib/entries/draft-storage";
 import type { PlayerGame, PlayerWeek } from "@/lib/entries/types";
 import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
@@ -17,8 +18,6 @@ type ReceiptData = {
   committedAt: string;
   action: "submit" | "edit";
 };
-
-const LEGACY_DRAFT_STORAGE_KEY = "any-given-pick-draft:v1";
 
 function gameRulesForCurrentSlate(games: PlayerGame[]) {
   return games.map((game) => ({
@@ -56,7 +55,17 @@ const standings = [
   { rank: 5, name: "Two Minute", correct: 5, delta: 8 },
 ];
 
-export function PickemApp({ account, week, isAdmin }: { account: AccountSummary; week: PlayerWeek | null; isAdmin: boolean }) {
+export function PickemApp({
+  account,
+  week,
+  isAdmin,
+  draftOwnerId,
+}: {
+  account: AccountSummary;
+  week: PlayerWeek | null;
+  isAdmin: boolean;
+  draftOwnerId: string;
+}) {
   const [view, setView] = useState<View>("home");
   const [picks, setPicks] = useState<Picks>(() =>
     picksForCurrentSlate(week?.games ?? [], week?.entry?.draftPicks ?? {}),
@@ -77,7 +86,7 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
   const firstMissingRef = useRef<HTMLDivElement | null>(null);
   const lastSavedSignatureRef = useRef("");
 
-  const draftStorageKey = week ? `any-given-pick-draft:v2:${week.id}` : null;
+  const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id) : null;
   const games = week?.games ?? [];
   const canParticipate = account.overallResult === "eligible";
   const isLocked = week?.isLocked ?? true;
@@ -87,9 +96,15 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
       return;
     }
 
-    const currentDraft = window.localStorage.getItem(draftStorageKey);
-    const legacyDraft = window.localStorage.getItem(LEGACY_DRAFT_STORAGE_KEY);
-    const stored = currentDraft ?? legacyDraft;
+    let stored: string | null = null;
+    try {
+      for (const legacyKey of unscopedDraftStorageKeys(week.id)) {
+        window.localStorage.removeItem(legacyKey);
+      }
+      stored = window.localStorage.getItem(draftStorageKey);
+    } catch {
+      // Server-backed drafts still work when browser storage is unavailable.
+    }
     const serverVersion = week.entry?.currentVersionNumber ?? 0;
     const frame = window.requestAnimationFrame(() => {
       try {
@@ -103,16 +118,9 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
             if (draft.picks) setPicks(picksForCurrentSlate(week.games, draft.picks));
             if (Number.isInteger(draft.mondayTotal)) setMondayTotal(draft.mondayTotal ?? 44);
           }
-          if (!currentDraft && legacyDraft) {
-            window.localStorage.setItem(
-              draftStorageKey,
-              JSON.stringify({ ...draft, baseVersion: serverVersion }),
-            );
-            window.localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
-          }
         }
       } catch {
-        window.localStorage.removeItem(currentDraft ? draftStorageKey : LEGACY_DRAFT_STORAGE_KEY);
+        window.localStorage.removeItem(draftStorageKey);
       } finally {
         lastSavedSignatureRef.current = signatureForDraft(
           week.games,
@@ -127,14 +135,18 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
 
   useEffect(() => {
     if (!draftReady || !draftStorageKey || !week) return;
-    window.localStorage.setItem(
-      draftStorageKey,
-      JSON.stringify({
-        picks,
-        mondayTotal,
-        baseVersion: week.entry?.currentVersionNumber ?? 0,
-      }),
-    );
+    try {
+      window.localStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({
+          picks,
+          mondayTotal,
+          baseVersion: week.entry?.currentVersionNumber ?? 0,
+        }),
+      );
+    } catch {
+      // Autosave to the server remains the source of truth.
+    }
 
     const signature = signatureForDraft(week.games, picks, mondayTotal);
     if (!canParticipate || isLocked || signature === lastSavedSignatureRef.current) return;

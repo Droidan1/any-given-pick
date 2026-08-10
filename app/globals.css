@@ -1932,6 +1932,93 @@ button:disabled {
   line-height: 1.6;
 }
 
+.profile-photo-card {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--sage);
+  border-radius: var(--radius);
+  background: var(--paper-100);
+  color: var(--ink);
+  box-shadow: 0 12px 36px var(--shadow);
+}
+
+.profile-photo-card__preview {
+  width: 7rem;
+  aspect-ratio: 1;
+  border: 3px solid var(--field-900);
+  border-radius: 50%;
+  background-color: var(--paper-200);
+  background-image: url("/icons/icon-192.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.profile-photo-card__copy h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.profile-photo-card__copy > p:not(.card-kicker) {
+  max-width: 52ch;
+  margin: 0.65rem 0 0;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.profile-photo-card__status {
+  min-height: 1.25rem;
+  font-size: 0.86rem;
+}
+
+.profile-photo-card__status--error {
+  color: var(--danger) !important;
+}
+
+.profile-photo-card__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.profile-photo-card__button {
+  min-height: 3.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--field-900);
+  border-radius: 4px;
+  background: var(--maize);
+  color: var(--field-950);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.profile-photo-card__button:hover {
+  background: var(--maize-soft);
+}
+
+.profile-photo-card__button--disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .account-access-notice {
   min-height: 15rem;
   display: grid;
@@ -2397,6 +2484,24 @@ button:disabled {
 
   .account-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-photo-card {
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .profile-photo-card__preview {
+    width: 5.5rem;
+  }
+
+  .profile-photo-card__action {
+    grid-column: 1 / -1;
+  }
+
+  .profile-photo-card__button {
+    width: 100%;
   }
 
   .profile-card:first-child {
