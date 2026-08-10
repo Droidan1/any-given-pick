@@ -12,6 +12,7 @@ import {
 } from "@/lib/db/schema";
 import { draftPayloadSignature, sanitizeDraftPicks } from "./rules";
 import { getCurrentPlayerWeek } from "./service";
+import { calculatePickOutcome, type PickOutcome } from "./pick-outcome";
 
 export type ActivityPick = {
   gameId: string;
@@ -22,6 +23,10 @@ export type ActivityPick = {
   homeTeamName: string;
   selectedTeamCode: string | null;
   selectedTeamName: string | null;
+  gameStatus: "scheduled" | "in_progress" | "final" | "postponed" | "canceled";
+  awayScore: number | null;
+  homeScore: number | null;
+  outcome: PickOutcome;
 };
 
 export type ActivityCard = {
@@ -40,6 +45,10 @@ export type ActivityCard = {
   mondayPrediction: number | null;
   committedAt: string | null;
   updatedAt: string | null;
+  completedGameCount: number;
+  winCount: number;
+  lossCount: number;
+  tieCount: number;
   picks: ActivityPick[];
 };
 
@@ -246,6 +255,36 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       stateLabel = "Not submitted";
     }
 
+    const picks = weekGames.map((game): ActivityPick => {
+      const selectedTeamCode = displayedPicks[game.id] ?? null;
+      const selectedTeamName = selectedTeamCode === game.awayTeamCode
+        ? game.awayTeamName
+        : selectedTeamCode === game.homeTeamCode
+          ? game.homeTeamName
+          : null;
+      return {
+        gameId: game.id,
+        kickoffAt: game.kickoffAt.toISOString(),
+        awayTeamCode: game.awayTeamCode,
+        awayTeamName: game.awayTeamName,
+        homeTeamCode: game.homeTeamCode,
+        homeTeamName: game.homeTeamName,
+        selectedTeamCode,
+        selectedTeamName,
+        gameStatus: game.status,
+        awayScore: game.awayScore,
+        homeScore: game.homeScore,
+        outcome: calculatePickOutcome({
+          gameStatus: game.status,
+          awayScore: game.awayScore,
+          homeScore: game.homeScore,
+          awayTeamCode: game.awayTeamCode,
+          homeTeamCode: game.homeTeamCode,
+          selectedTeamCode,
+        }),
+      };
+    });
+
     return {
       id: row.entryId,
       weekId: row.weekId,
@@ -262,24 +301,11 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       mondayPrediction,
       committedAt: latestVersion?.committedAt.toISOString() ?? null,
       updatedAt: row.updatedAt?.toISOString() ?? null,
-      picks: weekGames.map((game) => {
-        const selectedTeamCode = displayedPicks[game.id] ?? null;
-        const selectedTeamName = selectedTeamCode === game.awayTeamCode
-          ? game.awayTeamName
-          : selectedTeamCode === game.homeTeamCode
-            ? game.homeTeamName
-            : null;
-        return {
-          gameId: game.id,
-          kickoffAt: game.kickoffAt.toISOString(),
-          awayTeamCode: game.awayTeamCode,
-          awayTeamName: game.awayTeamName,
-          homeTeamCode: game.homeTeamCode,
-          homeTeamName: game.homeTeamName,
-          selectedTeamCode,
-          selectedTeamName,
-        };
-      }),
+      completedGameCount: picks.filter((pick) => pick.gameStatus === "final").length,
+      winCount: picks.filter((pick) => pick.outcome === "won").length,
+      lossCount: picks.filter((pick) => pick.outcome === "lost").length,
+      tieCount: picks.filter((pick) => pick.outcome === "tie").length,
+      picks,
     };
   });
 

@@ -38,6 +38,15 @@ type WeekRequest = {
   providerWeekNumber: number;
 };
 
+export function getEspnWeekParameters(
+  seasonPhase: SeasonPhase,
+  weekNumber: number,
+): Pick<WeekRequest, "seasonType" | "providerWeekNumber"> {
+  return seasonPhase === "preseason"
+    ? { seasonType: 1, providerWeekNumber: weekNumber + 1 }
+    : { seasonType: 2, providerWeekNumber: weekNumber };
+}
+
 function normalizeTeamCode(value: string): string {
   const code = value.trim().toLocaleUpperCase("en-US");
   return code === "WSH" ? "WAS" : code;
@@ -186,15 +195,13 @@ export function buildSeasonWeekRequests(): WeekRequest[] {
   return [
     ...Array.from({ length: 3 }, (_, index) => ({
       seasonPhase: "preseason" as const,
-      seasonType: 1 as const,
       weekNumber: index + 1,
-      providerWeekNumber: index + 2,
+      ...getEspnWeekParameters("preseason", index + 1),
     })),
     ...Array.from({ length: 18 }, (_, index) => ({
       seasonPhase: "regular" as const,
-      seasonType: 2 as const,
       weekNumber: index + 1,
-      providerWeekNumber: index + 1,
+      ...getEspnWeekParameters("regular", index + 1),
     })),
   ];
 }

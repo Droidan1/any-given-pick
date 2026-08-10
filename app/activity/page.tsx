@@ -11,7 +11,9 @@ import { getAccountSummary } from "@/lib/eligibility/service";
 import {
   getPlayerActivity,
   type ActivityCard,
+  type ActivityPick,
 } from "@/lib/entries/activity-service";
+import { ActivityScoreRefresh } from "./activity-score-refresh";
 
 export const metadata: Metadata = {
   title: "My activity",
@@ -39,6 +41,22 @@ function formatKickoff(value: string): string {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
+}
+
+function gameStateLabel(pick: ActivityPick): string {
+  if (pick.gameStatus === "final") return "Final";
+  if (pick.gameStatus === "in_progress") return "Live";
+  if (pick.gameStatus === "postponed") return "Postponed";
+  if (pick.gameStatus === "canceled") return "Canceled";
+  return "Upcoming";
+}
+
+function outcomeLabel(pick: ActivityPick): string {
+  if (pick.outcome === "won") return "Won";
+  if (pick.outcome === "lost") return "Lost";
+  if (pick.outcome === "tie") return "Tie";
+  if (pick.outcome === "no_pick") return "No pick";
+  return gameStateLabel(pick);
 }
 
 function ActivityCardView({ card }: { card: ActivityCard }) {
@@ -83,6 +101,14 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
                 : "Not saved yet"}
             </strong>
           </div>
+          <div>
+            <span>Completed picks</span>
+            <strong>
+              {card.completedGameCount > 0
+                ? `${card.winCount} won · ${card.lossCount} lost${card.tieCount > 0 ? ` · ${card.tieCount} tied` : ""}`
+                : "Awaiting results"}
+            </strong>
+          </div>
         </div>
 
         {card.picks.length > 0 ? (
@@ -92,21 +118,37 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
               const homeSelected = pick.selectedTeamCode === pick.homeTeamCode;
               return (
                 <div
-                  className="activity-matchup"
+                  className={`activity-matchup activity-matchup--${pick.gameStatus} activity-matchup--${pick.outcome}`}
                   key={pick.gameId}
-                  aria-label={`${pick.awayTeamName} at ${pick.homeTeamName}. ${pick.selectedTeamName ? `${pick.selectedTeamName} selected.` : "No selection."}`}
+                  aria-label={`${pick.awayTeamName} at ${pick.homeTeamName}. ${pick.selectedTeamName ? `${pick.selectedTeamName} selected.` : "No selection."} ${outcomeLabel(pick)}.`}
                 >
-                  <span className="activity-matchup__date">{formatKickoff(pick.kickoffAt)}</span>
+                  <span className="activity-matchup__date">
+                    <span>{formatKickoff(pick.kickoffAt)}</span>
+                    <strong>{gameStateLabel(pick)}</strong>
+                  </span>
                   <span className={`activity-team${awaySelected ? " activity-team--selected" : ""}`}>
-                    {awaySelected && <Icon name="check" />}
-                    <strong>{pick.awayTeamCode}</strong>
+                    <span className="activity-team__line">
+                      <strong>{pick.awayTeamCode}</strong>
+                      <span className="activity-team__call">
+                        {pick.awayScore !== null ? <b>{pick.awayScore}</b> : null}
+                        {awaySelected ? <Icon name="check" /> : null}
+                      </span>
+                    </span>
                     <small>{pick.awayTeamName}</small>
                   </span>
                   <span className="activity-matchup__at">@</span>
                   <span className={`activity-team${homeSelected ? " activity-team--selected" : ""}`}>
-                    {homeSelected && <Icon name="check" />}
-                    <strong>{pick.homeTeamCode}</strong>
+                    <span className="activity-team__line">
+                      <strong>{pick.homeTeamCode}</strong>
+                      <span className="activity-team__call">
+                        {pick.homeScore !== null ? <b>{pick.homeScore}</b> : null}
+                        {homeSelected ? <Icon name="check" /> : null}
+                      </span>
+                    </span>
                     <small>{pick.homeTeamName}</small>
+                  </span>
+                  <span className={`activity-outcome activity-outcome--${pick.outcome}`}>
+                    {outcomeLabel(pick)}
                   </span>
                 </div>
               );
@@ -122,12 +164,12 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
           </div>
         )}
 
-        {card.isCurrent && (
+        {card.isCurrent ? (
           <Link className="activity-card__action" href="/">
             <span>{card.pickCount > 0 ? "Open current card" : "Make current picks"}</span>
             <Icon name="arrow" />
           </Link>
-        )}
+        ) : null}
       </div>
     </details>
   );
@@ -153,7 +195,7 @@ export default async function ActivityPage() {
         <div className="account-header__actions">
           <Link href="/" className="text-link">Current call sheet</Link>
           <Link href="/profile" className="text-link">Player card</Link>
-          {isAdmin && <Link href="/admin" className="text-link">Admin</Link>}
+          {isAdmin ? <Link href="/admin" className="text-link">Admin</Link> : null}
           <UserButton />
         </div>
       </header>
@@ -184,6 +226,7 @@ export default async function ActivityPage() {
             </div>
             <span>Working picks update here after a secure draft save.</span>
           </div>
+          <ActivityScoreRefresh />
           {activity.currentCard ? (
             <ActivityCardView card={activity.currentCard} />
           ) : (
