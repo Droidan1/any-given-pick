@@ -8,6 +8,7 @@ import type { AccountSummary } from "@/lib/account-types";
 import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
 import { unscopedDraftStorageKeys, userDraftStorageKey } from "@/lib/entries/draft-storage";
 import type { PlayerGame, PlayerWeek } from "@/lib/entries/types";
+import type { StandingsSnapshot } from "@/lib/standings/types";
 import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
 
@@ -47,24 +48,18 @@ const navItems: { view: View; label: string; icon: IconName }[] = [
   { view: "profile", label: "Profile", icon: "profile" },
 ];
 
-const standings = [
-  { rank: 1, name: "Fourth & Long", correct: 7, delta: 2 },
-  { rank: 2, name: "Sunday Drive", correct: 7, delta: 5 },
-  { rank: 3, name: "Goal Line", correct: 6, delta: 1 },
-  { rank: 4, name: "Your entry", correct: 5, delta: 4 },
-  { rank: 5, name: "Two Minute", correct: 5, delta: 8 },
-];
-
 export function PickemApp({
   account,
   week,
   isAdmin,
   draftOwnerId,
+  standings,
 }: {
   account: AccountSummary;
   week: PlayerWeek | null;
   isAdmin: boolean;
   draftOwnerId: string;
+  standings: StandingsSnapshot;
 }) {
   const [view, setView] = useState<View>("home");
   const [picks, setPicks] = useState<Picks>(() =>
@@ -273,7 +268,7 @@ export function PickemApp({
         />
       )}
       {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => setView("picks")} account={account} />}
-      {view === "standings" && <StandingsView week={week} />}
+      {view === "standings" && <StandingsView standings={standings} currentUserId={draftOwnerId} />}
       {view === "groups" && <GroupsView />}
       {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={account} isAdmin={isAdmin} />}
     </AppFrame>
@@ -476,9 +471,63 @@ function HomeView({ selectedCount, onContinue, account, week }: { selectedCount:
   );
 }
 
-function StandingsView({ week }: { week: PlayerWeek }) {
+function StandingsView({
+  standings,
+  currentUserId,
+}: {
+  standings: StandingsSnapshot;
+  currentUserId: string;
+}) {
+  if (standings.status === "ready" && standings.rows.length > 0) {
+    return (
+      <section className="single-view standings-view">
+        <p className="week-label">{standings.season} regular-season standings</p>
+        <h1>The official board.</h1>
+        <p className="lead">
+          Regular-season results through Week {standings.throughWeek ?? 1}. Preseason picks
+          are excluded. Lower cumulative tiebreaker difference wins equal records.
+        </p>
+        <div className="standings-table" role="table" aria-label={`${standings.season} regular-season standings`}>
+          <div className="standings-row standings-row--header" role="row">
+            <span>Rank</span><span>Player</span><span>Correct</span><span>TB diff</span>
+          </div>
+          {standings.rows.map((entry) => (
+            <div
+              className={`standings-row${entry.userId === currentUserId ? " standings-row--you" : ""}`}
+              role="row"
+              key={entry.userId}
+            >
+              <strong>{entry.rank}</strong>
+              <span>{entry.displayName}</span>
+              <span>{entry.correctPicks}/{entry.gradedPicks}</span>
+              <span>{entry.tiebreakerDiff ?? "—"}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="single-view standings-view"><p className="week-label">Sample standings</p><h1>{week.label} board</h1><p className="lead">Picks reveal after the deadline. This sample shows the planned ranking treatment.</p><div className="standings-table" role="table" aria-label={`Sample ${week.label} standings`}><div className="standings-row standings-row--header" role="row"><span>Rank</span><span>Player</span><span>Correct</span><span>TB diff</span></div>{standings.map((entry) => <div className={`standings-row${entry.name === "Your entry" ? " standings-row--you" : ""}`} role="row" key={entry.rank}><strong>{entry.rank}</strong><span>{entry.name}</span><span>{entry.correct}</span><span>{entry.delta}</span></div>)}</div></section>
+    <section className="single-view standings-view">
+      <p className="week-label">{standings.season} regular-season standings</p>
+      <h1>The board opens after Week 1.</h1>
+      <p className="lead">
+        Preseason picks do not count toward the standings. Rankings begin after every
+        regular-season Week 1 game has a final result.
+      </p>
+      <div className="empty-state">
+        <Icon name="standings" />
+        <h2>{standings.status === "ready" ? "No official entries" : "No standings yet"}</h2>
+        <p>
+          {standings.status === "ready"
+            ? "Week 1 is final, but no official player entries are available to rank."
+            : standings.weekOneGameCount > 0
+              ? `${standings.weekOneFinalGames} of ${standings.weekOneGameCount} Week 1 games are final.`
+              : "Week 1 results will set the first official leaderboard."}
+        </p>
+      </div>
+    </section>
   );
 }
 
