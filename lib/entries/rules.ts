@@ -63,3 +63,19 @@ export function sanitizeDraftPicks(
     requireComplete: false,
   }).picks;
 }
+
+export function draftPayloadSignature(input: {
+  games: EntryGameRule[];
+  picks: Record<string, string>;
+  mondayPrediction: number | null;
+}): string {
+  const picks = sanitizeDraftPicks(input.games, input.picks);
+  const orderedPicks = Object.entries(picks).sort(([leftId], [rightId]) =>
+    leftId.localeCompare(rightId),
+  );
+
+  return JSON.stringify({
+    picks: orderedPicks,
+    mondayPrediction: input.mondayPrediction,
+  });
+}

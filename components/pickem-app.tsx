@@ -5,7 +5,7 @@ import { UserButton } from "@clerk/nextjs";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import type { AccountSummary } from "@/lib/account-types";
-import { sanitizeDraftPicks } from "@/lib/entries/rules";
+import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
 import type { PlayerGame, PlayerWeek } from "@/lib/entries/types";
 import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
@@ -20,15 +20,24 @@ type ReceiptData = {
 
 const LEGACY_DRAFT_STORAGE_KEY = "any-given-pick-draft:v1";
 
+function gameRulesForCurrentSlate(games: PlayerGame[]) {
+  return games.map((game) => ({
+    id: game.id,
+    awayTeamCode: game.away.abbreviation,
+    homeTeamCode: game.home.abbreviation,
+  }));
+}
+
 function picksForCurrentSlate(games: PlayerGame[], picks: Picks): Picks {
-  return sanitizeDraftPicks(
-    games.map((game) => ({
-      id: game.id,
-      awayTeamCode: game.away.abbreviation,
-      homeTeamCode: game.home.abbreviation,
-    })),
+  return sanitizeDraftPicks(gameRulesForCurrentSlate(games), picks);
+}
+
+function signatureForDraft(games: PlayerGame[], picks: Picks, mondayPrediction: number | null) {
+  return draftPayloadSignature({
+    games: gameRulesForCurrentSlate(games),
     picks,
-  );
+    mondayPrediction,
+  });
 }
 
 const navItems: { view: View; label: string; icon: IconName }[] = [
@@ -66,7 +75,7 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
   const [draftReady, setDraftReady] = useState(false);
   const [isPending, startTransition] = useTransition();
   const firstMissingRef = useRef<HTMLDivElement | null>(null);
-  const lastSavedPayloadRef = useRef("");
+  const lastSavedSignatureRef = useRef("");
 
   const draftStorageKey = week ? `any-given-pick-draft:v2:${week.id}` : null;
   const games = week?.games ?? [];
@@ -105,11 +114,11 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
       } catch {
         window.localStorage.removeItem(currentDraft ? draftStorageKey : LEGACY_DRAFT_STORAGE_KEY);
       } finally {
-        const initialPayload = JSON.stringify({
-          picks: week.entry?.draftPicks ?? {},
-          mondayPrediction: week.entry?.mondayPrediction ?? 44,
-        });
-        lastSavedPayloadRef.current = initialPayload;
+        lastSavedSignatureRef.current = signatureForDraft(
+          week.games,
+          week.entry?.draftPicks ?? {},
+          week.entry?.mondayPrediction ?? 44,
+        );
         setDraftReady(true);
       }
     });
@@ -127,8 +136,8 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
       }),
     );
 
-    const payload = JSON.stringify({ picks, mondayPrediction: mondayTotal });
-    if (!canParticipate || isLocked || payload === lastSavedPayloadRef.current) return;
+    const signature = signatureForDraft(week.games, picks, mondayTotal);
+    if (!canParticipate || isLocked || signature === lastSavedSignatureRef.current) return;
 
     const timer = window.setTimeout(() => {
       setStatus("Syncing draft…");
@@ -139,7 +148,7 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
           mondayPrediction: mondayTotal,
         });
         if (result.ok) {
-          lastSavedPayloadRef.current = payload;
+          lastSavedSignatureRef.current = signature;
         } else if (result.code === "invalid_pick") {
           const currentPicks = picksForCurrentSlate(week.games, picks);
           if (JSON.stringify(currentPicks) !== JSON.stringify(picks)) {
@@ -220,7 +229,7 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
       if (result.ok && result.receipt) {
         setReceipt(result.receipt);
         setReviewing(false);
-        lastSavedPayloadRef.current = JSON.stringify({ picks, mondayPrediction: mondayTotal });
+        lastSavedSignatureRef.current = signatureForDraft(week.games, picks, mondayTotal);
         if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
       }
     });

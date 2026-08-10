@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeDraftPicks, validateEntrySelections } from "./rules";
+import {
+  draftPayloadSignature,
+  sanitizeDraftPicks,
+  validateEntrySelections,
+} from "./rules";
 
 const games = [
   { id: "game-1", awayTeamCode: "IND", homeTeamCode: "CHI" },
@@ -71,5 +75,43 @@ describe("validateEntrySelections", () => {
 
   it("removes a selection when its team no longer matches the game", () => {
     expect(sanitizeDraftPicks(games, { "game-1": "DET" })).toEqual({});
+  });
+
+  it("gives equivalent drafts the same signature regardless of pick insertion order", () => {
+    const first = draftPayloadSignature({
+      games,
+      picks: { "game-1": "CHI", "game-2": "MIA" },
+      mondayPrediction: 45,
+    });
+    const second = draftPayloadSignature({
+      games,
+      picks: { "game-2": "MIA", "game-1": "CHI" },
+      mondayPrediction: 45,
+    });
+
+    expect(first).toBe(second);
+  });
+
+  it("changes the signature when a current pick or tiebreaker changes", () => {
+    const initial = draftPayloadSignature({
+      games,
+      picks: { "game-1": "CHI" },
+      mondayPrediction: 45,
+    });
+
+    expect(
+      draftPayloadSignature({
+        games,
+        picks: { "game-1": "IND" },
+        mondayPrediction: 45,
+      }),
+    ).not.toBe(initial);
+    expect(
+      draftPayloadSignature({
+        games,
+        picks: { "game-1": "CHI" },
+        mondayPrediction: 46,
+      }),
+    ).not.toBe(initial);
   });
 });

@@ -167,7 +167,6 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
       };
     });
 
-    if (result.ok) revalidatePath("/");
     return result;
   } catch (error) {
     return failureFromError(error);
