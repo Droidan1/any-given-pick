@@ -21,6 +21,551 @@
   color-scheme: dark;
 }
 
+/* Player activity archive */
+.activity-sheet {
+  width: min(100% - 2rem, 92rem);
+}
+
+.activity-intro {
+  min-height: 20rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(2rem, 6vw, 4.5rem);
+  border: 1px solid var(--sage);
+  background: var(--field-950);
+}
+
+.activity-intro > div {
+  max-width: 58rem;
+}
+
+.activity-intro h1 {
+  max-width: 12ch;
+  margin: 0;
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 8vw, 7rem);
+  line-height: 0.84;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.activity-intro p:last-child {
+  max-width: 60ch;
+  margin: 1.5rem 0 0;
+  color: var(--paper-200);
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.activity-intro > svg {
+  width: clamp(5rem, 10vw, 9rem);
+  height: clamp(5rem, 10vw, 9rem);
+  color: var(--maize);
+}
+
+.activity-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-inline: 1px solid var(--sage);
+  border-bottom: 1px solid var(--sage);
+  background: var(--maize);
+  color: var(--field-950);
+}
+
+.activity-scoreboard > div {
+  min-height: 7.5rem;
+  display: grid;
+  place-content: center;
+  gap: 0.1rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.activity-scoreboard > div + div {
+  border-left: 1px solid var(--field-900);
+}
+
+.activity-scoreboard strong {
+  font-family: var(--font-display);
+  font-size: 3.25rem;
+  line-height: 0.9;
+}
+
+.activity-scoreboard span {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activity-section {
+  margin-top: 4rem;
+}
+
+.activity-section__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 1rem;
+  color: var(--paper-100);
+}
+
+.activity-section__header p,
+.activity-section__header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+}
+
+.activity-section__header p {
+  color: var(--maize);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.activity-section__header h2 {
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.activity-section__header > span {
+  max-width: 32rem;
+  color: var(--paper-200);
+  line-height: 1.45;
+  text-align: right;
+}
+
+.activity-history {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.activity-history .activity-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 8rem;
+}
+
+.activity-card {
+  border: 1px solid var(--sage);
+  background: var(--paper-100);
+  color: var(--ink);
+  box-shadow: 0 12px 32px var(--shadow);
+}
+
+.activity-card__summary {
+  min-height: 8rem;
+  display: grid;
+  grid-template-columns: 5rem minmax(14rem, 1fr) auto 7rem 6rem;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.5rem 1rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.activity-card__summary::-webkit-details-marker {
+  display: none;
+}
+
+.activity-card__summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.activity-card__marker {
+  width: 4.25rem;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: var(--field-950);
+  color: var(--maize);
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.activity-card__identity {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.activity-card__eyebrow {
+  color: var(--clay-deep);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.activity-card__identity > strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.activity-state {
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.activity-state--official {
+  background: var(--field-900);
+  color: var(--maize);
+}
+
+.activity-state--pending_edits {
+  background: var(--clay);
+  color: var(--paper-100);
+}
+
+.activity-state--draft,
+.activity-state--not_submitted {
+  background: var(--paper-200);
+  color: var(--ink-soft);
+}
+
+.activity-card__count {
+  display: grid;
+  justify-items: center;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+}
+
+.activity-card__count strong {
+  font-size: 2.25rem;
+  line-height: 0.9;
+}
+
+.activity-card__count span {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.activity-card__toggle {
+  color: var(--clay-deep);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  text-transform: uppercase;
+}
+
+.activity-card__toggle span:last-child,
+.activity-card[open] .activity-card__toggle span:first-child {
+  display: none;
+}
+
+.activity-card[open] .activity-card__toggle span:last-child {
+  display: inline;
+}
+
+.activity-card__body {
+  padding: 1.5rem;
+  border-top: 2px solid var(--ink);
+  background: var(--paper-100);
+}
+
+.activity-card__meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 1.5rem;
+  border-block: 1px solid var(--sage);
+}
+
+.activity-card__meta > div {
+  min-height: 5rem;
+  display: grid;
+  align-content: center;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+}
+
+.activity-card__meta > div + div {
+  border-left: 1px solid var(--sage);
+}
+
+.activity-card__meta span {
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activity-card__meta strong {
+  font-size: 0.95rem;
+}
+
+.activity-matchups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--sage);
+}
+
+.activity-matchup {
+  min-height: 5.5rem;
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) 1.5rem minmax(0, 1fr);
+  align-items: stretch;
+  border-bottom: 1px solid var(--sage);
+}
+
+.activity-matchup:nth-child(odd) {
+  border-right: 1px solid var(--sage);
+}
+
+.activity-matchup__date,
+.activity-matchup__at {
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.activity-team {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 0.05rem;
+  padding: 0.65rem;
+  position: relative;
+}
+
+.activity-team > svg {
+  position: absolute;
+  right: 0.35rem;
+  top: 0.35rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+.activity-team strong {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.activity-team small {
+  overflow: hidden;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-team--selected {
+  background: var(--maize);
+  color: var(--field-950);
+}
+
+.activity-card__action {
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--field-950);
+  color: var(--maize);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.activity-card__action svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.activity-card__empty,
+.activity-empty {
+  min-height: 10rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--paper-100);
+  color: var(--ink);
+}
+
+.activity-card__empty > svg,
+.activity-empty > svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--clay-deep);
+}
+
+.activity-card__empty h4,
+.activity-empty h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  text-transform: uppercase;
+}
+
+.activity-card__empty p,
+.activity-empty p {
+  margin: 0.4rem 0 0;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 64rem) {
+  .activity-card__summary {
+    grid-template-columns: 4.5rem minmax(12rem, 1fr) auto 5rem;
+  }
+
+  .activity-card__toggle {
+    grid-column: 4;
+    grid-row: 2;
+  }
+
+  .activity-matchups {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-matchup:nth-child(odd) {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 42rem) {
+  .activity-sheet {
+    width: min(100% - 1rem, 92rem);
+    padding-top: 1rem;
+  }
+
+  .activity-intro {
+    min-height: 23rem;
+    align-items: flex-start;
+    padding: 2rem 1.25rem;
+  }
+
+  .activity-intro h1 {
+    font-size: 3.6rem;
+  }
+
+  .activity-intro > svg {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .activity-scoreboard > div {
+    min-height: 6rem;
+    padding: 0.6rem 0.25rem;
+  }
+
+  .activity-scoreboard strong {
+    font-size: 2.4rem;
+  }
+
+  .activity-scoreboard span {
+    font-size: 0.7rem;
+  }
+
+  .activity-section {
+    margin-top: 3rem;
+  }
+
+  .activity-section__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .activity-section__header > span {
+    text-align: left;
+  }
+
+  .activity-card__summary {
+    min-height: 10rem;
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    padding: 0.9rem;
+  }
+
+  .activity-card__marker {
+    width: 3.25rem;
+  }
+
+  .activity-card__identity > strong {
+    font-size: 1.8rem;
+  }
+
+  .activity-state {
+    grid-column: 2 / 4;
+    justify-self: start;
+  }
+
+  .activity-card__count {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .activity-card__toggle {
+    grid-column: 2 / 4;
+    grid-row: 3;
+    justify-self: end;
+  }
+
+  .activity-card__body {
+    padding: 0.75rem;
+  }
+
+  .activity-card__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-card__meta > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--sage);
+  }
+
+  .activity-matchup {
+    min-height: 7rem;
+    grid-template-columns: 3.6rem minmax(0, 1fr) 1.2rem minmax(0, 1fr);
+  }
+
+  .activity-team {
+    padding: 0.5rem;
+  }
+
+  .activity-team strong {
+    font-size: 1.35rem;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

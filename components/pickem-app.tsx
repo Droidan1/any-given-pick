@@ -291,6 +291,9 @@ function AppFrame({
               <Icon name={item.icon} /><span>{item.label}</span>
             </button>
           ))}
+          <Link className="nav-item nav-item--link" href="/activity">
+            <Icon name="activity" /><span>My activity</span>
+          </Link>
           {isAdmin && (
             <Link className="nav-item nav-item--link" href="/admin">
               <Icon name="settings" /><span>Admin</span>
@@ -305,11 +308,14 @@ function AppFrame({
         {children}
       </section>
       <nav className={`bottom-nav${isAdmin ? " bottom-nav--admin" : ""}`} aria-label="Primary navigation">
-        {navItems.filter((item) => item.view !== "groups").map((item) => (
+        {navItems.filter((item) => item.view !== "groups" && item.view !== "standings").map((item) => (
           <button className={`bottom-nav__item${view === item.view ? " bottom-nav__item--active" : ""}`} key={item.view} type="button" onClick={() => setView(item.view)} aria-current={view === item.view ? "page" : undefined}>
             <Icon name={item.icon} /><span>{item.label}</span>
           </button>
         ))}
+        <Link className="bottom-nav__item bottom-nav__item--link" href="/activity">
+          <Icon name="activity" /><span>Activity</span>
+        </Link>
         {isAdmin && (
           <Link className="bottom-nav__item bottom-nav__item--link" href="/admin">
             <Icon name="settings" /><span>Admin</span>

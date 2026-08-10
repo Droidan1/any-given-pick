@@ -30,6 +30,7 @@ export default async function ProfilePage() {
           <BrandLockup />
         </Link>
         <div className="account-header__actions">
+          <Link href="/activity" className="text-link">My activity</Link>
           <Link href="/" className="text-link">Back to call sheet</Link>
           <UserButton />
         </div>
