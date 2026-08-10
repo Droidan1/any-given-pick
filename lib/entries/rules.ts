@@ -51,3 +51,15 @@ export function validateEntrySelections(input: {
 
   return { picks, issues };
 }
+
+export function sanitizeDraftPicks(
+  games: EntryGameRule[],
+  picks: Record<string, string>,
+): Record<string, string> {
+  return validateEntrySelections({
+    games,
+    picks,
+    mondayPrediction: null,
+    requireComplete: false,
+  }).picks;
+}

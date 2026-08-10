@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateEntrySelections } from "./rules";
+import { sanitizeDraftPicks, validateEntrySelections } from "./rules";
 
 const games = [
   { id: "game-1", awayTeamCode: "IND", homeTeamCode: "CHI" },
@@ -57,5 +57,19 @@ describe("validateEntrySelections", () => {
       "unknown_game",
       "invalid_monday_prediction",
     ]);
+  });
+
+  it("removes stale selections while preserving picks for the current slate", () => {
+    expect(
+      sanitizeDraftPicks(games, {
+        "game-1": "CHI",
+        "game-2": "MIA",
+        "replaced-game": "NYJ",
+      }),
+    ).toEqual({ "game-1": "CHI", "game-2": "MIA" });
+  });
+
+  it("removes a selection when its team no longer matches the game", () => {
+    expect(sanitizeDraftPicks(games, { "game-1": "DET" })).toEqual({});
   });
 });

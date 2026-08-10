@@ -167,7 +167,7 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
       };
     });
 
-    revalidatePath("/");
+    if (result.ok) revalidatePath("/");
     return result;
   } catch (error) {
     return failureFromError(error);
@@ -344,7 +344,7 @@ export async function submitEntry(
       };
     });
 
-    revalidatePath("/");
+    if (result.ok) revalidatePath("/");
     return result;
   } catch (error) {
     return failureFromError(error);

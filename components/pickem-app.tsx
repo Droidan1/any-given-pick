@@ -5,6 +5,7 @@ import { UserButton } from "@clerk/nextjs";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import type { AccountSummary } from "@/lib/account-types";
+import { sanitizeDraftPicks } from "@/lib/entries/rules";
 import type { PlayerGame, PlayerWeek } from "@/lib/entries/types";
 import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
@@ -18,6 +19,17 @@ type ReceiptData = {
 };
 
 const LEGACY_DRAFT_STORAGE_KEY = "any-given-pick-draft:v1";
+
+function picksForCurrentSlate(games: PlayerGame[], picks: Picks): Picks {
+  return sanitizeDraftPicks(
+    games.map((game) => ({
+      id: game.id,
+      awayTeamCode: game.away.abbreviation,
+      homeTeamCode: game.home.abbreviation,
+    })),
+    picks,
+  );
+}
 
 const navItems: { view: View; label: string; icon: IconName }[] = [
   { view: "home", label: "Home", icon: "home" },
@@ -37,7 +49,9 @@ const standings = [
 
 export function PickemApp({ account, week, isAdmin }: { account: AccountSummary; week: PlayerWeek | null; isAdmin: boolean }) {
   const [view, setView] = useState<View>("picks");
-  const [picks, setPicks] = useState<Picks>(() => week?.entry?.draftPicks ?? {});
+  const [picks, setPicks] = useState<Picks>(() =>
+    picksForCurrentSlate(week?.games ?? [], week?.entry?.draftPicks ?? {}),
+  );
   const [mondayTotal, setMondayTotal] = useState(() => week?.entry?.mondayPrediction ?? 44);
   const [status, setStatus] = useState(week?.entry ? "Your saved entry is loaded." : "");
   const [reviewing, setReviewing] = useState(false);
@@ -77,7 +91,7 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
             baseVersion?: number;
           };
           if ((draft.baseVersion ?? 0) >= serverVersion) {
-            if (draft.picks) setPicks(draft.picks);
+            if (draft.picks) setPicks(picksForCurrentSlate(week.games, draft.picks));
             if (Number.isInteger(draft.mondayTotal)) setMondayTotal(draft.mondayTotal ?? 44);
           }
           if (!currentDraft && legacyDraft) {
@@ -124,7 +138,16 @@ export function PickemApp({ account, week, isAdmin }: { account: AccountSummary;
           picks,
           mondayPrediction: mondayTotal,
         });
-        if (result.ok) lastSavedPayloadRef.current = payload;
+        if (result.ok) {
+          lastSavedPayloadRef.current = payload;
+        } else if (result.code === "invalid_pick") {
+          const currentPicks = picksForCurrentSlate(week.games, picks);
+          if (JSON.stringify(currentPicks) !== JSON.stringify(picks)) {
+            setPicks(currentPicks);
+            setStatus("The schedule changed. Your valid picks were kept and the draft is syncing again.");
+            return;
+          }
+        }
         setStatus(result.message);
       });
     }, 700);
