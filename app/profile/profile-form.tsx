@@ -4,9 +4,14 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AccountSummary } from "@/lib/account-types";
 import {
-  initialProfileActionState,
   saveProfileAction,
+  type ProfileActionState,
 } from "./actions";
+
+const initialProfileActionState: ProfileActionState = {
+  status: "idle",
+  message: "",
+};
 
 type ProfileRecord = {
   displayName: string;

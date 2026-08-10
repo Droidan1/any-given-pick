@@ -18,11 +18,6 @@ export type ProfileActionState = {
   fieldErrors?: { displayName?: string[]; birthDate?: string[] };
 };
 
-export const initialProfileActionState: ProfileActionState = {
-  status: "idle",
-  message: "",
-};
-
 function isUniqueConstraintError(error: unknown): boolean {
   return Boolean(
     error &&

@@ -13,11 +13,6 @@ export type UserAccessActionState = {
   message: string;
 };
 
-export const initialUserAccessActionState: UserAccessActionState = {
-  status: "idle",
-  message: "",
-};
-
 const inputSchema = z.object({
   targetUserId: z.uuid(),
   intent: z.enum(["approve", "remove"]),

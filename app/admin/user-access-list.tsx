@@ -4,9 +4,14 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminUserDirectory, AdminUserListItem } from "@/lib/admin/users";
 import {
-  initialUserAccessActionState,
   manageUserAccessAction,
+  type UserAccessActionState,
 } from "./user-access-actions";
+
+const initialUserAccessActionState: UserAccessActionState = {
+  status: "idle",
+  message: "",
+};
 
 export function UserAccessList({ directory }: { directory: AdminUserDirectory }) {
   return (
