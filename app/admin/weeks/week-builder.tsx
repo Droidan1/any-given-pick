@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   formatWeekName,
   parseScheduleText,
-  PRESEASON_SCHEDULE_TEMPLATE,
-  SCHEDULE_TEMPLATE,
   validateWeekDetails,
   type ScheduleIssue,
   type SeasonPhase,
@@ -187,12 +185,6 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
     setResult(null);
   }
 
-  function loadExample() {
-    if (initialWeek) return;
-    setScheduleText(seasonPhase === "preseason" ? PRESEASON_SCHEDULE_TEMPLATE : SCHEDULE_TEMPLATE);
-    setResult(null);
-  }
-
   function handleSeasonPhase(nextPhase: SeasonPhase) {
     setSeasonPhase(nextPhase);
     setWeekNumber((current) => nextPhase === "preseason" ? Math.min(current, 4) : current);
@@ -314,11 +306,6 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
           </div>
         </div>
         <div className="admin-import-tools">
-          {!initialWeek ? (
-            <button type="button" onClick={loadExample} disabled={readOnly}>
-              Load {seasonPhase === "preseason" ? "preseason " : ""}example
-            </button>
-          ) : null}
           <label className="admin-file-control">
             <span>Open CSV or TSV</span>
             <input

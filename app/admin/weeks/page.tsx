@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
@@ -46,10 +47,21 @@ function scheduleTextForWeek(week: NonNullable<Awaited<ReturnType<typeof getAdmi
   ].join("\n");
 }
 
+function defaultWeekId(weeks: Awaited<ReturnType<typeof listAdminWeeks>>): string | null {
+  const now = Date.now();
+  const upcoming = weeks
+    .filter((week) => Date.parse(week.entryDeadline) > now)
+    .toSorted((left, right) => Date.parse(left.entryDeadline) - Date.parse(right.entryDeadline));
+  if (upcoming[0]) return upcoming[0].id;
+
+  return weeks
+    .toSorted((left, right) => Date.parse(right.entryDeadline) - Date.parse(left.entryDeadline))[0]?.id ?? null;
+}
+
 export default async function AdminWeeksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; new?: string }>;
 }) {
   await auth.protect();
   const appUser = await requireAppUser();
@@ -74,11 +86,16 @@ export default async function AdminWeeksPage({
     );
   }
 
-  const { week: selectedWeekId } = await searchParams;
+  const { week: selectedWeekId, new: createNewWeek } = await searchParams;
   const [weeks, selectedWeek] = await Promise.all([
     listAdminWeeks(),
     selectedWeekId ? getAdminWeek(selectedWeekId) : Promise.resolve(null),
   ]);
+
+  if (!selectedWeekId && createNewWeek !== "1") {
+    const nextWeekId = defaultWeekId(weeks);
+    if (nextWeekId) redirect(`/admin/weeks?week=${nextWeekId}`);
+  }
 
   return (
     <main className="admin-shell" data-design-seed="dbd731b4">
@@ -104,7 +121,7 @@ export default async function AdminWeeksPage({
             <h2>Season board</h2>
             <div className="admin-ledger__actions">
               <Link href="/admin/weeks/import" className="admin-season-import-link">Import season</Link>
-              <Link href="/admin/weeks" className="admin-new-week">New week</Link>
+              <Link href="/admin/weeks?new=1" className="admin-new-week">New week</Link>
             </div>
           </div>
           {weeks.length === 0 ? (
@@ -128,6 +145,7 @@ export default async function AdminWeeksPage({
         </aside>
 
         <AdminWeekBuilder
+          key={selectedWeek?.id ?? "new-week"}
           initialWeek={
             selectedWeek
               ? {

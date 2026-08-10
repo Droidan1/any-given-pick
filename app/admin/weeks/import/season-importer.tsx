@@ -384,7 +384,14 @@ export function SeasonImporter() {
               {result.message}
             </p>
           ) : null}
-          {result?.ok ? <Link className="season-import-result-link" href="/admin/weeks">Review and publish drafts in Week Operations</Link> : null}
+          {result?.ok ? (
+            <Link
+              className="season-import-result-link"
+              href={result.weekIds?.[0] ? `/admin/weeks?week=${result.weekIds[0]}` : "/admin/weeks"}
+            >
+              Open the first imported draft in Week Operations
+            </Link>
+          ) : null}
           {result?.code === "auth_required" ? (
             <Link className="season-import-auth-link" href={SIGN_IN_RECOVERY_URL}>Sign in again to finish the import</Link>
           ) : null}
