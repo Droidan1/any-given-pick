@@ -8,9 +8,19 @@ import { getCurrentPlayerWeek } from "@/lib/entries/service";
 import { getSeasonStandings } from "@/lib/standings/service";
 import { auth } from "@clerk/nextjs/server";
 
-export default async function Home() {
-  const { userId } = await auth();
+const initialViews = new Set(["home", "picks", "standings", "profile"] as const);
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const [{ userId }, params] = await Promise.all([auth(), searchParams]);
   if (!userId) redirect("/sign-in");
+
+  const initialView = initialViews.has(params.view as "home" | "picks" | "standings" | "profile")
+    ? params.view as "home" | "picks" | "standings" | "profile"
+    : "home";
 
   const appUser = await requireAppUser();
   const [account, week, isAdmin, standings] = await Promise.all([
@@ -30,6 +40,7 @@ export default async function Home() {
         isAdmin={isAdmin}
         draftOwnerId={appUser.id}
         standings={standings}
+        initialView={initialView}
       />
       <ServiceWorkerRegistration />
     </>

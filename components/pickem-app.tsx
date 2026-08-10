@@ -11,6 +11,7 @@ import type { PlayerGame, PlayerWeek } from "@/lib/entries/types";
 import type { StandingsSnapshot } from "@/lib/standings/types";
 import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
+import { MobileAppNav } from "./mobile-app-nav";
 
 type View = "home" | "picks" | "standings" | "groups" | "profile";
 type Picks = Record<string, string>;
@@ -54,14 +55,16 @@ export function PickemApp({
   isAdmin,
   draftOwnerId,
   standings,
+  initialView,
 }: {
   account: AccountSummary;
   week: PlayerWeek | null;
   isAdmin: boolean;
   draftOwnerId: string;
   standings: StandingsSnapshot;
+  initialView: "home" | "picks" | "standings" | "profile";
 }) {
-  const [view, setView] = useState<View>("home");
+  const [view, setView] = useState<View>(initialView);
   const [picks, setPicks] = useState<Picks>(() =>
     picksForCurrentSlate(week?.games ?? [], week?.entry?.draftPicks ?? {}),
   );
@@ -314,21 +317,11 @@ function AppFrame({
         <button className="mobile-brand" type="button" onClick={() => setView("home")} aria-label="Any Given Pick home"><BrandLockup /></button>
         {children}
       </section>
-      <nav className={`bottom-nav${isAdmin ? " bottom-nav--admin" : ""}`} aria-label="Primary navigation">
-        {navItems.filter((item) => item.view !== "groups" && item.view !== "standings").map((item) => (
-          <button className={`bottom-nav__item${view === item.view ? " bottom-nav__item--active" : ""}`} key={item.view} type="button" onClick={() => setView(item.view)} aria-current={view === item.view ? "page" : undefined}>
-            <Icon name={item.icon} /><span>{item.label}</span>
-          </button>
-        ))}
-        <Link className="bottom-nav__item bottom-nav__item--link" href="/activity">
-          <Icon name="activity" /><span>Activity</span>
-        </Link>
-        {isAdmin && (
-          <Link className="bottom-nav__item bottom-nav__item--link" href="/admin">
-            <Icon name="settings" /><span>Admin</span>
-          </Link>
-        )}
-      </nav>
+      <MobileAppNav
+        active={view === "groups" ? "home" : view}
+        isAdmin={isAdmin}
+        onSelectView={setView}
+      />
     </main>
   );
 }

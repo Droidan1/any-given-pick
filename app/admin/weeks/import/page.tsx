@@ -3,6 +3,7 @@ import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
+import { MobileAppNav } from "@/components/mobile-app-nav";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { SeasonImporter } from "./season-importer";
@@ -40,6 +41,7 @@ export default async function SeasonImportPage() {
           <p>Your account does not have permission to import a season.</p>
           <Link href="/" className="admin-return-link">Return to the player call sheet</Link>
         </section>
+        <MobileAppNav active="admin" />
       </main>
     );
   }
@@ -77,6 +79,7 @@ export default async function SeasonImportPage() {
         </aside>
         <SeasonImporter />
       </div>
+      <MobileAppNav active="admin" isAdmin />
     </main>
   );
 }

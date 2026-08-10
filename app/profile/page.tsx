@@ -4,6 +4,8 @@ import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
+import { MobileAppNav } from "@/components/mobile-app-nav";
+import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary, getProfileRecord } from "@/lib/eligibility/service";
 import { ProfileForm } from "./profile-form";
@@ -17,9 +19,10 @@ export const metadata: Metadata = {
 export default async function ProfilePage() {
   await auth.protect();
   const appUser = await requireAppUser();
-  const [account, profile] = await Promise.all([
+  const [account, profile, isAdmin] = await Promise.all([
     getAccountSummary(appUser.id),
     getProfileRecord(appUser.id),
+    hasAdminRole(appUser.id),
   ]);
   const accessBlocked = account.accountState !== "active";
   const approvalPending = account.reason === "approval_pending";
@@ -65,6 +68,7 @@ export default async function ProfilePage() {
           <ProfileForm account={account} profile={profile} />
         )}
       </section>
+      <MobileAppNav active="profile" isAdmin={isAdmin} />
     </main>
   );
 }

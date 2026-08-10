@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
+import { MobileAppNav } from "@/components/mobile-app-nav";
 import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getAdminWeek, listAdminWeeks } from "@/lib/admin/weeks";
 import { hasAdminRole } from "@/lib/auth/admin";
@@ -82,6 +83,7 @@ export default async function AdminWeeksPage({
           </p>
           <Link href="/" className="admin-return-link">Return to the player call sheet</Link>
         </section>
+        <MobileAppNav active="admin" />
       </main>
     );
   }
@@ -162,6 +164,7 @@ export default async function AdminWeeksPage({
           }
         />
       </div>
+      <MobileAppNav active="admin" isAdmin />
     </main>
   );
 }

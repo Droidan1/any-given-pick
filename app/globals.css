@@ -683,6 +683,7 @@ body {
   background: var(--field-950);
   color: var(--paper-100);
   font-family: var(--font-ui);
+  overflow-x: clip;
   text-rendering: optimizeLegibility;
 }
 
@@ -2289,7 +2290,24 @@ button:disabled {
 
   .app-shell {
     display: block;
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  .account-shell,
+  .admin-shell,
+  .admin-access-shell {
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  .account-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+
+  .admin-header {
+    padding-top: env(safe-area-inset-top);
   }
 
   .side-nav {
@@ -2299,7 +2317,7 @@ button:disabled {
   .surface-account {
     position: absolute;
     right: 0.75rem;
-    top: 0.65rem;
+    top: calc(0.65rem + env(safe-area-inset-top));
     z-index: 12;
     display: block;
   }
@@ -2314,7 +2332,7 @@ button:disabled {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.45rem 1rem;
+    padding: max(0.45rem, env(safe-area-inset-top)) 1rem 0.45rem;
     border: 0;
     border-bottom: 1px solid var(--sage);
     background: var(--field-950);
@@ -2377,10 +2395,10 @@ button:disabled {
     right: 0;
     bottom: 0;
     z-index: 40;
-    min-height: calc(4.9rem + env(safe-area-inset-bottom));
+    min-height: calc(5.1rem + env(safe-area-inset-bottom));
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    padding: 0.35rem 0.4rem env(safe-area-inset-bottom);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 0.35rem max(0.2rem, env(safe-area-inset-right)) max(0.2rem, env(safe-area-inset-bottom)) max(0.2rem, env(safe-area-inset-left));
     border-top: 1px solid var(--sage);
     background: var(--field-950);
   }
@@ -2397,7 +2415,7 @@ button:disabled {
     color: var(--sage);
     cursor: pointer;
     font-family: var(--font-display);
-    font-size: 0.82rem;
+    font-size: clamp(0.67rem, 2.5vw, 0.8rem);
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -2405,7 +2423,7 @@ button:disabled {
   }
 
   .bottom-nav--admin {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .bottom-nav__item--active {
@@ -2413,8 +2431,8 @@ button:disabled {
   }
 
   .bottom-nav__item svg {
-    width: 1.55rem;
-    height: 1.55rem;
+    width: 1.45rem;
+    height: 1.45rem;
   }
 
   .single-view {

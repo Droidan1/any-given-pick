@@ -5,6 +5,7 @@ import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
+import { MobileAppNav } from "@/components/mobile-app-nav";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
@@ -263,6 +264,7 @@ export default async function ActivityPage() {
           )}
         </section>
       </section>
+      <MobileAppNav active="activity" isAdmin={isAdmin} />
     </main>
   );
 }

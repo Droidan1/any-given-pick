@@ -4,6 +4,7 @@ import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
+import { MobileAppNav } from "@/components/mobile-app-nav";
 import { listAdminUsers } from "@/lib/admin/users";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
@@ -41,6 +42,7 @@ export default async function AdminSettingsPage() {
           <p>Your account is signed in, but it does not have administrator access.</p>
           <Link href="/" className="admin-return-link">Return to the player call sheet</Link>
         </section>
+        <MobileAppNav active="admin" />
       </main>
     );
   }
@@ -100,6 +102,7 @@ export default async function AdminSettingsPage() {
           <p><strong>Protected controls.</strong> These links and pages are available only to accounts with an administrator role.</p>
         </footer>
       </section>
+      <MobileAppNav active="admin" isAdmin />
     </main>
   );
 }
