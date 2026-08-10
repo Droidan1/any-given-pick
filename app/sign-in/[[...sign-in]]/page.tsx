@@ -23,7 +23,7 @@ export default function SignInPage() {
         routing="path"
         path="/sign-in"
         signUpUrl="/sign-up"
-        fallbackRedirectUrl="/profile"
+        fallbackRedirectUrl="/"
       />
       <section className="auth-game-plan" aria-labelledby="game-plan-title">
         <h2 id="game-plan-title">How the game works</h2>
