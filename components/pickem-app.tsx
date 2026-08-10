@@ -57,7 +57,7 @@ const standings = [
 ];
 
 export function PickemApp({ account, week, isAdmin }: { account: AccountSummary; week: PlayerWeek | null; isAdmin: boolean }) {
-  const [view, setView] = useState<View>("picks");
+  const [view, setView] = useState<View>("home");
   const [picks, setPicks] = useState<Picks>(() =>
     picksForCurrentSlate(week?.games ?? [], week?.entry?.draftPicks ?? {}),
   );
