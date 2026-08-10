@@ -35,6 +35,7 @@ type WeekRequest = {
   seasonPhase: SeasonPhase;
   seasonType: 1 | 2;
   weekNumber: number;
+  providerWeekNumber: number;
 };
 
 function normalizeTeamCode(value: string): string {
@@ -150,7 +151,7 @@ async function fetchWeek(season: number, request: WeekRequest): Promise<Provider
   const query = new URLSearchParams({
     dates: String(season),
     seasontype: String(request.seasonType),
-    week: String(request.weekNumber),
+    week: String(request.providerWeekNumber),
     limit: "100",
   });
   const response = await fetch(`${ESPN_SCOREBOARD_URL}?${query}`, {
@@ -181,19 +182,25 @@ async function mapInBatches<T, R>(items: T[], size: number, mapper: (item: T) =>
   return results;
 }
 
-export async function fetchEspnSeasonSchedule(season: number): Promise<ProviderSchedule> {
-  const requests: WeekRequest[] = [
-    ...Array.from({ length: 4 }, (_, index) => ({
+export function buildSeasonWeekRequests(): WeekRequest[] {
+  return [
+    ...Array.from({ length: 3 }, (_, index) => ({
       seasonPhase: "preseason" as const,
       seasonType: 1 as const,
       weekNumber: index + 1,
+      providerWeekNumber: index + 2,
     })),
     ...Array.from({ length: 18 }, (_, index) => ({
       seasonPhase: "regular" as const,
       seasonType: 2 as const,
       weekNumber: index + 1,
+      providerWeekNumber: index + 1,
     })),
   ];
+}
+
+export async function fetchEspnSeasonSchedule(season: number): Promise<ProviderSchedule> {
+  const requests = buildSeasonWeekRequests();
   const weeks = await mapInBatches(requests, 6, (request) => fetchWeek(season, request));
   const games = weeks.flat();
   const seenKeys = new Set<string>();
@@ -205,8 +212,8 @@ export async function fetchEspnSeasonSchedule(season: number): Promise<ProviderS
   }
 
   const warnings: string[] = [];
-  if (season === 2026 && games.length !== 321) {
-    warnings.push(`The feed currently has ${games.length} games; the complete 2026 preseason and regular season should have 321. Verify the slate before creating drafts.`);
+  if (season === 2026 && games.length !== 320) {
+    warnings.push(`The feed currently has ${games.length} games; the complete 2026 contest schedule should have 320 after excluding the Hall of Fame game. Verify the slate before creating drafts.`);
   }
 
   return {

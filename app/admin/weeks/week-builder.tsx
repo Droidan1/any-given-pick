@@ -188,6 +188,7 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
   }
 
   function loadExample() {
+    if (initialWeek) return;
     setScheduleText(seasonPhase === "preseason" ? PRESEASON_SCHEDULE_TEMPLATE : SCHEDULE_TEMPLATE);
     setResult(null);
   }
@@ -313,9 +314,11 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
           </div>
         </div>
         <div className="admin-import-tools">
-          <button type="button" onClick={loadExample} disabled={readOnly}>
-            Load {seasonPhase === "preseason" ? "preseason " : ""}example
-          </button>
+          {!initialWeek ? (
+            <button type="button" onClick={loadExample} disabled={readOnly}>
+              Load {seasonPhase === "preseason" ? "preseason " : ""}example
+            </button>
+          ) : null}
           <label className="admin-file-control">
             <span>Open CSV or TSV</span>
             <input
@@ -325,7 +328,13 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
               disabled={readOnly}
             />
           </label>
-          <small>{preview.delimiter ? `${preview.delimiter}-separated detected` : "No schedule detected"}</small>
+          <small>
+            {initialWeek
+              ? `Editing ${preview.games.length} saved ${preview.games.length === 1 ? "game" : "games"}`
+              : preview.delimiter
+                ? `${preview.delimiter}-separated detected`
+                : "No schedule detected"}
+          </small>
         </div>
         <label className="admin-schedule-field">
           <span>Schedule data</span>

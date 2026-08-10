@@ -1,11 +1,12 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { formatWeekName } from "@/lib/admin/schedule-import";
 import { espnScheduleProvider } from "@/lib/admin/schedule-providers/espn";
 import type { ProviderSchedule } from "@/lib/admin/schedule-providers/types";
+import { findStaleSeasonDrafts } from "@/lib/admin/season-draft-reconciliation";
 import { parseSeasonScheduleText } from "@/lib/admin/season-import";
 import { requireAdminUser } from "@/lib/auth/admin";
 import type { AppUser } from "@/lib/auth/app-user";
@@ -28,6 +29,7 @@ const seasonSchema = z.number().int().min(2020).max(new Date().getFullYear() + 2
 const seasonImportSchema = z.object({
   season: seasonSchema,
   scheduleText: z.string().min(1).max(1_000_000),
+  replaceSeasonDrafts: z.boolean(),
 });
 
 const PROTECTED_WEEK_RACE = "PROTECTED_WEEK_RACE";
@@ -87,6 +89,7 @@ export async function fetchSeasonSchedule(input: {
 export async function importSeasonDrafts(input: {
   season: number;
   scheduleText: string;
+  replaceSeasonDrafts: boolean;
 }): Promise<SeasonImportActionResult> {
   let admin: AppUser;
   try {
@@ -99,11 +102,12 @@ export async function importSeasonDrafts(input: {
   const validated = seasonImportSchema.safeParse({
     season: input.season,
     scheduleText: input.scheduleText,
+    replaceSeasonDrafts: input.replaceSeasonDrafts,
   });
   if (!validated.success) {
     return { ok: false, message: "The season schedule is invalid or too large. Check the season and file, then try again." };
   }
-  const { scheduleText, season } = validated.data;
+  const { replaceSeasonDrafts, scheduleText, season } = validated.data;
   const parsed = parseSeasonScheduleText(scheduleText, season);
   const errors = parsed.issues.filter((issue) => issue.severity === "error");
 
@@ -142,6 +146,9 @@ export async function importSeasonDrafts(input: {
       }
 
       const importedWeekKeys = new Set(parsed.weeks.map((week) => `${week.seasonPhase}:${week.weekNumber}`));
+      const staleDrafts = replaceSeasonDrafts
+        ? findStaleSeasonDrafts(existingWeeks, parsed.weeks)
+        : [];
       const replacedDrafts = existingWeeks.filter((week) =>
         week.status === "draft" && importedWeekKeys.has(`${week.seasonPhase}:${week.weekNumber}`),
       ).length;
@@ -204,10 +211,30 @@ export async function importSeasonDrafts(input: {
         weekIds.push(savedWeek.id);
       }
 
+      if (staleDrafts.length > 0) {
+        await transaction.insert(auditEvents).values(staleDrafts.map((week) => ({
+          actorUserId: admin.id,
+          action: "contest_week.season_import_removed_stale_draft",
+          entityType: "contest_week",
+          entityId: week.id,
+          metadata: {
+            season,
+            season_phase: week.seasonPhase,
+            week_number: week.weekNumber,
+            schedule_source: "espn_schedule_sync",
+          },
+        })));
+        await transaction.delete(contestWeeks).where(inArray(
+          contestWeeks.id,
+          staleDrafts.map((week) => week.id),
+        ));
+      }
+
       return {
         ok: true as const,
         weekIds,
         replacedDrafts,
+        removedDrafts: staleDrafts.length,
       };
     });
   }
@@ -232,6 +259,6 @@ export async function importSeasonDrafts(input: {
   return {
     ok: true,
     weekIds: result.weekIds,
-    message: `${result.weekIds.length} private week ${result.weekIds.length === 1 ? "draft is" : "drafts are"} ready: ${createdDrafts} created and ${result.replacedDrafts} replaced. Publish a week from Week Operations before players can see its games.`,
+    message: `${result.weekIds.length} private week ${result.weekIds.length === 1 ? "draft is" : "drafts are"} ready: ${createdDrafts} created, ${result.replacedDrafts} replaced, and ${result.removedDrafts} obsolete ${result.removedDrafts === 1 ? "draft" : "drafts"} removed. Publish a week from Week Operations before players can see its games.`,
   };
 }

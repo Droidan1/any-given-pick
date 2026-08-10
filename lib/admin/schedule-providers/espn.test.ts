@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizeEspnWeek, providerGamesToCsv, type EspnEvent } from "./espn";
+import {
+  buildSeasonWeekRequests,
+  normalizeEspnWeek,
+  providerGamesToCsv,
+  type EspnEvent,
+} from "./espn";
 
 function event(input: {
   id: string;
@@ -23,7 +28,18 @@ function event(input: {
 }
 
 describe("ESPN schedule provider", () => {
-  it("maps the Hall of Fame game into preseason week 1", () => {
+  it("maps the three full ESPN preseason slates to NFL preseason weeks 1–3", () => {
+    const requests = buildSeasonWeekRequests();
+
+    expect(requests).toHaveLength(21);
+    expect(requests.filter((request) => request.seasonPhase === "preseason")).toEqual([
+      { seasonPhase: "preseason", seasonType: 1, weekNumber: 1, providerWeekNumber: 2 },
+      { seasonPhase: "preseason", seasonType: 1, weekNumber: 2, providerWeekNumber: 3 },
+      { seasonPhase: "preseason", seasonType: 1, weekNumber: 3, providerWeekNumber: 4 },
+    ]);
+  });
+
+  it("normalizes a preseason game into the requested contest week", () => {
     const games = normalizeEspnWeek([
       event({
         id: "401873271",

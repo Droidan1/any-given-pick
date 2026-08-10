@@ -129,6 +129,7 @@ export function SeasonImporter() {
         const nextResult = await importSeasonDrafts({
           season,
           scheduleText,
+          replaceSeasonDrafts: scheduleSource?.provider === "espn",
         });
         setResult(nextResult);
         if (nextResult.ok) router.refresh();
@@ -200,8 +201,9 @@ export function SeasonImporter() {
             <div className="season-sync-station__call">
               <strong>Actual schedule feed</strong>
               <p>
-                Load all four preseason slots and 18 regular-season weeks. Preseason
-                Week 1 includes the Hall of Fame Game.
+                Load the three full preseason slates and all 18 regular-season weeks.
+                Each preseason slate has 16 games; the standalone Hall of Fame game is
+                excluded from the pick&apos;em schedule.
               </p>
             </div>
             <button
@@ -374,7 +376,8 @@ export function SeasonImporter() {
           <p>
             This creates or replaces private drafts only. A published, locked, or final
             week stops the full import before any draft changes. Draft games appear to
-            players only after you publish that week from Week Operations.
+            players only after you publish that week from Week Operations. An actual
+            schedule sync also removes obsolete private drafts left by an earlier sync.
           </p>
           {result ? (
             <p className={result.ok ? "admin-result admin-result--success" : "admin-result admin-result--error"} role="status">
