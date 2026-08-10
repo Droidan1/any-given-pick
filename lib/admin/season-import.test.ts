@@ -2,12 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
   defaultWeekDeadline,
   parseSeasonScheduleText,
-  SEASON_SCHEDULE_TEMPLATE,
 } from "./season-import";
+
+const SEASON_SCHEDULE_FIXTURE = `season_phase,week_number,kickoff_at,away_code,away_name,home_code,home_name,tiebreaker,provider_game_key
+preseason,1,2026-08-13T19:00:00-04:00,DET,Detroit Lions,CIN,Cincinnati Bengals,,pre-001
+preseason,1,2026-08-16T20:00:00-04:00,CLE,Cleveland Browns,CHI,Chicago Bears,true,pre-002
+preseason,2,2026-08-21T19:30:00-04:00,CAR,Carolina Panthers,JAX,Jacksonville Jaguars,,pre-003
+regular,1,2026-09-10T20:20:00-04:00,DAL,Dallas Cowboys,NYG,New York Giants,,reg-001
+regular,1,2026-09-14T20:15:00-04:00,BAL,Baltimore Ravens,CIN,Cincinnati Bengals,,reg-002
+regular,2,2026-09-20T13:00:00-04:00,CHI,Chicago Bears,GB,Green Bay Packers,,reg-003
+regular,2,2026-09-21T20:15:00-04:00,BUF,Buffalo Bills,NYJ,New York Jets,,reg-004`;
 
 describe("parseSeasonScheduleText", () => {
   it("groups preseason and regular games into ordered private-week inputs", () => {
-    const result = parseSeasonScheduleText(SEASON_SCHEDULE_TEMPLATE, 2026);
+    const result = parseSeasonScheduleText(SEASON_SCHEDULE_FIXTURE, 2026);
 
     expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
     expect(result.gameCount).toBe(7);
@@ -20,7 +28,7 @@ describe("parseSeasonScheduleText", () => {
   });
 
   it("automatically chooses the latest Monday game for a regular week", () => {
-    const result = parseSeasonScheduleText(SEASON_SCHEDULE_TEMPLATE, 2026);
+    const result = parseSeasonScheduleText(SEASON_SCHEDULE_FIXTURE, 2026);
     const regularWeek = result.weeks.find((week) => week.seasonPhase === "regular" && week.weekNumber === 1);
 
     expect(regularWeek?.tiebreakerSelection).toBe("automatic");
@@ -28,7 +36,7 @@ describe("parseSeasonScheduleText", () => {
   });
 
   it("uses the latest preseason game when no tiebreaker is supplied", () => {
-    const result = parseSeasonScheduleText(SEASON_SCHEDULE_TEMPLATE, 2026);
+    const result = parseSeasonScheduleText(SEASON_SCHEDULE_FIXTURE, 2026);
     const preseasonWeek = result.weeks.find((week) => week.seasonPhase === "preseason" && week.weekNumber === 2);
 
     expect(preseasonWeek?.tiebreakerSelection).toBe("automatic");

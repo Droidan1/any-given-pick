@@ -5,7 +5,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatWeekName, type ScheduleIssue } from "@/lib/admin/schedule-import";
 import type { ProviderSchedule } from "@/lib/admin/schedule-providers/types";
-import { parseSeasonScheduleText, SEASON_SCHEDULE_TEMPLATE } from "@/lib/admin/season-import";
+import { parseSeasonScheduleText } from "@/lib/admin/season-import";
 import {
   fetchSeasonSchedule,
   importSeasonDrafts,
@@ -78,12 +78,6 @@ export function SeasonImporter() {
     setScheduleSource(null);
     setSyncError(null);
     setSyncNeedsSignIn(false);
-  }
-
-  function loadExample() {
-    setScheduleText(SEASON_SCHEDULE_TEMPLATE);
-    invalidateScheduleSync();
-    resetResult();
   }
 
   async function handleFile(file: File | undefined) {
@@ -242,7 +236,6 @@ export function SeasonImporter() {
           ))}
 
           <div className="admin-import-tools">
-            <button type="button" onClick={loadExample} disabled={isSyncPending || isImportPending}>Load demo data</button>
             <label className="admin-file-control">
               <span>Open CSV or TSV</span>
               <input
@@ -276,7 +269,6 @@ export function SeasonImporter() {
               Use preseason or regular for the phase and an ISO kickoff containing Z or
               a UTC offset.
             </p>
-            <p>The demo rows are fictional formatting examples. Do not publish them as a real schedule.</p>
             <p>
               Blank tiebreakers use the latest Monday game during the regular season and
               the latest game during preseason. If a regular week has no Monday game, mark

@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
   parseScheduleText,
-  PRESEASON_SCHEDULE_TEMPLATE,
-  SCHEDULE_TEMPLATE,
   validateWeekDetails,
 } from "./schedule-import";
 
+const SCHEDULE_FIXTURE = `kickoff_at,away_code,away_name,home_code,home_name,monday_tiebreaker,provider_game_key
+2026-09-11T20:20:00-04:00,DAL,Dallas Cowboys,PHI,Philadelphia Eagles,false,fixture-001
+2026-09-14T20:15:00-04:00,BAL,Baltimore Ravens,CLE,Cleveland Browns,true,fixture-002`;
+
+const PRESEASON_SCHEDULE_FIXTURE = `kickoff_at,away_code,away_name,home_code,home_name,monday_tiebreaker,provider_game_key
+2026-08-13T19:00:00-04:00,DET,Detroit Lions,CIN,Cincinnati Bengals,false,pre-fixture-001
+2026-08-16T20:00:00-04:00,CLE,Cleveland Browns,CHI,Chicago Bears,true,pre-fixture-002`;
+
 describe("parseScheduleText", () => {
   it("normalizes a valid CSV schedule", () => {
-    const result = parseScheduleText(SCHEDULE_TEMPLATE);
+    const result = parseScheduleText(SCHEDULE_FIXTURE);
 
     expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
     expect(result.delimiter).toBe("comma");
@@ -52,7 +58,7 @@ describe("parseScheduleText", () => {
 
   it("requires exactly one Monday tiebreaker", () => {
     const result = parseScheduleText(
-      SCHEDULE_TEMPLATE.replace("false,example-001", "true,example-001"),
+      SCHEDULE_FIXTURE.replace("false,fixture-001", "true,fixture-001"),
     );
 
     expect(result.issues).toContainEqual(
@@ -63,7 +69,7 @@ describe("parseScheduleText", () => {
 
 describe("validateWeekDetails", () => {
   it("rejects a deadline at or after kickoff", () => {
-    const games = parseScheduleText(SCHEDULE_TEMPLATE).games;
+    const games = parseScheduleText(SCHEDULE_FIXTURE).games;
     const issues = validateWeekDetails(
       {
         season: new Date().getUTCFullYear(),
@@ -79,7 +85,7 @@ describe("validateWeekDetails", () => {
   });
 
   it("accepts preseason weeks 1–4 and a non-Monday tiebreaker", () => {
-    const games = parseScheduleText(PRESEASON_SCHEDULE_TEMPLATE).games;
+    const games = parseScheduleText(PRESEASON_SCHEDULE_FIXTURE).games;
     const issues = validateWeekDetails(
       {
         season: new Date().getUTCFullYear(),
@@ -95,7 +101,7 @@ describe("validateWeekDetails", () => {
   });
 
   it("rejects a preseason week above four", () => {
-    const games = parseScheduleText(PRESEASON_SCHEDULE_TEMPLATE).games;
+    const games = parseScheduleText(PRESEASON_SCHEDULE_FIXTURE).games;
     const issues = validateWeekDetails(
       {
         season: new Date().getUTCFullYear(),

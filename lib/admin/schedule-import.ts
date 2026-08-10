@@ -350,11 +350,3 @@ export function validateWeekDetails(
 
   return issues;
 }
-
-export const SCHEDULE_TEMPLATE = `kickoff_at,away_code,away_name,home_code,home_name,monday_tiebreaker,provider_game_key
-2026-09-11T20:20:00-04:00,DAL,Dallas Cowboys,PHI,Philadelphia Eagles,false,example-001
-2026-09-14T20:15:00-04:00,BAL,Baltimore Ravens,CLE,Cleveland Browns,true,example-002`;
-
-export const PRESEASON_SCHEDULE_TEMPLATE = `kickoff_at,away_code,away_name,home_code,home_name,monday_tiebreaker,provider_game_key
-2026-08-06T20:00:00-04:00,LAC,Los Angeles Chargers,DET,Detroit Lions,false,preseason-example-001
-2026-08-09T16:00:00-04:00,IND,Indianapolis Colts,MIN,Minnesota Vikings,true,preseason-example-002`;

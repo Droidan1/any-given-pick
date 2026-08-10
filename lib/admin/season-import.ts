@@ -417,12 +417,3 @@ export function parseSeasonScheduleText(rawText: string, season: number): Season
     gameCount: weeks.reduce((total, week) => total + week.games.length, 0),
   };
 }
-
-export const SEASON_SCHEDULE_TEMPLATE = `season_phase,week_number,kickoff_at,away_code,away_name,home_code,home_name,tiebreaker,provider_game_key
-preseason,1,2026-08-06T20:00:00-04:00,LAC,Los Angeles Chargers,DET,Detroit Lions,,pre-001
-preseason,1,2026-08-09T16:00:00-04:00,IND,Indianapolis Colts,MIN,Minnesota Vikings,true,pre-002
-preseason,2,2026-08-13T19:00:00-04:00,PHI,Philadelphia Eagles,CLE,Cleveland Browns,,pre-003
-regular,1,2026-09-10T20:20:00-04:00,DAL,Dallas Cowboys,NYG,New York Giants,,reg-001
-regular,1,2026-09-14T20:15:00-04:00,BAL,Baltimore Ravens,CIN,Cincinnati Bengals,,reg-002
-regular,2,2026-09-20T13:00:00-04:00,CHI,Chicago Bears,GB,Green Bay Packers,,reg-003
-regular,2,2026-09-21T20:15:00-04:00,BUF,Buffalo Bills,NYJ,New York Jets,,reg-004`;
