@@ -2290,13 +2290,13 @@ button:disabled {
 
   .app-shell {
     display: block;
-    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(3.75rem + env(safe-area-inset-bottom));
   }
 
   .account-shell,
   .admin-shell,
   .admin-access-shell {
-    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(3.75rem + env(safe-area-inset-bottom));
   }
 
   .account-header {
@@ -2328,11 +2328,11 @@ button:disabled {
 
   .mobile-brand {
     width: 100%;
-    min-height: 3.6rem;
+    min-height: calc(3.6rem + env(safe-area-inset-top));
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: max(0.45rem, env(safe-area-inset-top)) 1rem 0.45rem;
+    padding: env(safe-area-inset-top) 1rem 0;
     border: 0;
     border-bottom: 1px solid var(--sage);
     background: var(--field-950);
@@ -2395,17 +2395,16 @@ button:disabled {
     right: 0;
     bottom: 0;
     z-index: 40;
-    min-height: calc(5.1rem + env(safe-area-inset-bottom));
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    padding: 0.35rem max(0.2rem, env(safe-area-inset-right)) max(0.2rem, env(safe-area-inset-bottom)) max(0.2rem, env(safe-area-inset-left));
+    padding: 0.2rem max(0.2rem, env(safe-area-inset-right)) max(0.15rem, env(safe-area-inset-bottom)) max(0.2rem, env(safe-area-inset-left));
     border-top: 1px solid var(--sage);
     background: var(--field-950);
   }
 
   .bottom-nav__item {
     min-width: 0;
-    min-height: 4.25rem;
+    min-height: 3.25rem;
     display: grid;
     place-items: center;
     align-content: center;
@@ -2415,7 +2414,7 @@ button:disabled {
     color: var(--sage);
     cursor: pointer;
     font-family: var(--font-display);
-    font-size: clamp(0.67rem, 2.5vw, 0.8rem);
+    font-size: clamp(0.64rem, 2.35vw, 0.75rem);
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -2431,12 +2430,16 @@ button:disabled {
   }
 
   .bottom-nav__item svg {
-    width: 1.45rem;
-    height: 1.45rem;
+    width: 1.3rem;
+    height: 1.3rem;
   }
 
   .single-view {
-    min-height: calc(100svh - 5rem);
+    min-height: calc(100dvh - 3.6rem - env(safe-area-inset-top));
+  }
+
+  .home-view {
+    align-content: start;
   }
 
   .pwa-utilities {
@@ -2658,7 +2661,7 @@ button:disabled {
   }
 
   .single-view {
-    padding: 3rem 1.25rem 7rem;
+    padding: clamp(1.5rem, 5svh, 2.5rem) 1.25rem 5.5rem;
   }
 
   .single-view h1 {
@@ -2676,6 +2679,21 @@ button:disabled {
 
   .prototype-note {
     padding-inline: 1rem;
+  }
+}
+
+@media (max-width: 61.25rem) and (max-height: 35rem) {
+  .single-view {
+    padding-top: 1.5rem;
+    padding-bottom: 4.75rem;
+  }
+
+  .single-view h1 {
+    font-size: clamp(3rem, 12vh, 4.25rem);
+  }
+
+  .single-view .lead {
+    margin-block: 0.75rem 1.25rem;
   }
 }
 
