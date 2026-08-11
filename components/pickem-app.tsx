@@ -13,7 +13,7 @@ import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
 import { MobileAppNav } from "./mobile-app-nav";
 
-type View = "home" | "picks" | "standings" | "groups" | "profile";
+type View = "home" | "picks" | "standings" | "profile";
 type Picks = Record<string, string>;
 type ReceiptData = {
   versionNumber: number;
@@ -45,7 +45,6 @@ const navItems: { view: View; label: string; icon: IconName }[] = [
   { view: "home", label: "Home", icon: "home" },
   { view: "picks", label: "Picks", icon: "picks" },
   { view: "standings", label: "Standings", icon: "standings" },
-  { view: "groups", label: "Groups", icon: "groups" },
   { view: "profile", label: "Profile", icon: "profile" },
 ];
 
@@ -272,7 +271,6 @@ export function PickemApp({
       )}
       {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => setView("picks")} account={account} />}
       {view === "standings" && <StandingsView standings={standings} currentUserId={draftOwnerId} />}
-      {view === "groups" && <GroupsView />}
       {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={account} isAdmin={isAdmin} />}
     </AppFrame>
   );
@@ -318,7 +316,7 @@ function AppFrame({
         {children}
       </section>
       <MobileAppNav
-        active={view === "groups" ? "home" : view}
+        active={view}
         isAdmin={isAdmin}
         onSelectView={setView}
       />
@@ -522,10 +520,6 @@ function StandingsView({
       </div>
     </section>
   );
-}
-
-function GroupsView() {
-  return <section className="single-view groups-view"><p className="week-label">Private groups</p><h1>Your locker room</h1><p className="lead">Private groups are admin-created and keep their entries, rules and standings separate from the public contest.</p><div className="empty-state"><Icon name="groups" /><h2>No group invitations yet</h2><p>An accepted invitation will appear here with its own weekly call sheet.</p></div></section>;
 }
 
 function ProfileView({ selectedTeams, totalGames, account, isAdmin }: { selectedTeams: string[]; totalGames: number; account: AccountSummary; isAdmin: boolean }) {

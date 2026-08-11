@@ -64,7 +64,7 @@ export function ProfilePhotoEditor() {
       <div className="profile-photo-card__copy">
         <p className="card-kicker">Roster photo</p>
         <h2 id="profile-photo-title">Add your profile photo</h2>
-        <p>Your photo appears with your Any Given Pick account and helps the group recognize you.</p>
+        <p>Your photo appears with your Any Given Pick account and helps other players recognize you.</p>
         <p
           className={`profile-photo-card__status${uploadState.status === "error" ? " profile-photo-card__status--error" : ""}`}
           aria-live="polite"
