@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { and, eq, lt } from "drizzle-orm";
 import { z } from "zod";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getDb } from "@/lib/db";
 import { auditEvents, eligibilityChecks } from "@/lib/db/schema";
 import { getAccountSummary } from "@/lib/eligibility/service";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -77,6 +79,21 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
+  const rateLimit = await consumeRateLimit({
+    scope: "eligibility_location",
+    identifier: appUser.id,
+    limit: 20,
+    windowMs: 60 * 60 * 1_000,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many location checks. Wait before trying again." },
+      {
+        status: 429,
+        headers: { "Retry-After": rateLimit.retryAfterSeconds.toString() },
+      },
+    );
+  }
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
 
   if (!parsed.success) {
@@ -110,6 +127,11 @@ export async function POST(request: Request) {
   const db = getDb();
 
   await db.transaction(async (transaction) => {
+    const retentionCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1_000);
+    await transaction
+      .delete(eligibilityChecks)
+      .where(and(eq(eligibilityChecks.userId, appUser.id), lt(eligibilityChecks.expiresAt, retentionCutoff)));
+
     await transaction.insert(eligibilityChecks).values({
       userId: appUser.id,
       ageResult: before.ageEligible === true,

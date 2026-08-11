@@ -49,6 +49,7 @@ export type EntryActionResult = {
     | "ineligible"
     | "incomplete"
     | "invalid_pick"
+    | "rate_limited"
     | "server_error";
   message: string;
   syncedAt?: string;

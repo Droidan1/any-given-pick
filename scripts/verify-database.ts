@@ -10,9 +10,12 @@ const expectedTables = [
   "profiles",
   "roles",
   "games",
+  "operational_alerts",
   "entry_versions",
   "entry_version_picks",
+  "privacy_requests",
   "provider_sync_states",
+  "rate_limit_buckets",
   "user_roles",
   "users",
 ];
@@ -140,7 +143,7 @@ async function main() {
     await verifyDatabaseGuards(pool);
 
     console.log(
-      "Database verified: 14 tables, 3 roles, contest-week guards, unique display names, and append-only audit events.",
+      "Database verified: 17 tables, 3 roles, contest-week guards, unique display names, privacy operations, rate limiting, and append-only audit events.",
     );
   } finally {
     await pool.end();

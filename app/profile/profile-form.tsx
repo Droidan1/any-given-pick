@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AccountSummary } from "@/lib/account-types";
@@ -146,6 +147,7 @@ export function ProfileForm({
           </label>
           <p id="birth-date-help" className="field-help">
             Used only to derive age eligibility. It is never written to application logs.
+            {" "}<Link href="/privacy">How profile data is handled.</Link>
           </p>
           <p id="birth-date-error" className="field-error">
             {actionState.fieldErrors?.birthDate?.[0]}
@@ -170,6 +172,7 @@ export function ProfileForm({
           Your browser shares a one-time coordinate with this server. The U.S. Census
           geography service identifies the state; coordinates are not stored.
         </p>
+        <p className="field-help">Selecting Verify this session sends the coordinate for this state check. Read the <Link href="/privacy">Privacy notice</Link>.</p>
         <button
           className="review-action"
           type="button"

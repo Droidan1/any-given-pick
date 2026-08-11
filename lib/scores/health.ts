@@ -3,7 +3,9 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { providerSyncStates } from "@/lib/db/schema";
+import { reportOperationalIssue, resolveOperationalIssue } from "@/lib/monitoring/operational-alerts";
 import { syncRecentEspnScores, type ScoreSyncSummary } from "./sync";
+import { scoreSyncFreshnessWindowMinutes } from "./watchdog-policy";
 
 const SCORE_SYNC_KEY = "espn_scores";
 const SCORE_SYNC_PROVIDER = "espn";
@@ -50,6 +52,34 @@ export async function getScoreSyncHealth(): Promise<ScoreSyncHealth> {
   return serializeHealth(row);
 }
 
+export async function evaluateScoreSyncWatchdog(now = new Date()): Promise<{
+  health: ScoreSyncHealth;
+  ready: boolean;
+  freshnessWindowMinutes: number;
+}> {
+  const health = await getScoreSyncHealth();
+  const freshnessWindowMinutes = scoreSyncFreshnessWindowMinutes(now);
+  const lastAttemptAgeMs = health.lastAttemptAt
+    ? now.getTime() - new Date(health.lastAttemptAt).getTime()
+    : Number.POSITIVE_INFINITY;
+  const ready = health.status !== "failed"
+    && lastAttemptAgeMs < freshnessWindowMinutes * 60 * 1_000;
+
+  if (ready) {
+    await resolveOperationalIssue("score_sync_watchdog", "scheduler_freshness");
+  } else {
+    await reportOperationalIssue({
+      kind: "score_sync_watchdog",
+      identity: "scheduler_freshness",
+      severity: "warning",
+      message: "The score-sync scheduler is stale, has not started, or most recently failed.",
+      context: { status: health.status, freshnessWindowMinutes },
+      now,
+    });
+  }
+  return { health, ready, freshnessWindowMinutes };
+}
+
 export async function runEspnScoreSyncWithHealth(
   now = new Date(),
 ): Promise<ScoreSyncSummary> {
@@ -91,17 +121,42 @@ export async function runEspnScoreSyncWithHealth(
         updatedAt: now,
       })
       .where(eq(providerSyncStates.key, SCORE_SYNC_KEY));
+    if (errorMessage) {
+      await reportOperationalIssue({
+        kind: "score_sync",
+        identity: SCORE_SYNC_KEY,
+        severity: "warning",
+        message: errorMessage,
+        context: {
+          checkedWeeks: summary.checkedWeeks,
+          checkedGames: summary.checkedGames,
+          updatedGames: summary.updatedGames,
+        },
+        now,
+      });
+    } else {
+      await resolveOperationalIssue("score_sync", SCORE_SYNC_KEY);
+    }
     return summary;
   } catch (error) {
+    const errorMessage = normalizeError(error);
     await db
       .update(providerSyncStates)
       .set({
         status: "failed",
         lastFailureAt: now,
-        errorMessage: normalizeError(error),
+        errorMessage,
         updatedAt: now,
       })
       .where(eq(providerSyncStates.key, SCORE_SYNC_KEY));
+    await reportOperationalIssue({
+      kind: "score_sync",
+      identity: SCORE_SYNC_KEY,
+      severity: "error",
+      message: errorMessage,
+      context: { provider: SCORE_SYNC_PROVIDER },
+      now,
+    });
     throw error;
   }
 }

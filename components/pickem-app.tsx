@@ -461,7 +461,7 @@ function Receipt({ receipt, picks, mondayTotal, tiebreakerLabel, onEdit, locked 
 
 function HomeView({ selectedCount, onContinue, account, week }: { selectedCount: number; onContinue: () => void; account: AccountSummary; week: PlayerWeek }) {
   return (
-    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">Finish and submit your entry before {week.deadlineLabel}.</p><div className="home-status"><Icon name="shield" /><span>{account.reasonLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div><button className="review-action" type="button" onClick={onContinue}><span>{selectedCount ? "Continue your picks" : "Make your picks"}</span><Icon name="arrow" /></button></section>
+    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">Finish and submit your entry before {week.deadlineLabel}.</p><div className="home-status"><Icon name="shield" /><span>{account.reasonLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div><button className="review-action" type="button" onClick={onContinue}><span>{selectedCount ? "Continue your picks" : "Make your picks"}</span><Icon name="arrow" /></button><div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
   );
 }
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SignIn } from "@clerk/nextjs";
 import { BrandLockup } from "@/components/brand-lockup";
+import { PublicSiteFooter } from "@/components/public-site-footer";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -48,6 +49,7 @@ export default function SignInPage() {
           </p>
         </div>
       </section>
+      <PublicSiteFooter />
     </main>
   );
 }

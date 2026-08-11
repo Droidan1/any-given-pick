@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { runEspnScoreSyncWithHealth } from "@/lib/scores/health";
+import { cleanupExpiredRateLimitBuckets } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +34,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    const summary = await runEspnScoreSyncWithHealth();
+    const [summary] = await Promise.all([
+      runEspnScoreSyncWithHealth(),
+      cleanupExpiredRateLimitBuckets(),
+    ]);
     return Response.json(summary, {
       status: summary.errors.length > 0 ? 502 : 200,
       headers: { "Cache-Control": "no-store" },

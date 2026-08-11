@@ -6,10 +6,13 @@ import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
 import { listAdminUsers } from "@/lib/admin/users";
+import { listPendingPrivacyRequests } from "@/lib/admin/privacy-requests";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { isUserApprovalRequired } from "@/lib/auth/user-approval";
-import { getScoreSyncHealth, type ScoreSyncStatus } from "@/lib/scores/health";
+import { evaluateScoreSyncWatchdog, type ScoreSyncStatus } from "@/lib/scores/health";
+import { listActiveOperationalAlerts } from "@/lib/monitoring/operational-alerts";
+import { PrivacyRequestList } from "./privacy-request-list";
 import { UserAccessList } from "./user-access-list";
 
 export const metadata: Metadata = {
@@ -70,11 +73,14 @@ export default async function AdminSettingsPage() {
     );
   }
 
-  const [userDirectory, scoreHealth] = await Promise.all([
+  const [userDirectory, scoreHealth, privacyRequests, operationalAlerts] = await Promise.all([
     listAdminUsers(appUser.id),
-    getScoreSyncHealth(),
+    evaluateScoreSyncWatchdog().then((result) => result.health),
+    listPendingPrivacyRequests(),
+    listActiveOperationalAlerts(),
   ]);
   const approvalRequired = isUserApprovalRequired();
+  const alertEmailConfigured = Boolean(process.env.RESEND_API_KEY);
 
   return (
     <main className="admin-shell" data-design-seed="dbd731b4">
@@ -105,6 +111,30 @@ export default async function AdminSettingsPage() {
         </div>
 
         <UserAccessList directory={userDirectory} />
+
+        <PrivacyRequestList requests={privacyRequests} />
+
+        <section className="admin-operations-health" aria-labelledby="operations-health-title">
+          <header className="admin-settings-section-heading">
+            <h2 id="operations-health-title">Operations monitor</h2>
+            <p>Unhandled server errors and score-feed failures are recorded here. Email delivery is attempted without including birth dates, coordinates, profile photos, email addresses, or pick selections.</p>
+            <span className="admin-status-stamp">
+              Alert email {alertEmailConfigured ? "on" : "needs setup"}
+            </span>
+          </header>
+          {operationalAlerts.length > 0 ? (
+            <div className="admin-operations-health__alerts">
+              {operationalAlerts.map((alert) => (
+                <article className={`admin-operation-alert admin-operation-alert--${alert.severity}`} key={alert.fingerprint}>
+                  <div><strong>{alert.kind.replaceAll("_", " ")}</strong><span>{alert.message}</span></div>
+                  <small>{alert.occurrenceCount} {alert.occurrenceCount === 1 ? "occurrence" : "occurrences"} · Last seen {formatSyncTime(alert.lastSeenAt)}</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="admin-operations-health__clear">No active operational alerts.</p>
+          )}
+        </section>
 
         <section className="admin-score-health" aria-labelledby="score-feed-title">
           <header className="admin-settings-section-heading admin-settings-section-heading--score">

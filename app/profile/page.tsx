@@ -8,6 +8,8 @@ import { MobileAppNav } from "@/components/mobile-app-nav";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary, getProfileRecord } from "@/lib/eligibility/service";
+import { getLatestAccountPrivacyRequest } from "@/lib/privacy/account-requests";
+import { AccountPrivacyControls } from "./account-privacy-controls";
 import { ProfileForm } from "./profile-form";
 import { ProfilePhotoEditor } from "./profile-photo-editor";
 
@@ -19,10 +21,11 @@ export const metadata: Metadata = {
 export default async function ProfilePage() {
   await auth.protect();
   const appUser = await requireAppUser();
-  const [account, profile, isAdmin] = await Promise.all([
+  const [account, profile, isAdmin, privacyRequest] = await Promise.all([
     getAccountSummary(appUser.id),
     getProfileRecord(appUser.id),
     hasAdminRole(appUser.id),
+    getLatestAccountPrivacyRequest(appUser.id),
   ]);
   const accessBlocked = account.accountState !== "active";
   const approvalPending = account.reason === "approval_pending";
@@ -51,7 +54,7 @@ export default async function ProfilePage() {
               : "One verified sign-in, a unique display name, age 21+, and an Indiana location check unlock participation. Everyone else keeps read-only access."}
           </p>
         </div>
-        <ProfilePhotoEditor />
+        {!accessBlocked ? <ProfilePhotoEditor /> : null}
         {accessBlocked ? (
           <section className="account-access-notice" aria-labelledby="account-access-title">
             <Icon name={approvalPending ? "clock" : "shield"} />
@@ -67,6 +70,7 @@ export default async function ProfilePage() {
         ) : (
           <ProfileForm account={account} profile={profile} />
         )}
+        <AccountPrivacyControls request={privacyRequest} />
       </section>
       <MobileAppNav active="profile" isAdmin={isAdmin} />
     </main>

@@ -22,6 +22,8 @@ import type {
   EntryActionResult,
   EntryMutationInput,
 } from "@/lib/entries/types";
+import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 const entryInputSchema = z.object({
   weekId: z.uuid(),
@@ -73,6 +75,15 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
 
   try {
     const appUser = await requireAppUser();
+    const rateLimit = await consumeRateLimit({
+      scope: "entry_draft",
+      identifier: appUser.id,
+      limit: 120,
+      windowMs: 10 * 60 * 1_000,
+    });
+    if (!rateLimit.allowed) {
+      return { ok: false, code: "rate_limited", message: "Draft syncing paused briefly. Wait a moment and try again." };
+    }
     await requireParticipationEligibility(appUser.id);
     const db = getDb();
 
@@ -169,6 +180,15 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
 
     return result;
   } catch (error) {
+    if (!(error instanceof ParticipationForbiddenError)) {
+      await reportOperationalIssue({
+        kind: "entry_draft",
+        identity: error instanceof Error ? error.name : "unknown",
+        severity: "error",
+        message: "A player draft could not be saved.",
+        context: { action: "save_draft" },
+      });
+    }
     return failureFromError(error);
   }
 }
@@ -181,6 +201,15 @@ export async function submitEntry(
 
   try {
     const appUser = await requireAppUser();
+    const rateLimit = await consumeRateLimit({
+      scope: "entry_submission",
+      identifier: appUser.id,
+      limit: 20,
+      windowMs: 60 * 60 * 1_000,
+    });
+    if (!rateLimit.allowed) {
+      return { ok: false, code: "rate_limited", message: "Too many submission attempts. Wait before trying again." };
+    }
     const account = await requireParticipationEligibility(appUser.id);
     const db = getDb();
 
@@ -346,6 +375,15 @@ export async function submitEntry(
     if (result.ok) revalidatePath("/");
     return result;
   } catch (error) {
+    if (!(error instanceof ParticipationForbiddenError)) {
+      await reportOperationalIssue({
+        kind: "entry_submission",
+        identity: error instanceof Error ? error.name : "unknown",
+        severity: "error",
+        message: "An official player entry could not be submitted.",
+        context: { action: "submit_entry" },
+      });
+    }
     return failureFromError(error);
   }
 }

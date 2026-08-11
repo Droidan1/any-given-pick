@@ -63,6 +63,12 @@ export const entryStatusEnum = pgEnum("entry_status", [
   "disqualified",
 ]);
 
+export const privacyRequestStatusEnum = pgEnum("privacy_request_status", [
+  "pending",
+  "canceled",
+  "completed",
+]);
+
 export const users = pgTable(
   "users",
   {
@@ -218,6 +224,74 @@ export const providerSyncStates = pgTable(
       "provider_sync_states_counts_nonnegative_check",
       sql`${table.checkedWeeks} >= 0 and ${table.checkedGames} >= 0 and ${table.updatedGames} >= 0`,
     ),
+  ],
+);
+
+export const privacyRequests = pgTable(
+  "privacy_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    status: privacyRequestStatusEnum("status").notNull().default("pending"),
+    previousAccountState: accountStateEnum("previous_account_state").notNull(),
+    previousStateReason: text("previous_state_reason"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    canceledAt: timestamp("canceled_at", { withTimezone: true }),
+    processingAt: timestamp("processing_at", { withTimezone: true }),
+    processingByUserId: uuid("processing_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedByUserId: uuid("completed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("privacy_requests_status_requested_idx").on(table.status, table.requestedAt),
+    uniqueIndex("privacy_requests_one_pending_per_user")
+      .on(table.userId)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
+
+export const rateLimitBuckets = pgTable(
+  "rate_limit_buckets",
+  {
+    key: varchar("key", { length: 64 }).primaryKey(),
+    scope: varchar("scope", { length: 64 }).notNull(),
+    requestCount: integer("request_count").notNull().default(1),
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("rate_limit_buckets_expires_idx").on(table.expiresAt),
+    check("rate_limit_buckets_count_positive", sql`${table.requestCount} > 0`),
+  ],
+);
+
+export const operationalAlerts = pgTable(
+  "operational_alerts",
+  {
+    fingerprint: varchar("fingerprint", { length: 64 }).primaryKey(),
+    kind: varchar("kind", { length: 64 }).notNull(),
+    severity: varchar("severity", { length: 16 }).notNull(),
+    message: text("message").notNull(),
+    context: jsonb("context").$type<Record<string, unknown>>().notNull().default({}),
+    occurrenceCount: integer("occurrence_count").notNull().default(1),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("operational_alerts_active_idx").on(table.resolvedAt, table.lastSeenAt),
+    check("operational_alerts_severity_check", sql`${table.severity} in ('warning', 'error')`),
+    check("operational_alerts_count_positive", sql`${table.occurrenceCount} > 0`),
   ],
 );
 
