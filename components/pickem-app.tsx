@@ -302,6 +302,9 @@ function AppFrame({
           <Link className="nav-item nav-item--link" href="/activity">
             <Icon name="activity" /><span>My activity</span>
           </Link>
+          <Link className="nav-item nav-item--link" href="/results">
+            <Icon name="results" /><span>Results</span>
+          </Link>
           {isAdmin && (
             <Link className="nav-item nav-item--link" href="/admin">
               <Icon name="settings" /><span>Admin</span>
@@ -495,6 +498,7 @@ function StandingsView({
             </div>
           ))}
         </div>
+        <Link className="standings-results-link" href="/results">View weekly results <Icon name="arrow" /></Link>
       </section>
     );
   }
@@ -518,6 +522,7 @@ function StandingsView({
               : "Week 1 results will set the first official leaderboard."}
         </p>
       </div>
+      <Link className="standings-results-link" href="/results">View weekly results <Icon name="arrow" /></Link>
     </section>
   );
 }

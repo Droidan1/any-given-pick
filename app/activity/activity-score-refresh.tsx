@@ -7,6 +7,11 @@ const REFRESH_INTERVAL_MS = 60_000;
 
 type RefreshState = "checking" | "ready" | "paused";
 
+type ScoreHealth = {
+  status?: "idle" | "running" | "healthy" | "warning" | "failed";
+  lastSuccessAt?: string | null;
+};
+
 export function ActivityScoreRefresh() {
   const router = useRouter();
   const [state, setState] = useState<RefreshState>("checking");
@@ -27,9 +32,9 @@ export function ActivityScoreRefresh() {
       try {
         const response = await fetch("/api/activity/scores", { cache: "no-store" });
         if (!response.ok) throw new Error("Score refresh failed.");
-        const result = await response.json() as { updatedGames?: number };
-        if (active && (result.updatedGames ?? 0) > 0) router.refresh();
-        if (active) setState("ready");
+        const result = await response.json() as ScoreHealth;
+        if (active) router.refresh();
+        if (active) setState(result.status === "failed" ? "paused" : "ready");
       } catch {
         if (active) setState("paused");
       } finally {
@@ -48,10 +53,10 @@ export function ActivityScoreRefresh() {
     <p className={`activity-score-refresh activity-score-refresh--${state}`} aria-live="polite">
       <span aria-hidden="true" />
       {state === "checking"
-        ? "Checking final scores…"
+        ? "Checking stored results…"
         : state === "paused"
-          ? "Automatic score check will retry shortly."
-          : "Final scores update automatically every minute."}
+          ? "The score feed needs attention. Stored results will retry shortly."
+          : "Stored results refresh here every minute."}
     </p>
   );
 }

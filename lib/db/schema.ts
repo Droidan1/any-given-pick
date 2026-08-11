@@ -193,6 +193,34 @@ export const auditEvents = pgTable(
   (table) => [index("audit_events_target_created_idx").on(table.targetUserId, table.createdAt)],
 );
 
+export const providerSyncStates = pgTable(
+  "provider_sync_states",
+  {
+    key: varchar("key", { length: 64 }).primaryKey(),
+    provider: varchar("provider", { length: 48 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("idle"),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    lastFailureAt: timestamp("last_failure_at", { withTimezone: true }),
+    checkedWeeks: integer("checked_weeks").notNull().default(0),
+    checkedGames: integer("checked_games").notNull().default(0),
+    updatedGames: integer("updated_games").notNull().default(0),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "provider_sync_states_status_check",
+      sql`${table.status} in ('idle', 'running', 'healthy', 'warning', 'failed')`,
+    ),
+    check(
+      "provider_sync_states_counts_nonnegative_check",
+      sql`${table.checkedWeeks} >= 0 and ${table.checkedGames} >= 0 and ${table.updatedGames} >= 0`,
+    ),
+  ],
+);
+
 export const contestWeeks = pgTable(
   "contest_weeks",
   {

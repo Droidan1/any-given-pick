@@ -9,6 +9,7 @@ import { listAdminUsers } from "@/lib/admin/users";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { isUserApprovalRequired } from "@/lib/auth/user-approval";
+import { getScoreSyncHealth, type ScoreSyncStatus } from "@/lib/scores/health";
 import { UserAccessList } from "./user-access-list";
 
 export const metadata: Metadata = {
@@ -24,6 +25,28 @@ FIRST VIEWPORT: A compact booth header leads into the pending-first access roste
 FORM: Protected roster and task directory extending the established admin workspace; incumbent seed dbd731b4.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 -->`;
+
+const BUSINESS_TIME_ZONE = "America/Indiana/Indianapolis";
+
+function formatSyncTime(value: string | null): string {
+  if (!value) return "Never";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: BUSINESS_TIME_ZONE,
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(value));
+}
+
+function scoreStatusLabel(status: ScoreSyncStatus): string {
+  if (status === "healthy") return "Healthy";
+  if (status === "warning") return "Partial warning";
+  if (status === "failed") return "Needs attention";
+  if (status === "running") return "Checking now";
+  return "Not started";
+}
 
 export default async function AdminSettingsPage() {
   await auth.protect();
@@ -47,7 +70,10 @@ export default async function AdminSettingsPage() {
     );
   }
 
-  const userDirectory = await listAdminUsers(appUser.id);
+  const [userDirectory, scoreHealth] = await Promise.all([
+    listAdminUsers(appUser.id),
+    getScoreSyncHealth(),
+  ]);
   const approvalRequired = isUserApprovalRequired();
 
   return (
@@ -79,6 +105,27 @@ export default async function AdminSettingsPage() {
         </div>
 
         <UserAccessList directory={userDirectory} />
+
+        <section className="admin-score-health" aria-labelledby="score-feed-title">
+          <header className="admin-settings-section-heading admin-settings-section-heading--score">
+            <div>
+              <h2 id="score-feed-title">Score feed</h2>
+              <p>The secure production job checks active games every ten minutes during game windows, with a daily catch-up. Final scores can still be entered from contest-week controls.</p>
+            </div>
+            <span className={`admin-sync-stamp admin-sync-stamp--${scoreHealth.status}`}>
+              {scoreStatusLabel(scoreHealth.status)}
+            </span>
+          </header>
+          <div className="admin-score-health__grid">
+            <div><span>Last successful check</span><strong>{formatSyncTime(scoreHealth.lastSuccessAt)}</strong></div>
+            <div><span>Last attempt</span><strong>{formatSyncTime(scoreHealth.lastAttemptAt)}</strong></div>
+            <div><span>Games checked</span><strong>{scoreHealth.checkedGames}</strong></div>
+            <div><span>Games updated</span><strong>{scoreHealth.updatedGames}</strong></div>
+          </div>
+          {scoreHealth.errorMessage ? (
+            <p className="admin-score-health__error"><strong>Latest provider note:</strong> {scoreHealth.errorMessage}</p>
+          ) : null}
+        </section>
 
         <header className="admin-settings-section-heading">
           <h2>Schedule controls</h2>

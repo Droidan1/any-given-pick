@@ -34,11 +34,11 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Local recovery plus authenticated server-side draft sync
 - Explicit submit/edit flow with immutable version history and timestamped receipts
 - Database-time deadline enforcement for drafts and submissions
-- Sample home, standings, groups, and profile surfaces
-- Web app manifest, generated PWA icons, and offline service worker shell
+- Home, picks, standings, weekly results, activity archive, and profile surfaces
+- Web app manifest, generated PWA icons, and a static-asset-only offline service worker shell
 - Any Given Pick wordmark, route-mark icon, social-sharing image, and install identity
 - Original visual system with no NFL or team marks
-- Clerk email/password and Google authentication surfaces
+- Clerk passwordless email-code authentication surfaces
 - Internal Postgres user IDs mapped to verified Clerk identities
 - Unique case-normalized player names with 30-day history enforcement
 - Server-calculated age eligibility and session-time Indiana verification
@@ -47,14 +47,25 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Provider-neutral CSV/JSON schedule importer and admin week operations
 - Admin-only settings hub with direct links to week management and full-season import
 - Pending-first user approval roster with reversible access removal and audit history
+- Server-owned ESPN score checks with administrator-visible health and manual final-score fallback
+- Post-lock weekly card reveal using only each player's latest official submitted version
 - Full-season CSV/TSV import that groups preseason and regular-season games into private week drafts
 - Drizzle schema, committed migrations, seed task, and eligibility/entry rule tests
 
 ## Not connected yet
 
-Automated licensed sports-data ingestion, scoring, standings, notifications, prizes, private groups, and moderation remain future milestones. The current importer stays provider-neutral so an approved data source can be connected without rebuilding the contest engine.
+A licensed long-term sports-data provider, notifications, prizes, private groups, and moderation remain future milestones. Schedule importing stays provider-neutral so an approved source can replace the current provider without rebuilding the contest engine.
 
 Product truth is recorded in [PRODUCT.md](./PRODUCT.md). Design references are stored under `design/`.
+
+## Production score scheduler
+
+The score updater runs behind `GET /api/cron/scores` and requires `Authorization: Bearer <CRON_SECRET>`. Store the same high-entropy value in:
+
+- Vercel Production as `CRON_SECRET`
+- GitHub Actions as the repository secret `SCORE_SYNC_CRON_SECRET`
+
+The committed GitHub Actions workflow requests a sync every ten minutes during typical Thursday-through-Monday game windows, runs one daily catch-up, and can also be run manually. This bounded schedule avoids spending private-repository Actions minutes around the clock. Scheduled GitHub workflows can be delayed during periods of high load, so the Admin settings health panel records the latest attempt, success, provider warning, and update count. Commissioners can always enter a final score manually under **Admin settings → Manage contest weeks**.
 
 ## Temporary player approval gate
 

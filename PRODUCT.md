@@ -8,7 +8,7 @@ web
 
 ## Users
 
-The primary user is an Indiana adult age 21 or older who wants to make one complete set of weekly professional-football winner picks before a fixed deadline, then follow transparent scoring and standings. Visitors and ineligible or indeterminate-location users may browse public information and results in read-only mode. Admins configure contests, prizes, groups, moderation, and fulfillment without gaining visibility or scoring advantages.
+The primary user is an Indiana adult age 21 or older who wants to make one complete set of weekly professional-football winner picks before a fixed deadline, then follow transparent scoring and standings. Approved signed-in users can review official weekly results after lock. Admins approve players, configure schedules, publish weeks, monitor score health, and enter fallback results without gaining visibility or scoring advantages.
 
 ## Product Purpose
 
@@ -25,9 +25,9 @@ Most user activity happens on a phone around the weekly NFL schedule. The centra
 ## Capabilities and Constraints
 
 - Responsive PWA-oriented web application; no native iOS or Android app in the prototype.
-- Email/password and Google authentication in the first release.
+- Passwordless email-code authentication in the first release.
 - Participation requires a verified sign-in method, self-attested age 21+, active account, and server-verified Indiana location.
-- One public contest per NFL week; private contests are separate entries and are admin-created.
+- One shared contest per NFL week; every approved player uses the same published call sheet.
 - Every required pick and one whole-number Monday combined-score prediction are required for submission.
 - The server controls deadlines, eligibility, locking, reveal, and scoring authority.
 - Free entry only. No payments, entry fees, cash balances, cash prizes, withdrawals, odds, or wagering language.

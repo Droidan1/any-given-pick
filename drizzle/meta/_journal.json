@@ -43,6 +43,13 @@
       "when": 1786106173487,
       "tag": "0005_mysterious_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786479609637,
+      "tag": "0006_eager_iceman",
+      "breakpoints": true
     }
   ]
 }

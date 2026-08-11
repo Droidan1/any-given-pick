@@ -195,6 +195,7 @@ export default async function ActivityPage() {
         </Link>
         <div className="account-header__actions">
           <Link href="/" className="text-link">Current call sheet</Link>
+          <Link href="/results" className="text-link">Weekly results</Link>
           <Link href="/profile" className="text-link">Player card</Link>
           {isAdmin ? <Link href="/admin" className="text-link">Admin</Link> : null}
           <UserButton />
