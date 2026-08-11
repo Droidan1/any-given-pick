@@ -128,11 +128,16 @@ export default async function AdminSettingsPage() {
         </section>
 
         <header className="admin-settings-section-heading">
-          <h2>Schedule controls</h2>
-          <p>Import the season once, then review and publish each contest week.</p>
+          <h2>Contest controls</h2>
+          <p>Review official player cards, import the season, and publish each contest week.</p>
         </header>
         <nav className="admin-settings-list" aria-label="Administrator tools">
-          <Link href="/admin/weeks/import" className="admin-settings-call admin-settings-call--primary">
+          <Link href="/admin/picks" className="admin-settings-call admin-settings-call--primary">
+            <Icon name="results" />
+            <span><strong>Review player picks</strong><small>See who submitted and open every official card after lock.</small></span>
+            <Icon name="arrow" />
+          </Link>
+          <Link href="/admin/weeks/import" className="admin-settings-call">
             <Icon name="picks" />
             <span><strong>Import season schedule</strong><small>Add preseason and regular-season games from one file.</small></span>
             <Icon name="arrow" />

@@ -21,6 +21,501 @@
   color-scheme: dark;
 }
 
+/* Administrator player-picks ledger */
+.admin-picks-workspace {
+  width: min(100%, 88rem);
+  min-height: calc(100svh - 5.25rem);
+  margin: 0 auto;
+  background: var(--paper-100);
+  color: var(--ink);
+  box-shadow: 0 18px 50px var(--shadow);
+}
+
+.admin-picks-intro {
+  min-height: 19rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(2rem, 6vw, 4rem);
+  border-bottom: 1px solid var(--sage);
+  background: var(--field-900);
+  color: var(--paper-100);
+}
+
+.admin-picks-intro > div {
+  max-width: 62rem;
+}
+
+.admin-picks-intro h1 {
+  max-width: 12ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3.35rem, 8vw, 5rem);
+  line-height: 0.9;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.admin-picks-intro p {
+  max-width: 68ch;
+  margin: 1.25rem 0 0;
+  color: var(--paper-200);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.admin-picks-intro > svg {
+  width: clamp(4rem, 9vw, 7rem);
+  height: clamp(4rem, 9vw, 7rem);
+  color: var(--maize);
+}
+
+.admin-picks-week-picker {
+  display: grid;
+  grid-template-columns: auto minmax(14rem, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem clamp(1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--sage);
+  background: var(--paper-200);
+}
+
+.admin-picks-week-picker label,
+.admin-picks-week-picker button {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-picks-week-picker select {
+  min-width: 0;
+  min-height: 3.25rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--ink-soft);
+  border-radius: 0;
+  background: var(--paper-100);
+  color: var(--ink);
+  font: inherit;
+}
+
+.admin-picks-week-picker button {
+  min-height: 3.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--field-950);
+  background: var(--maize);
+  color: var(--field-950);
+  cursor: pointer;
+}
+
+.admin-picks-week-picker button svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.admin-picks-ledger-heading {
+  min-height: 8.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1.5rem clamp(1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--sage);
+}
+
+.admin-picks-ledger-heading h2,
+.admin-picks-ledger-heading p {
+  margin: 0;
+}
+
+.admin-picks-ledger-heading h2 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-picks-ledger-heading p {
+  margin-top: 0.5rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.admin-picks-lock-state,
+.admin-player-picks__status,
+.admin-pick-call > b {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-picks-lock-state {
+  flex: 0 0 auto;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--clay-deep);
+  color: var(--clay-deep);
+}
+
+.admin-picks-lock-state--revealed {
+  border-color: var(--field-900);
+  background: var(--field-900);
+  color: var(--paper-100);
+}
+
+.admin-picks-seal-note,
+.admin-picks-empty {
+  min-height: 12rem;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1.25rem;
+  padding: 2rem clamp(1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--sage);
+}
+
+.admin-picks-seal-note {
+  background: var(--field-900);
+  color: var(--paper-100);
+}
+
+.admin-picks-seal-note > svg,
+.admin-picks-empty > svg {
+  width: 3rem;
+  height: 3rem;
+  color: var(--maize);
+}
+
+.admin-picks-empty > svg {
+  color: var(--clay-deep);
+}
+
+.admin-picks-seal-note h2,
+.admin-picks-seal-note p,
+.admin-picks-empty h2,
+.admin-picks-empty p {
+  margin: 0;
+}
+
+.admin-picks-seal-note h2,
+.admin-picks-empty h2 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-picks-seal-note p,
+.admin-picks-empty p {
+  max-width: 68ch;
+  margin-top: 0.65rem;
+  color: var(--paper-200);
+  line-height: 1.55;
+}
+
+.admin-picks-empty p {
+  color: var(--ink-soft);
+}
+
+.admin-picks-empty--roster {
+  border-bottom: 0;
+}
+
+.admin-picks-roster {
+  border-bottom: 1px solid var(--sage);
+}
+
+.admin-player-picks {
+  border-bottom: 1px solid var(--sage);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 7rem;
+}
+
+.admin-player-picks:last-child {
+  border-bottom: 0;
+}
+
+.admin-player-picks > summary,
+.admin-player-picks--status {
+  min-height: 7rem;
+  display: grid;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem clamp(1rem, 4vw, 2.5rem);
+}
+
+.admin-player-picks > summary {
+  grid-template-columns: minmax(13rem, 1fr) auto 5.5rem 5.5rem 5.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-player-picks--status {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-player-picks > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-player-picks > summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.admin-player-picks[open] > summary {
+  background: var(--maize);
+}
+
+.admin-player-picks--status > strong,
+.admin-player-picks__identity > strong {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-player-picks__identity,
+.admin-player-picks__measure {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.admin-player-picks__identity small,
+.admin-player-picks__measure small,
+.admin-pick-call small {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.admin-player-picks__status {
+  width: fit-content;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--sage);
+}
+
+.admin-player-picks__status--submitted {
+  background: var(--field-900);
+  color: var(--paper-100);
+}
+
+.admin-player-picks__status--not_submitted {
+  color: var(--ink-soft);
+}
+
+.admin-player-picks__status--disqualified {
+  border-color: var(--clay-deep);
+  color: var(--clay-deep);
+}
+
+.admin-player-picks__measure {
+  text-align: center;
+}
+
+.admin-player-picks__measure strong {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.admin-player-picks__toggle {
+  color: var(--clay-deep);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.admin-player-picks__toggle-open {
+  display: none;
+}
+
+.admin-player-picks[open] .admin-player-picks__toggle-open {
+  display: inline;
+}
+
+.admin-player-picks[open] .admin-player-picks__toggle-closed {
+  display: none;
+}
+
+.admin-player-picks__calls {
+  border-top: 1px solid var(--field-900);
+}
+
+.admin-pick-call {
+  min-height: 5rem;
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.75fr) minmax(14rem, 1fr) 6rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem clamp(1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--sage);
+  background: var(--paper-200);
+}
+
+.admin-pick-call:last-child {
+  border-bottom: 0;
+}
+
+.admin-pick-call > span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.admin-pick-call > span:nth-child(2) small {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-pick-call > b {
+  justify-self: end;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--sage);
+}
+
+.admin-pick-call--won > b {
+  background: var(--field-900);
+  color: var(--paper-100);
+}
+
+.admin-pick-call--lost > b {
+  border-color: var(--clay-deep);
+  color: var(--clay-deep);
+}
+
+@media (max-width: 61rem) {
+  .admin-picks-workspace {
+    min-height: calc(100svh - 5.25rem);
+  }
+
+  .admin-player-picks > summary {
+    grid-template-columns: minmax(11rem, 1fr) auto 5rem 5rem 2rem;
+  }
+
+  .admin-player-picks__toggle {
+    display: none;
+  }
+
+  .admin-player-picks > summary::after {
+    content: "↓";
+    color: var(--clay-deep);
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    justify-self: end;
+    transition: transform 160ms ease;
+  }
+
+  .admin-player-picks[open] > summary::after {
+    transform: rotate(180deg);
+  }
+}
+
+@media (max-width: 42rem) {
+  .admin-picks-workspace {
+    min-height: calc(100svh - 4.5rem);
+  }
+
+  .admin-picks-intro {
+    min-height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 2.5rem 1.25rem 2rem;
+  }
+
+  .admin-picks-intro h1 {
+    font-size: 3.35rem;
+  }
+
+  .admin-picks-intro > svg {
+    display: none;
+  }
+
+  .admin-picks-week-picker {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+    padding: 1rem;
+  }
+
+  .admin-picks-ledger-heading {
+    min-height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem 1rem;
+  }
+
+  .admin-picks-seal-note,
+  .admin-picks-empty {
+    min-height: 11rem;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    align-items: start;
+    padding: 1.5rem 1rem;
+  }
+
+  .admin-picks-seal-note > svg,
+  .admin-picks-empty > svg {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .admin-player-picks > summary {
+    min-height: 8.5rem;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 0.7rem;
+    padding: 1rem;
+  }
+
+  .admin-player-picks__identity {
+    grid-column: 1 / -1;
+  }
+
+  .admin-player-picks__status {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .admin-player-picks__measure {
+    justify-self: end;
+  }
+
+  .admin-player-picks > summary::after {
+    grid-column: 4;
+    grid-row: 2;
+  }
+
+  .admin-player-picks--status {
+    padding: 1rem;
+  }
+
+  .admin-pick-call {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+  }
+
+  .admin-pick-call > span:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .admin-pick-call > b {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
 /* Player activity archive */
 .activity-sheet {
   width: min(100% - 2rem, 92rem);
