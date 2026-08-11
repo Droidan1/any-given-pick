@@ -19,8 +19,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   category: "sports",
   icons: {
-    icon: [{ url: "/pwa-icon-192", sizes: "192x192", type: "image/png" }],
-    apple: [{ url: "/pwa-icon-192", sizes: "192x192", type: "image/png" }],
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/pwa-icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    shortcut: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,

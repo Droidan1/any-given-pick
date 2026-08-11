@@ -1845,11 +1845,8 @@ button:disabled {
 .brand-lockup__mark {
   width: 3.5rem;
   height: 3.5rem;
-  fill: none;
-  stroke: var(--maize);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  display: block;
+  flex: 0 0 auto;
 }
 
 .brand-lockup__type {
