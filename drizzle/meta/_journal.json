@@ -71,6 +71,13 @@
       "when": 1786487452208,
       "tag": "0009_vengeful_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786494268322,
+      "tag": "0010_player_email_reminders",
+      "breakpoints": true
     }
   ]
 }

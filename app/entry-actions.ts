@@ -2,6 +2,7 @@
 
 import { and, asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { requireAppUser } from "@/lib/auth/app-user";
 import {
@@ -22,6 +23,7 @@ import type {
   EntryActionResult,
   EntryMutationInput,
 } from "@/lib/entries/types";
+import { queueAndProcessSubmissionConfirmation } from "@/lib/email/player-notifications";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 
@@ -372,7 +374,26 @@ export async function submitEntry(
       };
     });
 
-    if (result.ok) revalidatePath("/");
+    if (result.ok) {
+      after(async () => {
+        try {
+          await queueAndProcessSubmissionConfirmation({
+            userId: appUser.id,
+            weekId: parsed.data.weekId,
+            submissionKey: parsed.data.submissionKey,
+          });
+        } catch (error) {
+          await reportOperationalIssue({
+            kind: "player_email_queue",
+            identity: "picks_submitted",
+            severity: "warning",
+            message: "A picks-submitted email could not be queued or processed.",
+            context: { error_type: error instanceof Error ? error.name : "unknown" },
+          });
+        }
+      });
+      revalidatePath("/");
+    }
     return result;
   } catch (error) {
     if (!(error instanceof ParticipationForbiddenError)) {

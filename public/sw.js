@@ -1,6 +1,6 @@
 const CACHE_PREFIX = "any-given-pick-";
-const CACHE_NAME = `${CACHE_PREFIX}v4-static-only`;
-const APP_SHELL = ["/manifest.webmanifest", "/pwa-icon-192", "/pwa-icon-512"];
+const CACHE_NAME = `${CACHE_PREFIX}v5-static-only`;
+const APP_SHELL = ["/manifest.webmanifest", "/pwa-icon-192.png", "/pwa-icon-512.png"];
 
 function isCacheableStaticRequest(request) {
   if (request.method !== "GET") return false;

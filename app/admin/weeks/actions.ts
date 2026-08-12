@@ -2,6 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import {
   formatWeekName,
   parseScheduleText,
@@ -11,6 +12,12 @@ import {
 import { requireAdminUser } from "@/lib/auth/admin";
 import { getDb } from "@/lib/db";
 import { auditEvents, contestWeeks, games } from "@/lib/db/schema";
+import {
+  processQueuedPlayerEmails,
+  queueAndProcessWeekPublishedEmails,
+  queueAvailableResultsEmails,
+} from "@/lib/email/player-notifications";
+import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 
 export type AdminActionResult = {
   ok: boolean;
@@ -213,11 +220,27 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
 
     return {
       ok: true as const,
+      weekId: week.id,
       message: `${formatWeekName(week.seasonPhase, week.weekNumber)} is published.`,
     };
   });
 
-  if (result.ok) revalidatePath("/admin/weeks");
+  if (result.ok) {
+    after(async () => {
+      try {
+        await queueAndProcessWeekPublishedEmails(result.weekId);
+      } catch (error) {
+        await reportOperationalIssue({
+          kind: "player_email_queue",
+          identity: "week_published",
+          severity: "warning",
+          message: "A week-published email could not be queued or processed.",
+          context: { error_type: error instanceof Error ? error.name : "unknown" },
+        });
+      }
+    });
+    revalidatePath("/admin/weeks");
+  }
   return result;
 }
 
@@ -260,9 +283,25 @@ export async function saveFinalScore(input: {
       entityId: game.id,
       metadata: { contest_week_id: game.contestWeekId },
     });
-    return { ok: true as const, message: "Final score saved." };
+    return { ok: true as const, weekId: game.contestWeekId, message: "Final score saved." };
   });
 
-  if (result.ok) revalidatePath("/admin/weeks");
+  if (result.ok) {
+    after(async () => {
+      try {
+        await queueAvailableResultsEmails();
+        await processQueuedPlayerEmails();
+      } catch (error) {
+        await reportOperationalIssue({
+          kind: "player_email_queue",
+          identity: "results_available",
+          severity: "warning",
+          message: "A results-available email could not be queued or processed.",
+          context: { error_type: error instanceof Error ? error.name : "unknown" },
+        });
+      }
+    });
+    revalidatePath("/admin/weeks");
+  }
   return result;
 }

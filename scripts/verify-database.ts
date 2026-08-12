@@ -6,6 +6,8 @@ const expectedTables = [
   "contest_weeks",
   "contest_entries",
   "display_name_history",
+  "email_deliveries",
+  "email_notification_preferences",
   "eligibility_checks",
   "profiles",
   "roles",
@@ -143,7 +145,7 @@ async function main() {
     await verifyDatabaseGuards(pool);
 
     console.log(
-      "Database verified: 17 tables, 3 roles, contest-week guards, unique display names, privacy operations, rate limiting, and append-only audit events.",
+      "Database verified: 19 tables, 3 roles, contest-week guards, unique display names, email delivery records, privacy operations, rate limiting, and append-only audit events.",
     );
   } finally {
     await pool.end();

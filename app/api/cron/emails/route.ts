@@ -1,7 +1,5 @@
 import { runPlayerEmailCycle } from "@/lib/email/player-notifications";
-import { runEspnScoreSyncWithHealth } from "@/lib/scores/health";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
-import { cleanupExpiredRateLimitBuckets } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,11 +9,10 @@ export async function GET(request: Request) {
   const authorization = authorizeCronRequest(request);
   if (authorization === "unconfigured") {
     return Response.json(
-      { error: "Score synchronization is not configured." },
+      { error: "Email reminders are not configured." },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
-
   if (authorization === "unauthorized") {
     return Response.json(
       { error: "Unauthorized." },
@@ -24,18 +21,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [summary] = await Promise.all([
-      runEspnScoreSyncWithHealth(),
-      cleanupExpiredRateLimitBuckets(),
-    ]);
-    const emailSummary = await runPlayerEmailCycle();
-    return Response.json({ ...summary, emailSummary }, {
-      status: summary.errors.length > 0 ? 502 : 200,
+    const summary = await runPlayerEmailCycle();
+    return Response.json(summary, {
+      status: summary.failed > 0 ? 502 : 200,
       headers: { "Cache-Control": "no-store" },
     });
   } catch {
     return Response.json(
-      { error: "The score provider request failed." },
+      { error: "The email reminder cycle failed." },
       { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }

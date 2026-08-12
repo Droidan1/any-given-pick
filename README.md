@@ -55,10 +55,12 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Authenticated account deletion/anonymization requests with administrator completion
 - Database-backed rate limits for sensitive and write-heavy actions
 - Structured server-error and score-sync alerts with an administrator operations panel
+- Player email reminders for published weeks, approaching deadlines, submitted picks, and completed results
+- Per-player email preferences and idempotent delivery receipts without storing recipient addresses
 
 ## Not connected yet
 
-A licensed long-term sports-data provider, notifications, prizes, private groups, and moderation remain future milestones. Schedule importing stays provider-neutral so an approved source can replace the current provider without rebuilding the contest engine.
+A licensed long-term sports-data provider, PWA push notifications, prizes, private groups, and moderation remain future milestones. Schedule importing stays provider-neutral so an approved source can replace the current provider without rebuilding the contest engine.
 
 Product truth is recorded in [PRODUCT.md](./PRODUCT.md). Design references are stored under `design/`.
 
@@ -69,7 +71,7 @@ The score updater runs behind `GET /api/cron/scores` and requires `Authorization
 - Vercel Production as `CRON_SECRET`
 - GitHub Actions as the repository secret `SCORE_SYNC_CRON_SECRET`
 
-The committed GitHub Actions workflow requests a sync every ten minutes during typical Thursday-through-Monday game windows, runs one daily catch-up, and can also be run manually. A separate once-daily Vercel Cron in `vercel.json` provides an independent backstop if GitHub scheduling is interrupted. The health watchdog treats a sync older than 40 minutes as stale during those live windows and 30 hours outside them; poll `/api/health` from an external uptime check during beta so complete scheduler silence still triggers the PII-safe alert path. This bounded schedule avoids spending private-repository Actions minutes around the clock. Scheduled jobs can be delayed, so the Admin settings health panel records the latest attempt, success, provider warning, and update count. Commissioners can always enter a final score manually under **Admin settings → Manage contest weeks**.
+The committed score workflow requests a sync every ten minutes during typical Thursday-through-Monday game windows, runs one daily catch-up, and can also be run manually. A separate hourly GitHub workflow calls `/api/cron/emails` so deadline and results mail stays timely; publishing and submitting also trigger immediate delivery attempts. Two once-daily Vercel Crons in `vercel.json` independently backstop score and email processing if GitHub scheduling is interrupted. Both protected routes use the same `CRON_SECRET`, and the email workflow reuses the existing `SCORE_SYNC_CRON_SECRET` repository secret. The health watchdog treats a sync older than 40 minutes as stale during live windows and 30 hours outside them. This bounded schedule stays within the intended beta operations budget while deterministic delivery keys keep overlapping runs safe. Scheduled jobs can be delayed, so the Admin settings health panel records the latest score attempt, success, provider warning, and update count. Commissioners can always enter a final score manually under **Admin settings → Manage contest weeks**.
 
 ## Temporary player approval gate
 
@@ -79,7 +81,7 @@ Set `USER_APPROVAL_REQUIRED=false` and redeploy when manual approval is no longe
 
 ## Beta operations and privacy
 
-Public trust pages are available at `/rules`, `/privacy`, and `/support`. Direct support links email `brian@Droidan1.dev`. Automated privacy-request and operations alerts use Resend only when `RESEND_API_KEY` and `EMAIL_FROM` are configured; the application continues to record requests and alerts in Postgres when email is unavailable.
+Public trust pages are available at `/rules`, `/privacy`, and `/support`. Direct support links email `brian@Droidan1.dev`. Player reminders, privacy-request alerts, and operations alerts use Resend only when `RESEND_API_KEY` and `EMAIL_FROM` are configured. Player delivery attempts are recorded without copying Clerk email addresses into Postgres, and users can manage each reminder category from Profile.
 
 Set a separate high-entropy `RATE_LIMIT_SECRET` in Preview and Production. Rate limits are stored in Postgres so they apply across serverless instances. Vercel Firewall rules remain the recommended outer layer for broad IP- and bot-level abuse controls.
 

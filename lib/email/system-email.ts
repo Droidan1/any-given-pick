@@ -11,9 +11,11 @@ export type EmailDelivery =
   | { sent: true; id: string | null }
   | { sent: false; reason: "not_configured" | "provider_error" };
 
-export async function sendSystemEmail(input: {
+export async function sendEmail(input: {
+  to: string | string[];
   subject: string;
   text: string;
+  html?: string;
   replyTo?: string;
   idempotencyKey?: string;
 }): Promise<EmailDelivery> {
@@ -37,9 +39,10 @@ export async function sendSystemEmail(input: {
       },
       body: JSON.stringify({
         from: process.env.EMAIL_FROM?.trim() || DEFAULT_FROM_EMAIL,
-        to: [supportEmailAddress()],
+        to: Array.isArray(input.to) ? input.to : [input.to],
         subject: input.subject,
         text: input.text,
+        ...(input.html ? { html: input.html } : {}),
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
       }),
       signal: AbortSignal.timeout(8_000),
@@ -64,4 +67,17 @@ export async function sendSystemEmail(input: {
     }));
     return { sent: false, reason: "provider_error" };
   }
+}
+
+export async function sendSystemEmail(input: {
+  subject: string;
+  text: string;
+  html?: string;
+  replyTo?: string;
+  idempotencyKey?: string;
+}): Promise<EmailDelivery> {
+  return sendEmail({
+    ...input,
+    to: supportEmailAddress(),
+  });
 }

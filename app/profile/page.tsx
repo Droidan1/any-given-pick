@@ -8,8 +8,10 @@ import { MobileAppNav } from "@/components/mobile-app-nav";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary, getProfileRecord } from "@/lib/eligibility/service";
+import { getEmailNotificationPreferences } from "@/lib/email/preferences";
 import { getLatestAccountPrivacyRequest } from "@/lib/privacy/account-requests";
 import { AccountPrivacyControls } from "./account-privacy-controls";
+import { EmailPreferencesForm } from "./email-preferences-form";
 import { ProfileForm } from "./profile-form";
 import { ProfilePhotoEditor } from "./profile-photo-editor";
 
@@ -21,11 +23,12 @@ export const metadata: Metadata = {
 export default async function ProfilePage() {
   await auth.protect();
   const appUser = await requireAppUser();
-  const [account, profile, isAdmin, privacyRequest] = await Promise.all([
+  const [account, profile, isAdmin, privacyRequest, emailPreferences] = await Promise.all([
     getAccountSummary(appUser.id),
     getProfileRecord(appUser.id),
     hasAdminRole(appUser.id),
     getLatestAccountPrivacyRequest(appUser.id),
+    getEmailNotificationPreferences(appUser.id),
   ]);
   const accessBlocked = account.accountState !== "active";
   const approvalPending = account.reason === "approval_pending";
@@ -70,6 +73,7 @@ export default async function ProfilePage() {
         ) : (
           <ProfileForm account={account} profile={profile} />
         )}
+        <EmailPreferencesForm preferences={emailPreferences} />
         <AccountPrivacyControls request={privacyRequest} />
       </section>
       <MobileAppNav active="profile" isAdmin={isAdmin} />

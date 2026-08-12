@@ -296,6 +296,96 @@
   box-shadow: 0 12px 36px var(--shadow);
 }
 
+.email-preferences-card {
+  margin-top: 1rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--sage);
+  background: var(--paper-100);
+  color: var(--ink);
+  box-shadow: 0 12px 36px var(--shadow);
+}
+
+.email-preferences-card__heading h2,
+.email-preferences-card__heading p {
+  margin: 0;
+}
+
+.email-preferences-card__heading h2 {
+  margin-top: 0.35rem;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.email-preferences-card__heading > p:last-child {
+  max-width: 64ch;
+  margin-top: 0.75rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.email-preferences-form {
+  max-width: 54rem;
+  margin-top: 1.5rem;
+}
+
+.email-preferences-form fieldset {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.email-preference-option {
+  min-height: 4.8rem;
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--sage);
+  cursor: pointer;
+}
+
+.email-preference-option:last-child {
+  border-bottom: 1px solid var(--sage);
+}
+
+.email-preference-option input {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0;
+  accent-color: var(--maize-deep);
+}
+
+.email-preference-option span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.email-preference-option strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.email-preference-option small {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.email-preferences-form .review-action {
+  width: min(100%, 27rem);
+  margin: 1.5rem 0 0;
+}
+
+.email-preferences-form .form-result {
+  margin-top: 0.75rem;
+}
+
 .account-privacy-card--pending {
   border-color: var(--maize);
   background: var(--paper-200);
@@ -1750,6 +1840,18 @@ body {
   font-family: var(--font-ui);
   overflow-x: clip;
   text-rendering: optimizeLegibility;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 button,
