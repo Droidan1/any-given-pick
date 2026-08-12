@@ -98,6 +98,8 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
       })
     : "");
   const [result, setResult] = useState<AdminActionResult | null>(null);
+  const [publishConfirming, setPublishConfirming] = useState(false);
+  const [publishAcknowledged, setPublishAcknowledged] = useState(false);
   const [isPending, startTransition] = useTransition();
   const readOnly = initialWeek ? initialWeek.status !== "draft" : false;
 
@@ -166,13 +168,22 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
   }
 
   function handlePublish() {
+    setResult(null);
+    setPublishAcknowledged(false);
+    setPublishConfirming(true);
+  }
+
+  function confirmPublish() {
     if (!weekId) return;
     setResult(null);
     startTransition(async () => {
       try {
         const nextResult = await publishWeek(weekId);
         setResult(nextResult);
-        if (nextResult.ok) router.refresh();
+        if (nextResult.ok) {
+          setPublishConfirming(false);
+          router.refresh();
+        }
       } catch {
         setResult({ ok: false, message: "The week could not be published. Confirm your admin access and try again." });
       }
@@ -192,6 +203,18 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
   }
 
   const weekName = formatWeekName(seasonPhase, weekNumber);
+  const tiebreakerGame = preview.games.find((game) => game.isMondayTiebreaker);
+  const publishDeadlineLabel = entryDeadlineIso
+    ? new Intl.DateTimeFormat("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      }).format(new Date(entryDeadlineIso))
+    : "No deadline set";
 
   return (
     <section className="admin-sheet">
@@ -415,7 +438,29 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
           )}
         </div>
         <div className="admin-publish-actions">
-          {!readOnly && (
+          {publishConfirming && !readOnly ? (
+            <section className="admin-publish-confirmation" aria-labelledby="publish-confirmation-title">
+              <h3 id="publish-confirmation-title">Confirm the player slate</h3>
+              <dl>
+                <div><dt>Week</dt><dd>{season} · {weekName}</dd></div>
+                <div><dt>Games</dt><dd>{preview.games.length}</dd></div>
+                <div><dt>Entry deadline</dt><dd>{publishDeadlineLabel} ({deviceTimeZone})</dd></div>
+                <div><dt>Tiebreaker game</dt><dd>{tiebreakerGame ? `${tiebreakerGame.awayTeamCode} at ${tiebreakerGame.homeTeamCode}` : "Not selected"}</dd></div>
+              </dl>
+              <label className="admin-publish-acknowledgment">
+                <input type="checkbox" checked={publishAcknowledged} onChange={(event) => setPublishAcknowledged(event.target.checked)} />
+                <span>I reviewed this slate. Publishing opens it to players, queues the published-week notice, and locks editing here.</span>
+              </label>
+              <div className="admin-publish-confirmation__actions">
+                <button type="button" className="admin-save-draft" onClick={() => setPublishConfirming(false)} disabled={isPending}>Cancel</button>
+                <button type="button" className="admin-publish" onClick={confirmPublish} disabled={isPending || !publishAcknowledged || !savedAndCurrent || !reviewComplete}>
+                  <span>{isPending ? "Publishing…" : `Confirm and publish ${weekName.toLocaleLowerCase("en-US")}`}</span>
+                  <ActionArrow />
+                </button>
+              </div>
+            </section>
+          ) : null}
+          {!readOnly && !publishConfirming && (
             <button
               type="button"
               className="admin-save-draft"
@@ -425,14 +470,14 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
               {isPending ? "Working…" : "Save private draft"}
             </button>
           )}
-          {!readOnly && (
+          {!readOnly && !publishConfirming && (
             <button
               type="button"
               className="admin-publish"
               onClick={handlePublish}
               disabled={isPending || !savedAndCurrent || !reviewComplete}
             >
-              <span>{isPending ? "Working…" : savedAndCurrent ? `Publish ${weekName.toLocaleLowerCase("en-US")}` : weekId ? "Save changes first" : "Save draft first"}</span>
+              <span>{isPending ? "Working…" : savedAndCurrent ? "Review publish details" : weekId ? "Save changes first" : "Save draft first"}</span>
               <ActionArrow />
             </button>
           )}

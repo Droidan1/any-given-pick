@@ -3,8 +3,9 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { after } from "next/server";
+import { cache } from "react";
 import { getDb } from "@/lib/db";
 import { authIdentities, roles, userRoles, users } from "@/lib/db/schema";
 import { getAccountSummary } from "@/lib/eligibility/service";
@@ -13,6 +14,8 @@ import { queueAndProcessAdminApprovalNeededEmail } from "@/lib/email/account-lif
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 
 export type AppUser = typeof users.$inferSelect;
+
+const LAST_SEEN_WRITE_INTERVAL_MS = 15 * 60 * 1_000;
 
 type IdentitySnapshot = {
   provider: string;
@@ -130,23 +133,54 @@ async function syncClerkUser(clerkUser: User): Promise<AppUser> {
   return result.appUser;
 }
 
-export async function requireAppUser(): Promise<AppUser> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("AUTH_REQUIRED");
+const getStoredAppUser = cache(async (clerkUserId: string): Promise<AppUser | null> => {
+  const db = getDb();
+  const [appUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkUserId, clerkUserId))
+    .limit(1);
+  return appUser ?? null;
+});
+
+function touchLastSeen(appUser: AppUser): void {
+  const staleBefore = new Date(Date.now() - LAST_SEEN_WRITE_INTERVAL_MS);
+  if (appUser.lastSeenAt >= staleBefore) return;
+
+  after(async () => {
+    try {
+      await getDb()
+        .update(users)
+        .set({ lastSeenAt: new Date() })
+        .where(and(eq(users.id, appUser.id), lt(users.lastSeenAt, staleBefore)));
+    } catch {
+      // A last-seen timestamp is useful telemetry, never a reason to fail a request.
+    }
+  });
+}
+
+async function getOrCreateAppUser(clerkUserId: string): Promise<AppUser> {
+  const stored = await getStoredAppUser(clerkUserId);
+  if (stored) {
+    touchLastSeen(stored);
+    return stored;
+  }
 
   const clerkUser = await currentUser();
-  if (!clerkUser || clerkUser.id !== userId) throw new Error("AUTH_REQUIRED");
-
+  if (!clerkUser || clerkUser.id !== clerkUserId) throw new Error("AUTH_REQUIRED");
   return syncClerkUser(clerkUser);
+}
+
+export async function requireAppUser(knownClerkUserId?: string): Promise<AppUser> {
+  const userId = knownClerkUserId ?? (await auth()).userId;
+  if (!userId) throw new Error("AUTH_REQUIRED");
+  return getOrCreateAppUser(userId);
 }
 
 export async function getOptionalAccountSummary() {
   const { userId } = await auth();
   if (!userId) return null;
 
-  const clerkUser = await currentUser();
-  if (!clerkUser || clerkUser.id !== userId) return null;
-
-  const appUser = await syncClerkUser(clerkUser);
+  const appUser = await getOrCreateAppUser(userId);
   return getAccountSummary(appUser.id);
 }

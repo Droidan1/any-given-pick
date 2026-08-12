@@ -22,7 +22,7 @@ export default async function Home({
     ? params.view as "home" | "picks" | "standings" | "profile"
     : "home";
 
-  const appUser = await requireAppUser();
+  const appUser = await requireAppUser(userId);
   const [account, week, isAdmin, standings] = await Promise.all([
     getAccountSummary(appUser.id),
     getCurrentPlayerWeek(appUser.id),

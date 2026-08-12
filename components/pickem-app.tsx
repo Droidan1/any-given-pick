@@ -41,6 +41,38 @@ function signatureForDraft(games: PlayerGame[], picks: Picks, mondayPrediction: 
   });
 }
 
+function hasFreshEligibility(account: AccountSummary, now = Date.now()): boolean {
+  if (account.overallResult !== "eligible") return false;
+  if (!account.locationExpiresAt) return false;
+  return new Date(account.locationExpiresAt).getTime() > now;
+}
+
+function eligibilityActionLabel(account: AccountSummary): string {
+  if (!account.profileComplete) return "Finish your player card";
+  if (account.overallResult === "eligible" && !hasFreshEligibility(account)) return "Verify your Indiana location";
+  if (["location_required", "location_stale", "location_denied", "location_unavailable", "location_indeterminate"].includes(account.reason)) {
+    return "Verify your Indiana location";
+  }
+  return "Review your player access";
+}
+
+function eligibilityStatusLabel(account: AccountSummary): string {
+  if (account.overallResult === "eligible" && !hasFreshEligibility(account)) {
+    return "Location verification expired";
+  }
+  return account.reasonLabel;
+}
+
+function locationValidityLabel(account: AccountSummary): string | null {
+  if (!account.locationExpiresAt || !hasFreshEligibility(account)) return null;
+  return `Location valid until ${new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Indiana/Indianapolis",
+    timeZoneName: "short",
+  }).format(new Date(account.locationExpiresAt))}`;
+}
+
 const navItems: { view: View; label: string; icon: IconName }[] = [
   { view: "home", label: "Home", icon: "home" },
   { view: "picks", label: "Picks", icon: "picks" },
@@ -67,7 +99,9 @@ export function PickemApp({
   const [picks, setPicks] = useState<Picks>(() =>
     picksForCurrentSlate(week?.games ?? [], week?.entry?.draftPicks ?? {}),
   );
-  const [mondayTotal, setMondayTotal] = useState(() => week?.entry?.mondayPrediction ?? 44);
+  const [mondayTotal, setMondayTotal] = useState<number | null>(() => week?.entry?.mondayPrediction ?? null);
+  const [liveAccount, setLiveAccount] = useState(account);
+  const [eligibilityClock, setEligibilityClock] = useState(() => Date.now());
   const [status, setStatus] = useState(week?.entry ? "Your saved entry is loaded." : "");
   const [reviewing, setReviewing] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(() => {
@@ -80,13 +114,34 @@ export function PickemApp({
   });
   const [draftReady, setDraftReady] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const firstMissingRef = useRef<HTMLDivElement | null>(null);
+  const firstMissingRef = useRef<HTMLFieldSetElement | null>(null);
   const lastSavedSignatureRef = useRef("");
 
   const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id) : null;
   const games = week?.games ?? [];
-  const canParticipate = account.overallResult === "eligible";
+  const canParticipate = hasFreshEligibility(liveAccount, eligibilityClock);
   const isLocked = week?.isLocked ?? true;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setEligibilityClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const focusTarget = receipt ? "receipt-title" : reviewing ? "review-title" : null;
+    if (!focusTarget) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById(focusTarget)?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [receipt, reviewing]);
+
+  async function refreshEligibility(): Promise<AccountSummary> {
+    const response = await fetch("/api/eligibility", { cache: "no-store" });
+    if (!response.ok) throw new Error("ELIGIBILITY_REFRESH_FAILED");
+    const body = await response.json() as { account: AccountSummary };
+    setLiveAccount(body.account);
+    setEligibilityClock(Date.now());
+    return body.account;
+  }
 
   useEffect(() => {
     if (!week || !draftStorageKey) {
@@ -108,12 +163,12 @@ export function PickemApp({
         if (stored) {
           const draft = JSON.parse(stored) as {
             picks?: Picks;
-            mondayTotal?: number;
+            mondayTotal?: number | null;
             baseVersion?: number;
           };
           if ((draft.baseVersion ?? 0) >= serverVersion) {
             if (draft.picks) setPicks(picksForCurrentSlate(week.games, draft.picks));
-            if (Number.isInteger(draft.mondayTotal)) setMondayTotal(draft.mondayTotal ?? 44);
+            if (draft.mondayTotal === null || Number.isInteger(draft.mondayTotal)) setMondayTotal(draft.mondayTotal ?? null);
           }
         }
       } catch {
@@ -122,7 +177,7 @@ export function PickemApp({
         lastSavedSignatureRef.current = signatureForDraft(
           week.games,
           week.entry?.draftPicks ?? {},
-          week.entry?.mondayPrediction ?? 44,
+          week.entry?.mondayPrediction ?? null,
         );
         setDraftReady(true);
       }
@@ -189,11 +244,15 @@ export function PickemApp({
   const selectedCount = games.filter((game) => Boolean(picks[game.id])).length;
   const missingCount = games.length - selectedCount;
   const firstMissingId = games.find((game) => !picks[game.id])?.id;
-  const isComplete = selectedCount === games.length && Number.isInteger(mondayTotal) && mondayTotal >= 0;
+  const isComplete = selectedCount === games.length && mondayTotal !== null && Number.isInteger(mondayTotal) && mondayTotal >= 0;
   const selectedTeams = games.map((game) => picks[game.id]).filter(Boolean);
 
   const chooseTeam = (gameId: string, abbreviation: string) => {
     if (isLocked) return;
+    if (!canParticipate) {
+      setStatus(`${eligibilityStatusLabel(liveAccount)}. Complete eligibility before making picks.`);
+      return;
+    }
     setPicks((current) => ({ ...current, [gameId]: abbreviation }));
     setStatus(`${abbreviation} selected. Syncing your draft…`);
     setReviewing(false);
@@ -206,19 +265,39 @@ export function PickemApp({
       return;
     }
     if (!isComplete) {
-      setStatus(`${missingCount} ${missingCount === 1 ? "pick is" : "picks are"} still missing. Choose one team in every matchup.`);
-      window.setTimeout(() => firstMissingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      if (missingCount > 0) {
+        setStatus(`${missingCount} ${missingCount === 1 ? "pick is" : "picks are"} still missing. Choose one team in every matchup.`);
+        window.setTimeout(() => firstMissingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      } else {
+        setStatus("Enter your own tiebreaker total before reviewing the card.");
+        window.setTimeout(() => document.getElementById("monday-total")?.focus(), 50);
+      }
       return;
     }
-    setReviewing(true);
-    setStatus("Review every selection before submitting your official entry.");
+    if (!canParticipate) {
+      setStatus(`${eligibilityStatusLabel(liveAccount)}. Reverify eligibility before reviewing this card.`);
+      return;
+    }
+
+    startTransition(async () => {
+      setStatus("Confirming your eligibility before review…");
+      try {
+        const currentAccount = await refreshEligibility();
+        if (!hasFreshEligibility(currentAccount)) {
+          setStatus(`${currentAccount.reasonLabel}. Your selections are still saved on this device.`);
+          return;
+        }
+        setReviewing(true);
+        setStatus("Review every selection before submitting your official entry.");
+      } catch {
+        setStatus("Eligibility could not be confirmed. Check your connection and try review again.");
+      }
+    });
   };
 
   const commitEntry = () => {
     if (!canParticipate) {
-      setStatus(account.reasonLabel);
-      setView("profile");
-      setReviewing(false);
+      setStatus(`${eligibilityStatusLabel(liveAccount)}. Reverify before submitting; your selections are preserved.`);
       return;
     }
     if (isLocked) {
@@ -227,25 +306,38 @@ export function PickemApp({
     }
 
     startTransition(async () => {
-      setStatus("Sending your official entry…");
-      const result = await submitEntry({
-        weekId: week.id,
-        picks,
-        mondayPrediction: mondayTotal,
-        submissionKey: crypto.randomUUID(),
-      });
-      setStatus(result.message);
-      if (result.ok && result.receipt) {
-        setReceipt(result.receipt);
-        setReviewing(false);
-        lastSavedSignatureRef.current = signatureForDraft(week.games, picks, mondayTotal);
-        if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
+      try {
+        setStatus("Rechecking eligibility before submission…");
+        const currentAccount = await refreshEligibility();
+        if (!hasFreshEligibility(currentAccount)) {
+          setStatus(`${currentAccount.reasonLabel}. Reverify and return to submit; your selections are preserved.`);
+          return;
+        }
+
+        setStatus("Sending your official entry…");
+        const result = await submitEntry({
+          weekId: week.id,
+          picks,
+          mondayPrediction: mondayTotal,
+          submissionKey: crypto.randomUUID(),
+        });
+        setStatus(result.message);
+        if (result.ok && result.receipt) {
+          setReceipt(result.receipt);
+          setReviewing(false);
+          lastSavedSignatureRef.current = signatureForDraft(week.games, picks, mondayTotal);
+          if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
+        } else if (result.code === "ineligible") {
+          await refreshEligibility().catch(() => undefined);
+        }
+      } catch {
+        setStatus("Your entry was not submitted. Check your connection and try again; your selections are preserved.");
       }
     });
   };
 
   return (
-    <AppFrame view={view} setView={setView} account={account} isAdmin={isAdmin}>
+    <AppFrame view={view} setView={setView} account={liveAccount} isAdmin={isAdmin}>
       {view === "picks" && (
         <PicksView
           week={week}
@@ -262,16 +354,17 @@ export function PickemApp({
           onMondayTotal={setMondayTotal}
           onReview={beginReview}
           onReceipt={commitEntry}
-          account={account}
+          account={liveAccount}
+          canParticipate={canParticipate}
           isPending={isPending}
           isLocked={isLocked}
           hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0}
           onEdit={() => { setReviewing(false); setReceipt(null); setStatus("Edit mode restored. Submit again to make changes official."); }}
         />
       )}
-      {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => setView("picks")} account={account} />}
+      {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => setView("picks")} account={liveAccount} canParticipate={canParticipate} />}
       {view === "standings" && <StandingsView standings={standings} currentUserId={draftOwnerId} />}
-      {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={account} isAdmin={isAdmin} />}
+      {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={liveAccount} isAdmin={isAdmin} />}
     </AppFrame>
   );
 }
@@ -332,18 +425,19 @@ type PicksViewProps = {
   games: PlayerGame[];
   picks: Picks;
   selectedCount: number;
-  mondayTotal: number;
+  mondayTotal: number | null;
   status: string;
   reviewing: boolean;
   receipt: ReceiptData | null;
   firstMissingId?: string;
-  firstMissingRef: React.RefObject<HTMLDivElement | null>;
+  firstMissingRef: React.RefObject<HTMLFieldSetElement | null>;
   onChoose: (gameId: string, abbreviation: string) => void;
-  onMondayTotal: (value: number) => void;
+  onMondayTotal: (value: number | null) => void;
   onReview: () => void;
   onReceipt: () => void;
   onEdit: () => void;
   account: AccountSummary;
+  canParticipate: boolean;
   isPending: boolean;
   isLocked: boolean;
   hasSubmitted: boolean;
@@ -359,7 +453,11 @@ function PicksView(props: PicksViewProps) {
           <p className="week-label">{props.week.label} Pick&apos;em</p>
           <h1 id="picks-title">Make your picks</h1>
           <div className="deadline-marker"><Icon name="clock" /><span>{props.isLocked ? "Locked" : "Locks"} · {props.week.deadlineLabel}</span></div>
-          <div className="eligibility-line"><Icon name="shield" /><span>{props.account.reasonLabel}</span></div>
+          <div className="eligibility-line"><Icon name="shield" /><span>{eligibilityStatusLabel(props.account)}</span></div>
+          {locationValidityLabel(props.account) ? <p className="eligibility-validity">{locationValidityLabel(props.account)}</p> : null}
+          {!props.canParticipate && !props.isLocked ? (
+            <Link className="eligibility-action" href="/profile">{eligibilityActionLabel(props.account)}</Link>
+          ) : null}
         </header>
 
         <ProgressMeasure selected={props.selectedCount} total={props.games.length} />
@@ -369,16 +467,17 @@ function PicksView(props: PicksViewProps) {
             const selected = props.picks[game.id];
             const missing = !selected;
             return (
-              <div className={`matchup${missing ? " matchup--missing" : ""}`} key={game.id} ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}>
+              <fieldset id={`matchup-${game.id}`} className={`matchup${missing ? " matchup--missing" : ""}`} key={game.id} ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}>
+                <legend className="sr-only">{game.away.name} at {game.home.name}, {game.day} at {game.time}</legend>
                 <div className="matchup-time"><span>{game.day}</span><span>{game.time}</span></div>
-                <button className={`team-choice${selected === game.away.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.away.abbreviation)} aria-pressed={selected === game.away.abbreviation} aria-label={`Pick ${game.away.name}`} disabled={props.isLocked || props.isPending}>
+                <button className={`team-choice${selected === game.away.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.away.abbreviation)} aria-pressed={selected === game.away.abbreviation} aria-label={`Pick ${game.away.name} over ${game.home.name}. ${game.day}, ${game.time}`} disabled={!props.canParticipate || props.isLocked || props.isPending}>
                   {selected === game.away.abbreviation && <Icon name="check" />}<span>{game.away.abbreviation}</span><small>{game.away.name}</small>
                 </button>
                 <span className="at-mark" aria-hidden="true">@</span>
-                <button className={`team-choice${selected === game.home.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.home.abbreviation)} aria-pressed={selected === game.home.abbreviation} aria-label={`Pick ${game.home.name}`} disabled={props.isLocked || props.isPending}>
+                <button className={`team-choice${selected === game.home.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.home.abbreviation)} aria-pressed={selected === game.home.abbreviation} aria-label={`Pick ${game.home.name} over ${game.away.name}. ${game.day}, ${game.time}`} disabled={!props.canParticipate || props.isLocked || props.isPending}>
                   {selected === game.home.abbreviation && <Icon name="check" />}<span>{game.home.abbreviation}</span><small>{game.home.name}</small>
                 </button>
-              </div>
+              </fieldset>
             );
           })}
         </div>
@@ -394,12 +493,12 @@ function PicksView(props: PicksViewProps) {
         </div>
 
         {props.receipt ? (
-          <Receipt receipt={props.receipt} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={props.isLocked} />
+          <Receipt receipt={props.receipt} games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={props.isLocked} />
         ) : props.reviewing ? (
-          <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} isPending={props.isPending} isLocked={props.isLocked} hasSubmitted={props.hasSubmitted} />
+          <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} canParticipate={props.canParticipate} isPending={props.isPending} isLocked={props.isLocked} hasSubmitted={props.hasSubmitted} />
         ) : (
-          <button className="review-action" type="button" onClick={props.onReview} disabled={props.isPending || props.isLocked}>
-            <Icon name="whistle" /><span>{props.isLocked ? "Entry locked" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
+          <button className="review-action" type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending || props.isLocked}>
+            <Icon name="whistle" /><span>{props.isLocked ? "Entry locked" : !props.canParticipate ? "Eligibility required" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
           </button>
         )}
         <p className="status-message" aria-live="polite">{props.status || (props.isLocked ? "The deadline has passed. Your latest submitted entry is official." : "Draft changes sync automatically.")}</p>
@@ -419,26 +518,49 @@ function ProgressMeasure({ selected, total }: { selected: number; total: number 
   );
 }
 
-function MondayTotal({ label, value, onChange, disabled }: { label: string; value: number; onChange: (value: number) => void; disabled: boolean }) {
+function MondayTotal({ label, value, onChange, disabled }: { label: string; value: number | null; onChange: (value: number | null) => void; disabled: boolean }) {
+  const numericValue = value ?? 0;
   return (
     <div className="monday-total">
       <div className="drill-tag"><span>2-min</span><span>drill</span></div>
       <label htmlFor="monday-total">{label} <strong>Total</strong></label>
       <div className="number-control">
-        <button type="button" onClick={() => onChange(Math.min(200, value + 1))} aria-label={`Increase ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>+</button>
-        <input id="monday-total" min="0" max="200" step="1" inputMode="numeric" type="number" value={value} disabled={disabled} onChange={(event) => { const nextValue = Number.parseInt(event.target.value, 10); onChange(Number.isFinite(nextValue) ? Math.min(200, Math.max(0, nextValue)) : 0); }} />
-        <button type="button" onClick={() => onChange(Math.max(0, value - 1))} aria-label={`Decrease ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>−</button>
+        <button type="button" onClick={() => onChange(Math.min(200, numericValue + 1))} aria-label={`Increase ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>+</button>
+        <input id="monday-total" min="0" max="200" step="1" inputMode="numeric" type="number" value={value ?? ""} placeholder="—" required aria-describedby="monday-total-help" disabled={disabled} onChange={(event) => { if (!event.target.value) { onChange(null); return; } const nextValue = Number.parseInt(event.target.value, 10); onChange(Number.isFinite(nextValue) ? Math.min(200, Math.max(0, nextValue)) : null); }} />
+        <button type="button" onClick={() => onChange(Math.max(0, numericValue - 1))} aria-label={`Decrease ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>−</button>
       </div>
+      <span className="sr-only" id="monday-total-help">Enter your own whole-number tiebreaker prediction from 0 to 200.</span>
     </div>
   );
 }
 
-function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, onEdit, account, isPending, isLocked, hasSubmitted }: { games: PlayerGame[]; picks: Picks; mondayTotal: number; tiebreakerLabel: string; onReceipt: () => void; onEdit: () => void; account: AccountSummary; isPending: boolean; isLocked: boolean; hasSubmitted: boolean }) {
-  const canParticipate = account.overallResult === "eligible" && !isLocked;
+function selectedTeamName(game: PlayerGame, selection: string | undefined): string {
+  if (selection === game.away.abbreviation) return game.away.name;
+  if (selection === game.home.abbreviation) return game.home.name;
+  return "No selection";
+}
+
+function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, onEdit, account, canParticipate, isPending, isLocked, hasSubmitted }: { games: PlayerGame[]; picks: Picks; mondayTotal: number | null; tiebreakerLabel: string; onReceipt: () => void; onEdit: () => void; account: AccountSummary; canParticipate: boolean; isPending: boolean; isLocked: boolean; hasSubmitted: boolean }) {
+  const editGame = (gameId: string) => {
+    onEdit();
+    window.requestAnimationFrame(() => {
+      const matchup = document.getElementById(`matchup-${gameId}`);
+      matchup?.scrollIntoView({ behavior: "smooth", block: "center" });
+      matchup?.querySelector<HTMLButtonElement>("button[aria-pressed='true'], button")?.focus();
+    });
+  };
   return (
     <section className="review-panel" aria-labelledby="review-title">
-      <h2 id="review-title">Review your entry</h2>
-      <div className="review-grid">{games.map((game) => <span key={game.id}>{picks[game.id]}</span>)}</div>
+      <h2 id="review-title" tabIndex={-1}>Review your entry</h2>
+      <p className="review-count">{games.length} matchup {games.length === 1 ? "call" : "calls"}</p>
+      <ol className="review-list">
+        {games.map((game) => (
+          <li key={game.id}>
+            <span><small>{game.away.abbreviation} @ {game.home.abbreviation} · {game.day} {game.time}</small><strong>{selectedTeamName(game, picks[game.id])}</strong></span>
+            <button type="button" onClick={() => editGame(game.id)}>Edit pick</button>
+          </li>
+        ))}
+      </ol>
       <p>{tiebreakerLabel} Total <strong>{mondayTotal}</strong></p>
       <button className="commit-action" type="button" onClick={onReceipt} disabled={!canParticipate || isPending}>{isPending ? "Submitting…" : canParticipate ? (hasSubmitted ? "Submit changes" : "Submit official entry") : isLocked ? "Entry locked" : "Eligibility required"}</button>
       {!canParticipate && !isLocked && <Link className="text-action text-action--link" href="/profile">{account.reasonLabel}</Link>}
@@ -447,21 +569,27 @@ function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, on
   );
 }
 
-function Receipt({ receipt, picks, mondayTotal, tiebreakerLabel, onEdit, locked }: { receipt: ReceiptData; picks: Picks; mondayTotal: number; tiebreakerLabel: string; onEdit: () => void; locked: boolean }) {
+function Receipt({ receipt, games, picks, mondayTotal, tiebreakerLabel, onEdit, locked }: { receipt: ReceiptData; games: PlayerGame[]; picks: Picks; mondayTotal: number | null; tiebreakerLabel: string; onEdit: () => void; locked: boolean }) {
   const time = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Indiana/Indianapolis" }).format(new Date(receipt.committedAt));
   return (
     <section className="receipt" aria-labelledby="receipt-title">
-      <Icon name="check" /><h2 id="receipt-title">Entry {receipt.action === "edit" ? "updated" : "submitted"}</h2>
-      <p>{Object.values(picks).join(" · ")}</p><p>{tiebreakerLabel} Total <strong>{mondayTotal}</strong></p>
-      <time>{time} ET</time><small>Official version {receipt.versionNumber} · Keep this timestamp as your receipt.</small>
+      <Icon name="check" /><h2 id="receipt-title" tabIndex={-1}>Entry {receipt.action === "edit" ? "updated" : "submitted"}</h2>
+      <p className="review-count">{games.length} official matchup {games.length === 1 ? "call" : "calls"}</p>
+      <ol className="review-list review-list--receipt">
+        {games.map((game) => (
+          <li key={game.id}><span><small>{game.away.abbreviation} @ {game.home.abbreviation}</small><strong>{selectedTeamName(game, picks[game.id])}</strong></span></li>
+        ))}
+      </ol>
+      <p>{tiebreakerLabel} Total <strong>{mondayTotal ?? "—"}</strong></p>
+      <time dateTime={receipt.committedAt}>{time} ET</time><small>Official version {receipt.versionNumber} · Keep this timestamp as your receipt.</small>
       {!locked && <button className="text-action" type="button" onClick={onEdit}>Edit and resubmit</button>}
     </section>
   );
 }
 
-function HomeView({ selectedCount, onContinue, account, week }: { selectedCount: number; onContinue: () => void; account: AccountSummary; week: PlayerWeek }) {
+function HomeView({ selectedCount, onContinue, account, week, canParticipate }: { selectedCount: number; onContinue: () => void; account: AccountSummary; week: PlayerWeek; canParticipate: boolean }) {
   return (
-    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">Finish and submit your entry before {week.deadlineLabel}.</p><div className="home-status"><Icon name="shield" /><span>{account.reasonLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div><button className="review-action" type="button" onClick={onContinue}><span>{selectedCount ? "Continue your picks" : "Make your picks"}</span><Icon name="arrow" /></button><div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
+    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">Finish and submit your entry before {week.deadlineLabel}.</p><div className="home-status"><Icon name="shield" /><span>{eligibilityStatusLabel(account)}{locationValidityLabel(account) ? ` · ${locationValidityLabel(account)}` : ""}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{canParticipate ? <button className="review-action" type="button" onClick={onContinue}><span>{selectedCount ? "Continue your picks" : "Make your picks"}</span><Icon name="arrow" /></button> : <Link className="review-action review-action--link" href="/profile"><span>{eligibilityActionLabel(account)}</span><Icon name="arrow" /></Link>}<div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
   );
 }
 
