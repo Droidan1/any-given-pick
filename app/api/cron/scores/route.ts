@@ -1,4 +1,4 @@
-import { runPlayerEmailCycle } from "@/lib/email/player-notifications";
+import { runEmailNotificationCycle } from "@/lib/email/notification-cycle";
 import { runEspnScoreSyncWithHealth } from "@/lib/scores/health";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { cleanupExpiredRateLimitBuckets } from "@/lib/security/rate-limit";
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
       runEspnScoreSyncWithHealth(),
       cleanupExpiredRateLimitBuckets(),
     ]);
-    const emailSummary = await runPlayerEmailCycle();
+    const emailSummary = await runEmailNotificationCycle();
     return Response.json({ ...summary, emailSummary }, {
       status: summary.errors.length > 0 ? 502 : 200,
       headers: { "Cache-Control": "no-store" },

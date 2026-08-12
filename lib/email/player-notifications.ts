@@ -39,6 +39,12 @@ const MAX_ATTEMPTS = 5;
 const CLAIM_TIMEOUT_MS = 15 * 60 * 1_000;
 const RECENT_PUBLICATION_WINDOW_MS = 7 * 24 * 60 * 60 * 1_000;
 const RECENT_RESULTS_WINDOW_MS = 14 * 24 * 60 * 60 * 1_000;
+const PLAYER_EMAIL_KINDS: PlayerEmailKind[] = [
+  "week_published",
+  "deadline_approaching",
+  "picks_submitted",
+  "results_available",
+];
 
 type DeliveryRow = typeof emailDeliveries.$inferSelect;
 type PreferenceRow = typeof emailNotificationPreferences.$inferSelect;
@@ -256,6 +262,7 @@ async function claimDeliveries(limit: number, now: Date): Promise<DeliveryRow[]>
       .select()
       .from(emailDeliveries)
       .where(and(
+        inArray(emailDeliveries.kind, PLAYER_EMAIL_KINDS),
         lt(emailDeliveries.attemptCount, MAX_ATTEMPTS),
         lte(emailDeliveries.nextAttemptAt, now),
         or(
@@ -325,7 +332,9 @@ export async function processQueuedPlayerEmails(input?: {
   if (claimed.length === 0) return summary;
 
   const userIds = [...new Set(claimed.map((delivery) => delivery.userId))];
-  const weekIds = [...new Set(claimed.map((delivery) => delivery.contestWeekId))];
+  const weekIds = [...new Set(claimed.flatMap(
+    (delivery) => delivery.contestWeekId ? [delivery.contestWeekId] : [],
+  ))];
   const versionIds = claimed.flatMap((delivery) => delivery.entryVersionId ? [delivery.entryVersionId] : []);
   const [userRows, weekRows, versionRows] = await Promise.all([
     getDb()
@@ -393,7 +402,9 @@ export async function processQueuedPlayerEmails(input?: {
     const delivery = claimed[index];
     const kind = delivery.kind as PlayerEmailKind;
     const user = usersById.get(delivery.userId);
-    const week = weeksById.get(delivery.contestWeekId);
+    const week = delivery.contestWeekId
+      ? weeksById.get(delivery.contestWeekId)
+      : null;
     const recipient = user ? emailsByClerkId.get(user.clerkUserId) : null;
     const version = delivery.entryVersionId
       ? versionsById.get(delivery.entryVersionId)

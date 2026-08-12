@@ -1,4 +1,4 @@
-import { runPlayerEmailCycle } from "@/lib/email/player-notifications";
+import { runEmailNotificationCycle } from "@/lib/email/notification-cycle";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const summary = await runPlayerEmailCycle();
+    const summary = await runEmailNotificationCycle();
     return Response.json(summary, {
       status: summary.failed > 0 ? 502 : 200,
       headers: { "Cache-Control": "no-store" },

@@ -56,6 +56,7 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Database-backed rate limits for sensitive and write-heavy actions
 - Structured server-error and score-sync alerts with an administrator operations panel
 - Player email reminders for published weeks, approaching deadlines, submitted picks, and completed results
+- Transactional approval-queue alerts for administrators and approval confirmations for players
 - Per-player email preferences and idempotent delivery receipts without storing recipient addresses
 
 ## Not connected yet
@@ -75,13 +76,13 @@ The committed score workflow requests a sync every ten minutes during typical Th
 
 ## Temporary player approval gate
 
-New Clerk accounts start in a pending state by default. An administrator must approve the verified identity from **Admin settings → Player access** before that person can create a player card, verify location, make picks, or submit an entry. Removing access is reversible and preserves the player’s account and historical records.
+New Clerk accounts start in a pending state by default. An administrator must approve the verified identity from **Admin settings → Player access** before that person can create a player card, verify location, make picks, or submit an entry. The configured support administrator receives a deduplicated approval-queue email for each new pending account, and the player receives a transactional confirmation after approval. Removing access is reversible and preserves the player’s account and historical records.
 
 Set `USER_APPROVAL_REQUIRED=false` and redeploy when manual approval is no longer needed. Existing pending accounts still require an administrator to approve them.
 
 ## Beta operations and privacy
 
-Public trust pages are available at `/rules`, `/privacy`, and `/support`. Direct support links email `brian@Droidan1.dev`. Player reminders, privacy-request alerts, and operations alerts use Resend only when `RESEND_API_KEY` and `EMAIL_FROM` are configured. Player delivery attempts are recorded without copying Clerk email addresses into Postgres, and users can manage each reminder category from Profile.
+Public trust pages are available at `/rules`, `/privacy`, and `/support`. Direct support links email `brian@Droidan1.dev`. Player reminders, account-status messages, privacy-request alerts, and operations alerts use Resend only when `RESEND_API_KEY` and `EMAIL_FROM` are configured. Delivery attempts are recorded without copying Clerk email addresses into Postgres. Users can manage each optional contest-reminder category from Profile; account approval messages are transactional and cannot be disabled there.
 
 Set a separate high-entropy `RATE_LIMIT_SECRET` in Preview and Production. Rate limits are stored in Postgres so they apply across serverless instances. Vercel Firewall rules remain the recommended outer layer for broad IP- and bot-level abuse controls.
 

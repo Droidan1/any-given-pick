@@ -4,10 +4,13 @@ import { createHash } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
+import { after } from "next/server";
 import { getDb } from "@/lib/db";
 import { authIdentities, roles, userRoles, users } from "@/lib/db/schema";
 import { getAccountSummary } from "@/lib/eligibility/service";
 import { getNewUserAccessDefaults } from "@/lib/auth/user-approval";
+import { queueAndProcessAdminApprovalNeededEmail } from "@/lib/email/account-lifecycle-notifications";
+import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 
 export type AppUser = typeof users.$inferSelect;
 
@@ -46,8 +49,8 @@ async function syncClerkUser(clerkUser: User): Promise<AppUser> {
   const now = new Date();
   const accessDefaults = getNewUserAccessDefaults();
 
-  return db.transaction(async (transaction) => {
-    const [appUser] = await transaction
+  const result = await db.transaction(async (transaction) => {
+    const [insertedUser] = await transaction
       .insert(users)
       .values({
         clerkUserId: clerkUser.id,
@@ -56,11 +59,17 @@ async function syncClerkUser(clerkUser: User): Promise<AppUser> {
         lastSeenAt: now,
         updatedAt: now,
       })
-      .onConflictDoUpdate({
-        target: users.clerkUserId,
-        set: { lastSeenAt: now, updatedAt: now },
-      })
+      .onConflictDoNothing({ target: users.clerkUserId })
       .returning();
+
+    const [appUser] = insertedUser
+      ? [insertedUser]
+      : await transaction
+          .update(users)
+          .set({ lastSeenAt: now, updatedAt: now })
+          .where(eq(users.clerkUserId, clerkUser.id))
+          .returning();
+    if (!appUser) throw new Error("APP_USER_SYNC_FAILED");
 
     for (const identity of identitySnapshots(clerkUser)) {
       await transaction
@@ -95,8 +104,30 @@ async function syncClerkUser(clerkUser: User): Promise<AppUser> {
         .onConflictDoNothing({ target: [userRoles.userId, userRoles.roleId] });
     }
 
-    return appUser;
+    return { appUser, isNew: Boolean(insertedUser) };
   });
+
+  if (
+    result.isNew
+    && result.appUser.accountState === "read_only"
+    && result.appUser.stateReason === "awaiting_admin_approval"
+  ) {
+    after(async () => {
+      try {
+        await queueAndProcessAdminApprovalNeededEmail(result.appUser.id);
+      } catch {
+        await reportOperationalIssue({
+          kind: "account_email_queue",
+          identity: `approval-needed:${result.appUser.id}`,
+          severity: "warning",
+          message: "A new player approval email could not be queued immediately.",
+          context: { stage: "new_user" },
+        });
+      }
+    });
+  }
+
+  return result.appUser;
 }
 
 export async function requireAppUser(): Promise<AppUser> {

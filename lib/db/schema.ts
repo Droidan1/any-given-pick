@@ -478,7 +478,6 @@ export const emailDeliveries = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     contestWeekId: uuid("contest_week_id")
-      .notNull()
       .references(() => contestWeeks.id, { onDelete: "cascade" }),
     entryVersionId: uuid("entry_version_id").references(() => entryVersions.id, {
       onDelete: "set null",
@@ -501,7 +500,7 @@ export const emailDeliveries = pgTable(
     index("email_deliveries_user_kind_idx").on(table.userId, table.kind),
     check(
       "email_deliveries_kind_check",
-      sql`${table.kind} in ('week_published', 'deadline_approaching', 'picks_submitted', 'results_available')`,
+      sql`${table.kind} in ('week_published', 'deadline_approaching', 'picks_submitted', 'results_available', 'admin_approval_needed', 'account_approved')`,
     ),
     check(
       "email_deliveries_status_check",
