@@ -6,6 +6,7 @@ import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
+import { ScoreRefreshControl } from "@/components/score-refresh-control";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
@@ -14,7 +15,8 @@ import {
   type ActivityCard,
   type ActivityPick,
 } from "@/lib/entries/activity-service";
-import { ActivityScoreRefresh } from "./activity-score-refresh";
+import { getScoreSyncHealth } from "@/lib/scores/health";
+import { hasScoreRefreshWindow, nextScoreRefreshWindow } from "@/lib/scores/refresh-window";
 
 export const metadata: Metadata = {
   title: "My activity",
@@ -179,13 +181,17 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
 export default async function ActivityPage() {
   await auth.protect();
   const appUser = await requireAppUser();
-  const [account, activity, isAdmin] = await Promise.all([
+  const [account, activity, isAdmin, scoreHealth] = await Promise.all([
     getAccountSummary(appUser.id),
     getPlayerActivity(appUser.id),
     hasAdminRole(appUser.id),
+    getScoreSyncHealth(),
   ]);
 
   if (account.accountState !== "active" && !isAdmin) redirect("/profile");
+  const scoreGames = activity.cards.flatMap((card) => card.picks);
+  const shouldPollScores = hasScoreRefreshWindow(scoreGames);
+  const nextAutomaticCheckAt = nextScoreRefreshWindow(scoreGames);
 
   return (
     <main className="account-shell activity-shell">
@@ -228,7 +234,11 @@ export default async function ActivityPage() {
             </div>
             <span>Working picks update here after a secure draft save.</span>
           </div>
-          <ActivityScoreRefresh />
+          <ScoreRefreshControl
+            initialLastSuccessAt={scoreHealth.lastSuccessAt}
+            shouldPoll={shouldPollScores}
+            nextAutomaticCheckAt={nextAutomaticCheckAt}
+          />
           {activity.currentCard ? (
             <ActivityCardView card={activity.currentCard} />
           ) : (

@@ -6,10 +6,13 @@ import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
+import { ScoreRefreshControl } from "@/components/score-refresh-control";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
 import { getWeeklyResults, type RevealedPick } from "@/lib/results/service";
+import { getScoreSyncHealth } from "@/lib/scores/health";
+import { hasScoreRefreshWindow, nextScoreRefreshWindow } from "@/lib/scores/refresh-window";
 
 export const metadata: Metadata = {
   title: "Weekly results",
@@ -58,10 +61,16 @@ export default async function ResultsPage({
   ]);
   if (account.accountState !== "active" && !isAdmin) redirect("/profile");
 
-  const results = await getWeeklyResults({
-    weekId: week,
-    currentUserId: appUser.id,
-  });
+  const [results, scoreHealth] = await Promise.all([
+    getWeeklyResults({
+      weekId: week,
+      currentUserId: appUser.id,
+    }),
+    getScoreSyncHealth(),
+  ]);
+  const scoreGames = results.entries.flatMap((entry) => entry.picks);
+  const shouldPollScores = hasScoreRefreshWindow(scoreGames);
+  const nextAutomaticCheckAt = nextScoreRefreshWindow(scoreGames);
 
   return (
     <main className="account-shell results-shell">
@@ -100,6 +109,14 @@ export default async function ResultsPage({
             </select>
             <button type="submit">Open results <Icon name="arrow" /></button>
           </form>
+        ) : null}
+
+        {results.revealStatus === "revealed" ? (
+          <ScoreRefreshControl
+            initialLastSuccessAt={scoreHealth.lastSuccessAt}
+            shouldPoll={shouldPollScores}
+            nextAutomaticCheckAt={nextAutomaticCheckAt}
+          />
         ) : null}
 
         {results.revealStatus === "no_week" ? (

@@ -20,6 +20,10 @@ type ReceiptData = {
   committedAt: string;
   action: "submit" | "edit";
 };
+type DraftSyncState = {
+  state: "idle" | "local" | "syncing" | "synced" | "error";
+  syncedAt: string | null;
+};
 
 function gameRulesForCurrentSlate(games: PlayerGame[]) {
   return games.map((game) => ({
@@ -113,9 +117,17 @@ export function PickemApp({
     };
   });
   const [draftReady, setDraftReady] = useState(false);
+  const [draftSync, setDraftSync] = useState<DraftSyncState>({
+    state: week?.entry ? "synced" : "idle",
+    syncedAt: week?.entry?.updatedAt ?? null,
+  });
+  const [draftRetryVersion, setDraftRetryVersion] = useState(0);
   const [isPending, startTransition] = useTransition();
   const firstMissingRef = useRef<HTMLFieldSetElement | null>(null);
   const lastSavedSignatureRef = useRef("");
+  const currentDraftSignatureRef = useRef("");
+  const draftSaveInFlightRef = useRef(false);
+  const draftSaveQueuedRef = useRef(false);
 
   const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id) : null;
   const games = week?.games ?? [];
@@ -125,6 +137,16 @@ export function PickemApp({
   useEffect(() => {
     const timer = window.setInterval(() => setEligibilityClock(Date.now()), 60_000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const retryAfterReconnect = () => {
+      if (currentDraftSignatureRef.current === lastSavedSignatureRef.current) return;
+      setStatus("Connection restored. Retrying your saved draft…");
+      setDraftRetryVersion((version) => version + 1);
+    };
+    window.addEventListener("online", retryAfterReconnect);
+    return () => window.removeEventListener("online", retryAfterReconnect);
   }, []);
 
   useEffect(() => {
@@ -179,6 +201,7 @@ export function PickemApp({
           week.entry?.draftPicks ?? {},
           week.entry?.mondayPrediction ?? null,
         );
+        currentDraftSignatureRef.current = lastSavedSignatureRef.current;
         setDraftReady(true);
       }
     });
@@ -201,31 +224,68 @@ export function PickemApp({
     }
 
     const signature = signatureForDraft(week.games, picks, mondayTotal);
+    currentDraftSignatureRef.current = signature;
     if (!canParticipate || isLocked || signature === lastSavedSignatureRef.current) return;
+    setDraftSync((current) => ({ ...current, state: "local" }));
+
+    if (!navigator.onLine) {
+      const frame = window.requestAnimationFrame(() => {
+        setStatus("Saved on this device. Reconnect to sync this draft securely.");
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
 
     const timer = window.setTimeout(() => {
+      if (draftSaveInFlightRef.current) {
+        draftSaveQueuedRef.current = true;
+        setStatus("Your newest changes are saved on this device and waiting to sync.");
+        return;
+      }
+      draftSaveInFlightRef.current = true;
+      setDraftSync((current) => ({ ...current, state: "syncing" }));
       setStatus("Syncing draft…");
-      startTransition(async () => {
-        const result = await saveEntryDraft({
-          weekId: week.id,
-          picks,
-          mondayPrediction: mondayTotal,
-        });
-        if (result.ok) {
-          lastSavedSignatureRef.current = signature;
-        } else if (result.code === "invalid_pick") {
-          const currentPicks = picksForCurrentSlate(week.games, picks);
-          if (JSON.stringify(currentPicks) !== JSON.stringify(picks)) {
-            setPicks(currentPicks);
-            setStatus("The schedule changed. Your valid picks were kept and the draft is syncing again.");
-            return;
+      void (async () => {
+        try {
+          const result = await saveEntryDraft({
+            weekId: week.id,
+            picks,
+            mondayPrediction: mondayTotal,
+          });
+          if (result.ok) {
+            lastSavedSignatureRef.current = signature;
+            const newerChangesAreWaiting = currentDraftSignatureRef.current !== signature;
+            setDraftSync({
+              state: newerChangesAreWaiting ? "local" : "synced",
+              syncedAt: result.syncedAt ?? new Date().toISOString(),
+            });
+            setStatus(newerChangesAreWaiting
+              ? "Earlier changes synced. Your newest changes are saved on this device and waiting to sync."
+              : result.message);
+          } else if (result.code === "invalid_pick") {
+            const currentPicks = picksForCurrentSlate(week.games, picks);
+            if (JSON.stringify(currentPicks) !== JSON.stringify(picks)) {
+              setPicks(currentPicks);
+              setDraftSync((current) => ({ ...current, state: "local" }));
+              setStatus("The schedule changed. Your valid picks were kept and the draft is syncing again.");
+              return;
+            }
+          }
+          if (!result.ok) setDraftSync((current) => ({ ...current, state: "error" }));
+          if (!result.ok) setStatus(result.message);
+        } catch {
+          setDraftSync((current) => ({ ...current, state: "error" }));
+          setStatus("This draft is saved on your device but has not reached the server. Retry when your connection is stable.");
+        } finally {
+          draftSaveInFlightRef.current = false;
+          if (draftSaveQueuedRef.current) {
+            draftSaveQueuedRef.current = false;
+            setDraftRetryVersion((version) => version + 1);
           }
         }
-        setStatus(result.message);
-      });
+      })();
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [canParticipate, draftReady, draftStorageKey, isLocked, mondayTotal, picks, week]);
+  }, [canParticipate, draftReady, draftRetryVersion, draftStorageKey, isLocked, mondayTotal, picks, week]);
 
   if (!week) {
     return (
@@ -254,6 +314,7 @@ export function PickemApp({
       return;
     }
     setPicks((current) => ({ ...current, [gameId]: abbreviation }));
+    setDraftSync((current) => ({ ...current, state: "local" }));
     setStatus(`${abbreviation} selected. Syncing your draft…`);
     setReviewing(false);
     setReceipt(null);
@@ -326,6 +387,7 @@ export function PickemApp({
           setReceipt(result.receipt);
           setReviewing(false);
           lastSavedSignatureRef.current = signatureForDraft(week.games, picks, mondayTotal);
+          setDraftSync({ state: "synced", syncedAt: result.receipt.committedAt });
           if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
         } else if (result.code === "ineligible") {
           await refreshEligibility().catch(() => undefined);
@@ -346,12 +408,16 @@ export function PickemApp({
           selectedCount={selectedCount}
           mondayTotal={mondayTotal}
           status={status}
+          draftSync={draftSync}
           reviewing={reviewing}
           receipt={receipt}
           firstMissingId={firstMissingId}
           firstMissingRef={firstMissingRef}
           onChoose={chooseTeam}
-          onMondayTotal={setMondayTotal}
+          onMondayTotal={(value) => {
+            setMondayTotal(value);
+            setDraftSync((current) => ({ ...current, state: "local" }));
+          }}
           onReview={beginReview}
           onReceipt={commitEntry}
           account={liveAccount}
@@ -359,6 +425,11 @@ export function PickemApp({
           isPending={isPending}
           isLocked={isLocked}
           hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0}
+          onRetryDraft={() => {
+            setDraftSync((current) => ({ ...current, state: "local" }));
+            setStatus("Retrying your saved draft…");
+            setDraftRetryVersion((version) => version + 1);
+          }}
           onEdit={() => { setReviewing(false); setReceipt(null); setStatus("Edit mode restored. Submit again to make changes official."); }}
         />
       )}
@@ -427,6 +498,7 @@ type PicksViewProps = {
   selectedCount: number;
   mondayTotal: number | null;
   status: string;
+  draftSync: DraftSyncState;
   reviewing: boolean;
   receipt: ReceiptData | null;
   firstMissingId?: string;
@@ -441,6 +513,7 @@ type PicksViewProps = {
   isPending: boolean;
   isLocked: boolean;
   hasSubmitted: boolean;
+  onRetryDraft: () => void;
 };
 
 function PicksView(props: PicksViewProps) {
@@ -502,6 +575,25 @@ function PicksView(props: PicksViewProps) {
           </button>
         )}
         <p className="status-message" aria-live="polite">{props.status || (props.isLocked ? "The deadline has passed. Your latest submitted entry is official." : "Draft changes sync automatically.")}</p>
+        {!props.isLocked ? (
+          <div className={`draft-sync-status draft-sync-status--${props.draftSync.state}`}>
+            <span aria-hidden="true" />
+            <p>
+              {props.draftSync.state === "synced"
+                ? "Synced securely"
+                : props.draftSync.state === "syncing"
+                  ? "Syncing with the server"
+                  : props.draftSync.state === "error"
+                    ? "Saved on this device · Not yet synced"
+                    : props.draftSync.state === "local"
+                      ? "Saved on this device · Waiting to sync"
+                      : "Ready for your first pick"}
+            </p>
+            {props.draftSync.state === "error" ? (
+              <button type="button" onClick={props.onRetryDraft} disabled={!props.canParticipate}>Retry draft</button>
+            ) : null}
+          </div>
+        ) : null}
       </aside>
     </div>
   );

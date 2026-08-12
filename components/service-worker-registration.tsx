@@ -44,7 +44,7 @@ export function ServiceWorkerRegistration() {
 
   return (
     <div className="pwa-utilities" aria-live="polite">
-      {isOffline && <div className="network-banner">Offline draft mode</div>}
+      {isOffline && <div className="network-banner">Offline · Picks stay on this device until you reconnect</div>}
       {installPrompt && (
         <button className="install-prompt" type="button" onClick={install}>
           <Icon name="install" />
