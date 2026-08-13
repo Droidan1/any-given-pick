@@ -1,7 +1,11 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
-import { evaluateScoreSyncWatchdog } from "@/lib/scores/health";
+import {
+  evaluateScoreSyncWatchdog,
+  inspectScoreSyncWatchdog,
+  recoverStaleScoreSyncWithHealth,
+} from "@/lib/scores/health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,12 +19,26 @@ export async function GET() {
   const now = new Date();
   try {
     await getDb().execute(sql`select 1`);
+    const initialScoreSync = await inspectScoreSyncWatchdog(now);
+    let scoreSyncRecovery: "not_needed" | "completed" | "already_claimed" | "failed" = "not_needed";
+    if (!initialScoreSync.ready) {
+      try {
+        const recovery = await recoverStaleScoreSyncWithHealth(
+          now,
+          initialScoreSync.freshnessWindowMinutes,
+        );
+        scoreSyncRecovery = recovery ? "completed" : "already_claimed";
+      } catch {
+        scoreSyncRecovery = "failed";
+      }
+    }
     const { ready: scoreSyncReady } = await evaluateScoreSyncWatchdog(now);
     return Response.json(
       {
         status: scoreSyncReady ? "ok" : "degraded",
         database: "ok",
         scoreSync: scoreSyncReady ? "ok" : "stale_or_failed",
+        scoreSyncRecovery,
         checkedAt: now.toISOString(),
       },
       {

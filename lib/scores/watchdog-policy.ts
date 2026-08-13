@@ -1,6 +1,18 @@
 const LIVE_WINDOW_FRESHNESS_MINUTES = 40;
 const DAILY_BACKSTOP_FRESHNESS_MINUTES = 30 * 60;
 
+export function isScoreSyncReady(input: {
+  status: string;
+  lastAttemptAt: string | null;
+  now: Date;
+  freshnessWindowMinutes: number;
+}): boolean {
+  if (input.status === "failed" || !input.lastAttemptAt) return false;
+  const lastAttemptAgeMs = input.now.getTime() - new Date(input.lastAttemptAt).getTime();
+  return Number.isFinite(lastAttemptAgeMs)
+    && lastAttemptAgeMs < input.freshnessWindowMinutes * 60 * 1_000;
+}
+
 export function scoreSyncFreshnessWindowMinutes(now: Date): number {
   const day = now.getUTCDay();
   const hour = now.getUTCHours();

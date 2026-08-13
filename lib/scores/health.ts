@@ -1,11 +1,11 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { providerSyncStates } from "@/lib/db/schema";
 import { reportOperationalIssue, resolveOperationalIssue } from "@/lib/monitoring/operational-alerts";
 import { syncRecentEspnScores, type ScoreSyncSummary } from "./sync";
-import { scoreSyncFreshnessWindowMinutes } from "./watchdog-policy";
+import { isScoreSyncReady, scoreSyncFreshnessWindowMinutes } from "./watchdog-policy";
 
 const SCORE_SYNC_KEY = "espn_scores";
 const SCORE_SYNC_PROVIDER = "espn";
@@ -59,11 +59,12 @@ export async function evaluateScoreSyncWatchdog(now = new Date()): Promise<{
 }> {
   const health = await getScoreSyncHealth();
   const freshnessWindowMinutes = scoreSyncFreshnessWindowMinutes(now);
-  const lastAttemptAgeMs = health.lastAttemptAt
-    ? now.getTime() - new Date(health.lastAttemptAt).getTime()
-    : Number.POSITIVE_INFINITY;
-  const ready = health.status !== "failed"
-    && lastAttemptAgeMs < freshnessWindowMinutes * 60 * 1_000;
+  const ready = isScoreSyncReady({
+    status: health.status,
+    lastAttemptAt: health.lastAttemptAt,
+    now,
+    freshnessWindowMinutes,
+  });
 
   if (ready) {
     await resolveOperationalIssue("score_sync_watchdog", "scheduler_freshness");
@@ -80,29 +81,27 @@ export async function evaluateScoreSyncWatchdog(now = new Date()): Promise<{
   return { health, ready, freshnessWindowMinutes };
 }
 
-export async function runEspnScoreSyncWithHealth(
-  now = new Date(),
-): Promise<ScoreSyncSummary> {
-  const db = getDb();
-  await db
-    .insert(providerSyncStates)
-    .values({
-      key: SCORE_SYNC_KEY,
-      provider: SCORE_SYNC_PROVIDER,
-      status: "running",
-      lastAttemptAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: providerSyncStates.key,
-      set: {
-        status: "running",
-        lastAttemptAt: now,
-        errorMessage: null,
-        updatedAt: now,
-      },
-    });
+export async function inspectScoreSyncWatchdog(now = new Date()): Promise<{
+  health: ScoreSyncHealth;
+  ready: boolean;
+  freshnessWindowMinutes: number;
+}> {
+  const health = await getScoreSyncHealth();
+  const freshnessWindowMinutes = scoreSyncFreshnessWindowMinutes(now);
+  return {
+    health,
+    ready: isScoreSyncReady({
+      status: health.status,
+      lastAttemptAt: health.lastAttemptAt,
+      now,
+      freshnessWindowMinutes,
+    }),
+    freshnessWindowMinutes,
+  };
+}
 
+async function completeScoreSyncAttempt(now: Date): Promise<ScoreSyncSummary> {
+  const db = getDb();
   try {
     const summary = await syncRecentEspnScores(now);
     const errorMessage = summary.errors.length > 0
@@ -159,4 +158,70 @@ export async function runEspnScoreSyncWithHealth(
     });
     throw error;
   }
+}
+
+export async function recoverStaleScoreSyncWithHealth(
+  now = new Date(),
+  freshnessWindowMinutes = scoreSyncFreshnessWindowMinutes(now),
+): Promise<ScoreSyncSummary | null> {
+  const db = getDb();
+  const staleBefore = new Date(now.getTime() - freshnessWindowMinutes * 60 * 1_000);
+  const runningState = {
+    provider: SCORE_SYNC_PROVIDER,
+    status: "running",
+    lastAttemptAt: now,
+    errorMessage: null,
+    updatedAt: now,
+  } as const;
+
+  const [inserted] = await db
+    .insert(providerSyncStates)
+    .values({ key: SCORE_SYNC_KEY, ...runningState })
+    .onConflictDoNothing({ target: providerSyncStates.key })
+    .returning({ key: providerSyncStates.key });
+
+  let claimed = Boolean(inserted);
+  if (!claimed) {
+    const [updated] = await db
+      .update(providerSyncStates)
+      .set(runningState)
+      .where(and(
+        eq(providerSyncStates.key, SCORE_SYNC_KEY),
+        or(
+          eq(providerSyncStates.status, "failed"),
+          isNull(providerSyncStates.lastAttemptAt),
+          lt(providerSyncStates.lastAttemptAt, staleBefore),
+        ),
+      ))
+      .returning({ key: providerSyncStates.key });
+    claimed = Boolean(updated);
+  }
+
+  return claimed ? completeScoreSyncAttempt(now) : null;
+}
+
+export async function runEspnScoreSyncWithHealth(
+  now = new Date(),
+): Promise<ScoreSyncSummary> {
+  const db = getDb();
+  await db
+    .insert(providerSyncStates)
+    .values({
+      key: SCORE_SYNC_KEY,
+      provider: SCORE_SYNC_PROVIDER,
+      status: "running",
+      lastAttemptAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: providerSyncStates.key,
+      set: {
+        status: "running",
+        lastAttemptAt: now,
+        errorMessage: null,
+        updatedAt: now,
+      },
+    });
+
+  return completeScoreSyncAttempt(now);
 }
