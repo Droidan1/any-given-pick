@@ -157,7 +157,7 @@ The palette feels like stadium field paint meeting a warm paper play sheet: dark
 
 **The Clay Clock Rule.** Clay belongs to time pressure and operational emphasis, not selections or generic promotion.
 
-**The No Sportsbook Rule.** Do not introduce neon odds colors, financial red/green semantics, dark trading-card chrome, or wagering cues.
+**The Reference-Line Rule.** Provider-attributed moneylines and Monday over/under may appear as quiet ink-on-paper measurement data. Never introduce neon odds colors, financial red/green semantics, sportsbook links, dark trading-card chrome, or wagering calls to action.
 
 ## Typography
 
@@ -277,7 +277,7 @@ Deadlines use a clay banner with a clock icon, concise uppercase copy, and a cli
 
 ### Don't:
 
-- **Don't** resemble a sportsbook: no odds, betting slips, monetary balances, casino glow, or red/green win-loss trading semantics.
+- **Don't** resemble a sportsbook: no spreads, betting slips, monetary balances, casino glow, promotional odds links, or red/green win-loss trading semantics.
 - **Don't** depend on NFL logos, team crests, jerseys, or protected team artwork.
 - **Don't** scatter the core workflow across rounded floating cards.
 - **Don't** use clipped tabs or clay accents as decoration without semantic purpose.

@@ -11,6 +11,10 @@ export type EspnGameResult = {
   status: ProviderGameStatus;
   awayScore: number | null;
   homeScore: number | null;
+  awayMoneyline: number | null;
+  homeMoneyline: number | null;
+  overUnder: number | null;
+  oddsProvider: string | null;
 };
 
 type EspnStatus = {
@@ -30,6 +34,15 @@ export type EspnScoreEvent = {
   id?: unknown;
   status?: EspnStatus;
   competitions?: unknown;
+};
+
+type EspnOdds = {
+  provider?: { displayName?: unknown; name?: unknown };
+  overUnder?: unknown;
+  moneyline?: {
+    away?: { close?: { odds?: unknown } };
+    home?: { close?: { odds?: unknown } };
+  };
 };
 
 type EspnScoreboard = {
@@ -57,6 +70,28 @@ function score(value: unknown): number | null {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function americanOdds(value: unknown): number | null {
+  if (typeof value === "string" && ["EV", "EVEN"].includes(value.trim().toLocaleUpperCase("en-US"))) {
+    return 100;
+  }
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && Math.abs(parsed) >= 100 && Math.abs(parsed) <= 100_000
+    ? parsed
+    : null;
+}
+
+function gameTotal(value: unknown): number | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 200 ? parsed : null;
+}
+
+function providerName(odds: EspnOdds | undefined): string | null {
+  const value = odds?.provider?.displayName ?? odds?.provider?.name;
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 48) : null;
+}
+
 export function normalizeEspnScores(events: EspnScoreEvent[]): EspnGameResult[] {
   return events.flatMap((event) => {
     if (typeof event.id !== "string" || !event.id.trim()) return [];
@@ -65,6 +100,7 @@ export function normalizeEspnScores(events: EspnScoreEvent[]): EspnGameResult[] 
     const competition = event.competitions[0] as {
       status?: EspnStatus;
       competitors?: unknown;
+      odds?: unknown;
     };
     if (!Array.isArray(competition.competitors)) return [];
 
@@ -74,11 +110,18 @@ export function normalizeEspnScores(events: EspnScoreEvent[]): EspnGameResult[] 
     if (!away || !home) return [];
 
     const status = gameStatus(competition.status ?? event.status);
+    const odds = Array.isArray(competition.odds)
+      ? competition.odds[0] as EspnOdds | undefined
+      : undefined;
     return [{
       providerGameKey: `espn:${event.id.trim()}`,
       status,
       awayScore: status === "scheduled" ? null : score(away.score),
       homeScore: status === "scheduled" ? null : score(home.score),
+      awayMoneyline: americanOdds(odds?.moneyline?.away?.close?.odds),
+      homeMoneyline: americanOdds(odds?.moneyline?.home?.close?.odds),
+      overUnder: gameTotal(odds?.overUnder),
+      oddsProvider: providerName(odds),
     }];
   });
 }

@@ -139,8 +139,8 @@ export default async function AdminSettingsPage() {
         <section className="admin-score-health" aria-labelledby="score-feed-title">
           <header className="admin-settings-section-heading admin-settings-section-heading--score">
             <div>
-              <h2 id="score-feed-title">Score feed</h2>
-              <p>The secure production job checks active games every ten minutes during game windows, with a daily catch-up. Final scores can still be entered from contest-week controls.</p>
+              <h2 id="score-feed-title">Score & reference-line feed</h2>
+              <p>The secure production job refreshes upcoming moneylines and Monday totals during its daily check, then checks active games during live windows. Final scores can still be entered from contest-week controls.</p>
             </div>
             <span className={`admin-sync-stamp admin-sync-stamp--${scoreHealth.status}`}>
               {scoreStatusLabel(scoreHealth.status)}

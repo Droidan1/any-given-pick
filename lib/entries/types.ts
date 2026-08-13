@@ -6,6 +6,13 @@ export type PlayerGame = {
   away: { abbreviation: string; name: string };
   home: { abbreviation: string; name: string };
   isMondayTiebreaker: boolean;
+  odds: {
+    awayMoneyline: number | null;
+    homeMoneyline: number | null;
+    overUnder: number | null;
+    provider: string;
+    updatedAt: string;
+  } | null;
 };
 
 export type PlayerEntry = {

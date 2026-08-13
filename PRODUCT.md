@@ -30,7 +30,7 @@ Most user activity happens on a phone around the weekly NFL schedule. The centra
 - One shared contest per NFL week; every approved player uses the same published call sheet.
 - Every required pick and one whole-number Monday combined-score prediction are required for submission.
 - The server controls deadlines, eligibility, locking, reveal, and scoring authority.
-- Free entry only. No payments, entry fees, cash balances, cash prizes, withdrawals, odds, or wagering language.
+- Free entry only. No payments, entry fees, cash balances, cash prizes, withdrawals, or bet placement. The pick sheet may show provider-attributed informational moneylines for each matchup and an over/under only for Monday games; those reference lines never affect scoring and include no sportsbook links or promotions.
 - NFL/team mark licensing and the sports-data provider remain open decisions. Concepts must not depend on official logos or protected team artwork.
 - The approved product name is Any Given Pick and the primary domain is `anygivenpick.app`.
 - The current route mark and Coach's Call Sheet wordmark are the prototype identity; formal trademark review and a final production logo package are not recorded yet.

@@ -77,6 +77,21 @@ function locationValidityLabel(account: AccountSummary): string | null {
   }).format(new Date(account.locationExpiresAt))}`;
 }
 
+function formatMoneyline(value: number): string {
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function formatOddsUpdate(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Indiana/Indianapolis",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(value));
+}
+
 const navItems: { view: View; label: string; icon: IconName }[] = [
   { view: "home", label: "Home", icon: "home" },
   { view: "picks", label: "Picks", icon: "picks" },
@@ -518,6 +533,9 @@ type PicksViewProps = {
 
 function PicksView(props: PicksViewProps) {
   const tiebreakerLabel = props.week.seasonPhase === "preseason" ? "Tiebreaker" : "Monday";
+  const oddsProviders = Array.from(new Set(
+    props.games.flatMap((game) => game.odds?.provider ? [game.odds.provider] : []),
+  ));
   return (
     <div className="picks-layout">
       <section className="pick-sheet" aria-labelledby="picks-title">
@@ -539,22 +557,35 @@ function PicksView(props: PicksViewProps) {
           {props.games.map((game) => {
             const selected = props.picks[game.id];
             const missing = !selected;
+            const awayMoneyline = game.odds?.awayMoneyline ?? null;
+            const homeMoneyline = game.odds?.homeMoneyline ?? null;
+            const mondayTotal = game.day === "Mon" ? game.odds?.overUnder ?? null : null;
             return (
-              <fieldset id={`matchup-${game.id}`} className={`matchup${missing ? " matchup--missing" : ""}`} key={game.id} ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}>
-                <legend className="sr-only">{game.away.name} at {game.home.name}, {game.day} at {game.time}</legend>
+              <fieldset id={`matchup-${game.id}`} className={`matchup${missing ? " matchup--missing" : ""}${mondayTotal !== null ? " matchup--with-total" : ""}`} key={game.id} ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}>
+                <legend className="sr-only">{game.away.name} at {game.home.name}, {game.day} at {game.time}{mondayTotal !== null ? `, over under ${mondayTotal}` : ""}</legend>
                 <div className="matchup-time"><span>{game.day}</span><span>{game.time}</span></div>
-                <button className={`team-choice${selected === game.away.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.away.abbreviation)} aria-pressed={selected === game.away.abbreviation} aria-label={`Pick ${game.away.name} over ${game.home.name}. ${game.day}, ${game.time}`} disabled={!props.canParticipate || props.isLocked || props.isPending}>
-                  {selected === game.away.abbreviation && <Icon name="check" />}<span>{game.away.abbreviation}</span><small>{game.away.name}</small>
+                <button className={`team-choice${selected === game.away.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.away.abbreviation)} aria-pressed={selected === game.away.abbreviation} aria-label={`Pick ${game.away.name} over ${game.home.name}. ${game.day}, ${game.time}${awayMoneyline !== null ? `. Moneyline ${formatMoneyline(awayMoneyline)}` : ""}`} disabled={!props.canParticipate || props.isLocked || props.isPending}>
+                  {selected === game.away.abbreviation && <Icon name="check" />}<span className="team-choice__code">{game.away.abbreviation}</span><small className="team-choice__name">{game.away.name}</small>{awayMoneyline !== null ? <small className="team-choice__moneyline">ML {formatMoneyline(awayMoneyline)}</small> : null}
                 </button>
                 <span className="at-mark" aria-hidden="true">@</span>
-                <button className={`team-choice${selected === game.home.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.home.abbreviation)} aria-pressed={selected === game.home.abbreviation} aria-label={`Pick ${game.home.name} over ${game.away.name}. ${game.day}, ${game.time}`} disabled={!props.canParticipate || props.isLocked || props.isPending}>
-                  {selected === game.home.abbreviation && <Icon name="check" />}<span>{game.home.abbreviation}</span><small>{game.home.name}</small>
+                <button className={`team-choice${selected === game.home.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.home.abbreviation)} aria-pressed={selected === game.home.abbreviation} aria-label={`Pick ${game.home.name} over ${game.away.name}. ${game.day}, ${game.time}${homeMoneyline !== null ? `. Moneyline ${formatMoneyline(homeMoneyline)}` : ""}`} disabled={!props.canParticipate || props.isLocked || props.isPending}>
+                  {selected === game.home.abbreviation && <Icon name="check" />}<span className="team-choice__code">{game.home.abbreviation}</span><small className="team-choice__name">{game.home.name}</small>{homeMoneyline !== null ? <small className="team-choice__moneyline">ML {formatMoneyline(homeMoneyline)}</small> : null}
                 </button>
+                {mondayTotal !== null && game.odds ? (
+                  <div className="matchup-total">
+                    <span>Monday reference total</span>
+                    <strong>O/U {mondayTotal}</strong>
+                    <small>{game.odds.provider} · updated {formatOddsUpdate(game.odds.updatedAt)}</small>
+                  </div>
+                ) : null}
               </fieldset>
             );
           })}
         </div>
-        <p className="prototype-note">Official commissioner-published slate · kickoff times shown in Eastern Time.</p>
+        <p className="prototype-note">
+          Official commissioner-published slate · kickoff times shown in Eastern Time.
+          {oddsProviders.length > 0 ? ` Moneylines and Monday O/U are informational reference lines from ${oddsProviders.join(" / ")} via ESPN; they may change and never affect scoring.` : ""}
+        </p>
       </section>
 
       <aside className="game-panel" aria-label="Entry controls">

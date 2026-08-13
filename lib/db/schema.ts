@@ -5,6 +5,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -359,6 +360,11 @@ export const games = pgTable(
     status: gameStatusEnum("status").notNull().default("scheduled"),
     awayScore: integer("away_score"),
     homeScore: integer("home_score"),
+    awayMoneyline: integer("away_moneyline"),
+    homeMoneyline: integer("home_moneyline"),
+    overUnder: numeric("over_under", { precision: 5, scale: 1, mode: "number" }),
+    oddsProvider: varchar("odds_provider", { length: 48 }),
+    oddsUpdatedAt: timestamp("odds_updated_at", { withTimezone: true }),
     isMondayTiebreaker: boolean("is_monday_tiebreaker").notNull().default(false),
     sortOrder: integer("sort_order").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -383,6 +389,18 @@ export const games = pgTable(
     check(
       "games_scores_nonnegative_check",
       sql`(${table.awayScore} is null or ${table.awayScore} >= 0) and (${table.homeScore} is null or ${table.homeScore} >= 0)`,
+    ),
+    check(
+      "games_away_moneyline_check",
+      sql`${table.awayMoneyline} is null or ${table.awayMoneyline} between -100000 and -100 or ${table.awayMoneyline} between 100 and 100000`,
+    ),
+    check(
+      "games_home_moneyline_check",
+      sql`${table.homeMoneyline} is null or ${table.homeMoneyline} between -100000 and -100 or ${table.homeMoneyline} between 100 and 100000`,
+    ),
+    check(
+      "games_over_under_check",
+      sql`${table.overUnder} is null or ${table.overUnder} between 0 and 200`,
     ),
     check("games_distinct_teams_check", sql`${table.awayTeamCode} <> ${table.homeTeamCode}`),
   ],

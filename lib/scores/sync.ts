@@ -7,6 +7,7 @@ import { fetchEspnWeekScores } from "./espn";
 
 const SCORE_SYNC_THROTTLE_MS = 50_000;
 const SCORE_SYNC_LOOKBACK_MS = 8 * 24 * 60 * 60 * 1_000;
+const ODDS_SYNC_LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1_000;
 
 type PendingGame = {
   id: string;
@@ -14,6 +15,11 @@ type PendingGame = {
   status: "scheduled" | "in_progress" | "final" | "postponed" | "canceled";
   awayScore: number | null;
   homeScore: number | null;
+  awayMoneyline: number | null;
+  homeMoneyline: number | null;
+  overUnder: number | null;
+  oddsProvider: string | null;
+  oddsUpdatedAt: Date | null;
   updatedAt: Date;
   season: number;
   seasonPhase: "preseason" | "regular";
@@ -40,6 +46,11 @@ export async function syncRecentEspnScores(now = new Date()): Promise<ScoreSyncS
       status: games.status,
       awayScore: games.awayScore,
       homeScore: games.homeScore,
+      awayMoneyline: games.awayMoneyline,
+      homeMoneyline: games.homeMoneyline,
+      overUnder: games.overUnder,
+      oddsProvider: games.oddsProvider,
+      oddsUpdatedAt: games.oddsUpdatedAt,
       updatedAt: games.updatedAt,
       season: contestWeeks.season,
       seasonPhase: contestWeeks.seasonPhase,
@@ -51,7 +62,7 @@ export async function syncRecentEspnScores(now = new Date()): Promise<ScoreSyncS
       inArray(contestWeeks.status, ["published", "locked", "final"]),
       like(games.providerGameKey, "espn:%"),
       notInArray(games.status, ["final", "canceled"]),
-      lte(games.kickoffAt, now),
+      lte(games.kickoffAt, new Date(now.getTime() + ODDS_SYNC_LOOKAHEAD_MS)),
       gte(games.kickoffAt, new Date(now.getTime() - SCORE_SYNC_LOOKBACK_MS)),
     ));
 
@@ -88,11 +99,28 @@ export async function syncRecentEspnScores(now = new Date()): Promise<ScoreSyncS
 
       await Promise.all(weekGames.map(async (game) => {
         const result = resultByKey.get(game.providerGameKey);
+        const hasPostedOdds = Boolean(
+          result && (
+            result.awayMoneyline !== null ||
+            result.homeMoneyline !== null ||
+            result.overUnder !== null
+          ),
+        );
+        const nextAwayMoneyline = result?.awayMoneyline ?? game.awayMoneyline;
+        const nextHomeMoneyline = result?.homeMoneyline ?? game.homeMoneyline;
+        const nextOverUnder = result?.overUnder ?? game.overUnder;
+        const nextOddsProvider = result?.oddsProvider ?? game.oddsProvider ?? "ESPN";
         const changed = Boolean(
           result && (
             result.status !== game.status ||
             result.awayScore !== game.awayScore ||
-            result.homeScore !== game.homeScore
+            result.homeScore !== game.homeScore ||
+            (hasPostedOdds && (
+              nextAwayMoneyline !== game.awayMoneyline ||
+              nextHomeMoneyline !== game.homeMoneyline ||
+              nextOverUnder !== game.overUnder ||
+              nextOddsProvider !== game.oddsProvider
+            ))
           ),
         );
         await db
@@ -101,6 +129,13 @@ export async function syncRecentEspnScores(now = new Date()): Promise<ScoreSyncS
             status: result.status,
             awayScore: result.awayScore,
             homeScore: result.homeScore,
+            ...(hasPostedOdds ? {
+              awayMoneyline: nextAwayMoneyline,
+              homeMoneyline: nextHomeMoneyline,
+              overUnder: nextOverUnder,
+              oddsProvider: nextOddsProvider,
+              oddsUpdatedAt: now,
+            } : {}),
             updatedAt: now,
           } : { updatedAt: now })
           .where(eq(games.id, game.id));

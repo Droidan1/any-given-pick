@@ -86,6 +86,15 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
       away: { abbreviation: game.awayTeamCode, name: game.awayTeamName },
       home: { abbreviation: game.homeTeamCode, name: game.homeTeamName },
       isMondayTiebreaker: game.isMondayTiebreaker,
+      odds: game.oddsProvider && game.oddsUpdatedAt
+        ? {
+            awayMoneyline: game.awayMoneyline,
+            homeMoneyline: game.homeMoneyline,
+            overUnder: game.overUnder,
+            provider: game.oddsProvider,
+            updatedAt: game.oddsUpdatedAt.toISOString(),
+          }
+        : null,
     })),
     entry: entry
       ? {

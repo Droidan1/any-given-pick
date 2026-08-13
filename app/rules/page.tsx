@@ -27,7 +27,7 @@ export default function RulesPage() {
       </section>
       <section>
         <h2>4. Schedules and corrections</h2>
-        <p>The commissioner publishes each week’s slate and may correct team, kickoff, provider, or score data when a reliable source changes. Picks remain sealed from administrators until the entry deadline. Material corrections will be reflected in the app as soon as reasonably possible.</p>
+        <p>The commissioner publishes each week’s slate and may correct team, kickoff, provider, or score data when a reliable source changes. Informational moneylines and Monday over/under may be shown before picks; they can change, do not affect scoring, and are not an offer to place a bet. Picks remain sealed from administrators until the entry deadline. Material corrections will be reflected in the app as soon as reasonably possible.</p>
       </section>
       <section>
         <h2>5. Fair play</h2>

@@ -58,10 +58,11 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Player email reminders for published weeks, approaching deadlines, submitted picks, and completed results
 - Transactional approval-queue alerts for administrators and approval confirmations for players
 - Per-player email preferences and idempotent delivery receipts without storing recipient addresses
+- Provider-attributed informational moneylines on matchups and over/under only on Monday games
 
 ## Not connected yet
 
-A licensed long-term sports-data provider, PWA push notifications, prizes, private groups, and moderation remain future milestones. Schedule importing stays provider-neutral so an approved source can replace the current provider without rebuilding the contest engine.
+A licensed long-term sports-data provider, PWA push notifications, prizes, private groups, and moderation remain future milestones. Schedule importing stays provider-neutral so an approved source can replace the current provider without rebuilding the contest engine. The beta reads moneylines and totals already present in the ESPN scoreboard response, stores no sportsbook links or promotional payloads, and treats those lines as replaceable informational data.
 
 Product truth is recorded in [PRODUCT.md](./PRODUCT.md). Design references are stored under `design/`.
 
