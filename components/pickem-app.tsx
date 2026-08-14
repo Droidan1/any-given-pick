@@ -8,6 +8,7 @@ import type { AccountSummary } from "@/lib/account-types";
 import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
 import { unscopedDraftStorageKeys, userDraftStorageKey } from "@/lib/entries/draft-storage";
 import type { PlayerGame, PlayerWeek } from "@/lib/entries/types";
+import { getHomeWeekState } from "@/lib/home-week-state";
 import type { StandingsSnapshot } from "@/lib/standings/types";
 import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
@@ -100,6 +101,20 @@ const navItems: { view: View; label: string; icon: IconName }[] = [
   { view: "profile", label: "Profile", icon: "profile" },
 ];
 
+const viewHrefs: Record<View, string> = {
+  home: "/?view=home",
+  picks: "/?view=picks",
+  standings: "/?view=standings",
+  profile: "/?view=profile",
+};
+
+function viewFromCurrentUrl(): View {
+  const candidate = new URLSearchParams(window.location.search).get("view");
+  return candidate === "picks" || candidate === "standings" || candidate === "profile"
+    ? candidate
+    : "home";
+}
+
 export function PickemApp({
   account,
   week,
@@ -149,6 +164,23 @@ export function PickemApp({
   const games = week?.games ?? [];
   const canParticipate = hasFreshEligibility(liveAccount, eligibilityClock);
   const isLocked = week?.isLocked ?? true;
+
+  const selectView = (nextView: View) => {
+    if (nextView !== view) {
+      window.history.pushState(null, "", viewHrefs[nextView]);
+      setView(nextView);
+    }
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  };
+
+  useEffect(() => {
+    const syncViewFromHistory = () => {
+      setView(viewFromCurrentUrl());
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+    };
+    window.addEventListener("popstate", syncViewFromHistory);
+    return () => window.removeEventListener("popstate", syncViewFromHistory);
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setEligibilityClock(Date.now()), 60_000);
@@ -305,7 +337,7 @@ export function PickemApp({
 
   if (!week) {
     return (
-      <AppFrame view={view} setView={setView} account={account} isAdmin={isAdmin}>
+      <AppFrame view={view} setView={selectView} account={account} isAdmin={isAdmin}>
         <section className="single-view no-week-view">
           <RouteSketch /><RouteSketch mirrored />
           <PwaInstallHomeCard />
@@ -416,7 +448,7 @@ export function PickemApp({
   };
 
   return (
-    <AppFrame view={view} setView={setView} account={liveAccount} isAdmin={isAdmin}>
+    <AppFrame view={view} setView={selectView} account={liveAccount} isAdmin={isAdmin}>
       {view === "picks" && (
         <PicksView
           week={week}
@@ -450,7 +482,7 @@ export function PickemApp({
           onEdit={() => { setReviewing(false); setReceipt(null); setStatus("Edit mode restored. Submit again to make changes official."); }}
         />
       )}
-      {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => setView("picks")} account={liveAccount} canParticipate={canParticipate} />}
+      {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => selectView("picks")} account={liveAccount} canParticipate={canParticipate} hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0} />}
       {view === "standings" && <StandingsView standings={standings} currentUserId={draftOwnerId} />}
       {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={liveAccount} isAdmin={isAdmin} />}
     </AppFrame>
@@ -712,9 +744,23 @@ function Receipt({ receipt, games, picks, mondayTotal, tiebreakerLabel, onEdit, 
   );
 }
 
-function HomeView({ selectedCount, onContinue, account, week, canParticipate }: { selectedCount: number; onContinue: () => void; account: AccountSummary; week: PlayerWeek; canParticipate: boolean }) {
+function HomeView({ selectedCount, onContinue, account, week, canParticipate, hasSubmitted }: { selectedCount: number; onContinue: () => void; account: AccountSummary; week: PlayerWeek; canParticipate: boolean; hasSubmitted: boolean }) {
+  const homeState = getHomeWeekState({
+    deadlineLabel: week.deadlineLabel,
+    games: week.games,
+    hasSubmitted,
+    isLocked: week.isLocked,
+    selectedCount,
+  });
+  const statusLabel = homeState.lockedStatusLabel
+    ?? `${eligibilityStatusLabel(account)}${locationValidityLabel(account) ? ` · ${locationValidityLabel(account)}` : ""}`;
+  const action = homeState.destination === "picks"
+    ? canParticipate
+      ? <button className="review-action" type="button" onClick={onContinue}><span>{homeState.actionLabel}</span><Icon name="arrow" /></button>
+      : <Link className="review-action review-action--link" href="/profile"><span>{eligibilityActionLabel(account)}</span><Icon name="arrow" /></Link>
+    : <Link className="review-action review-action--link" href={`/${homeState.destination}`}><span>{homeState.actionLabel}</span><Icon name="arrow" /></Link>;
   return (
-    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><PwaInstallHomeCard /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">Finish and submit your entry before {week.deadlineLabel}.</p><div className="home-status"><Icon name="shield" /><span>{eligibilityStatusLabel(account)}{locationValidityLabel(account) ? ` · ${locationValidityLabel(account)}` : ""}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{canParticipate ? <button className="review-action" type="button" onClick={onContinue}><span>{selectedCount ? "Continue your picks" : "Make your picks"}</span><Icon name="arrow" /></button> : <Link className="review-action review-action--link" href="/profile"><span>{eligibilityActionLabel(account)}</span><Icon name="arrow" /></Link>}<div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
+    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><PwaInstallHomeCard /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">{homeState.lead}</p><div className="home-status"><Icon name={homeState.lockedStatusLabel ? "check" : "shield"} /><span>{statusLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{action}<div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
   );
 }
 

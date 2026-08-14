@@ -283,6 +283,9 @@
 }
 
 .home-trust-links a {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
   color: inherit;
   font-weight: 700;
   text-underline-offset: 0.24em;
@@ -1439,6 +1442,13 @@
   text-transform: uppercase;
 }
 
+.activity-card__results {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .activity-state {
   min-height: 2rem;
   display: inline-flex;
@@ -1549,8 +1559,28 @@
 
 .activity-matchups {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   border-top: 1px solid var(--sage);
+}
+
+.activity-day-group + .activity-day-group {
+  border-top: 2px solid var(--ink);
+}
+
+.activity-day-group > h4 {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  background: var(--field-900);
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.activity-day-group__games {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .activity-matchup {
@@ -1743,7 +1773,7 @@
     grid-row: 2;
   }
 
-  .activity-matchups {
+  .activity-day-group__games {
     grid-template-columns: 1fr;
   }
 
@@ -1759,13 +1789,18 @@
   }
 
   .activity-intro {
-    min-height: 23rem;
+    min-height: 14rem;
     align-items: flex-start;
-    padding: 2rem 1.25rem;
+    padding: 1.25rem;
   }
 
   .activity-intro h1 {
-    font-size: 3.6rem;
+    font-size: 2.85rem;
+  }
+
+  .activity-intro p:last-child {
+    margin-top: 1rem;
+    font-size: 0.96rem;
   }
 
   .activity-intro > svg {
@@ -1774,12 +1809,12 @@
   }
 
   .activity-scoreboard > div {
-    min-height: 6rem;
+    min-height: 4.5rem;
     padding: 0.6rem 0.25rem;
   }
 
   .activity-scoreboard strong {
-    font-size: 2.4rem;
+    font-size: 2rem;
   }
 
   .activity-scoreboard span {
@@ -1787,7 +1822,7 @@
   }
 
   .activity-section {
-    margin-top: 3rem;
+    margin-top: 1.75rem;
   }
 
   .activity-section__header {
@@ -1815,6 +1850,11 @@
     font-size: 1.8rem;
   }
 
+  .activity-card__results {
+    max-width: 25ch;
+    font-size: 0.75rem;
+  }
+
   .activity-state {
     grid-column: 2 / 4;
     justify-self: start;
@@ -1829,6 +1869,10 @@
     grid-column: 2 / 4;
     grid-row: 3;
     justify-self: end;
+  }
+
+  .activity-day-group > h4 {
+    padding-inline: 0.75rem;
   }
 
   .activity-card__body {
@@ -2526,7 +2570,7 @@ button:disabled {
 
 .number-control {
   display: grid;
-  grid-template-rows: 2.25rem 1fr 2.25rem;
+  grid-template-rows: 2.75rem 1fr 2.75rem;
   padding: 0.6rem;
 }
 
@@ -2551,6 +2595,8 @@ button:disabled {
 }
 
 .number-control button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   border: 0;
   background: transparent;
   color: var(--clay);
@@ -3266,6 +3312,9 @@ button:disabled {
 }
 
 .account-brand {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
   color: var(--paper-100);
   text-decoration: none;
 }
@@ -3296,6 +3345,12 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.account-header__actions .cl-userButtonTrigger,
+.surface-account .cl-userButtonTrigger {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
 }
 
 .account-header__actions .text-link {
@@ -4016,6 +4071,10 @@ button:disabled {
     align-content: start;
   }
 
+  .home-trust-links a {
+    padding-block: 0.55rem;
+  }
+
   html[data-pwa-install-banner="true"] .app-shell,
   html[data-pwa-install-banner="true"] .account-shell {
     padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
@@ -4131,6 +4190,45 @@ button:disabled {
   .pwa-install-banner svg {
     width: 1.55rem;
     height: 1.55rem;
+  }
+}
+
+@media (max-width: 48rem) and (max-height: 38rem) {
+  .single-view.home-view {
+    padding-top: 1rem;
+  }
+
+  .home-view .week-label {
+    font-size: 0.9rem;
+  }
+
+  .single-view.home-view h1 {
+    font-size: clamp(2.65rem, 13vw, 3.15rem);
+  }
+
+  .home-view .lead {
+    margin: 0.75rem 0 1rem;
+    font-size: 0.96rem;
+    line-height: 1.4;
+  }
+
+  .home-status {
+    min-height: 3.75rem;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .home-view .review-action {
+    min-height: 3.75rem;
+    margin-top: 0.75rem;
+    font-size: 1.15rem;
+  }
+
+  .home-trust-links {
+    margin-top: 0.35rem;
+  }
+
+  .home-view .route-sketch {
+    opacity: 0.28;
   }
 }
 

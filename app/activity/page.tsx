@@ -62,9 +62,32 @@ function outcomeLabel(pick: ActivityPick): string {
   return gameStateLabel(pick);
 }
 
+function activityResultSummary(card: ActivityCard): string {
+  const liveCount = card.picks.filter((pick) => pick.gameStatus === "in_progress").length;
+  const upcomingCount = Math.max(0, card.gameCount - card.completedGameCount - liveCount);
+  const graded = card.completedGameCount > 0
+    ? `${card.winCount} won · ${card.lossCount} lost${card.tieCount > 0 ? ` · ${card.tieCount} tied` : ""}`
+    : "No final results";
+  const remaining = [
+    liveCount > 0 ? `${liveCount} live` : null,
+    upcomingCount > 0 ? `${upcomingCount} upcoming` : null,
+  ].filter(Boolean).join(" · ");
+  return remaining ? `${graded} · ${remaining}` : graded;
+}
+
+function groupPicksByDay(picks: ActivityPick[]): Array<{ label: string; picks: ActivityPick[] }> {
+  const groups = new Map<string, ActivityPick[]>();
+  for (const pick of picks) {
+    const label = formatKickoff(pick.kickoffAt);
+    groups.set(label, [...(groups.get(label) ?? []), pick]);
+  }
+  return Array.from(groups, ([label, groupedPicks]) => ({ label, picks: groupedPicks }));
+}
+
 function ActivityCardView({ card }: { card: ActivityCard }) {
+  const pickGroups = groupPicksByDay(card.picks);
   return (
-    <details className={`activity-card activity-card--${card.state}`} open={card.isCurrent}>
+    <details className={`activity-card activity-card--${card.state}`}>
       <summary className="activity-card__summary">
         <span className="activity-card__marker" aria-hidden="true">
           {card.isCurrent ? "Now" : String(card.weekNumber).padStart(2, "0")}
@@ -74,6 +97,7 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
             {card.season} · {card.seasonPhase === "preseason" ? "Preseason" : "Regular season"}
           </span>
           <strong>{card.weekLabel}</strong>
+          <span className="activity-card__results">{activityResultSummary(card)}</span>
         </span>
         <span className={`activity-state activity-state--${card.state}`}>{card.stateLabel}</span>
         <span className="activity-card__count">
@@ -81,8 +105,8 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
           <span>of {card.gameCount} picks</span>
         </span>
         <span className="activity-card__toggle" aria-hidden="true">
-          <span>View card</span>
-          <span>Close card</span>
+          <span>View {card.gameCount} picks</span>
+          <span>Close picks</span>
         </span>
       </summary>
 
@@ -116,46 +140,52 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
 
         {card.picks.length > 0 ? (
           <div className="activity-matchups" aria-label={`${card.weekLabel} selections`}>
-            {card.picks.map((pick) => {
-              const awaySelected = pick.selectedTeamCode === pick.awayTeamCode;
-              const homeSelected = pick.selectedTeamCode === pick.homeTeamCode;
-              return (
-                <div
-                  className={`activity-matchup activity-matchup--${pick.gameStatus} activity-matchup--${pick.outcome}`}
-                  key={pick.gameId}
-                  aria-label={`${pick.awayTeamName} at ${pick.homeTeamName}. ${pick.selectedTeamName ? `${pick.selectedTeamName} selected.` : "No selection."} ${outcomeLabel(pick)}.`}
-                >
-                  <span className="activity-matchup__date">
-                    <span>{formatKickoff(pick.kickoffAt)}</span>
-                    <strong>{gameStateLabel(pick)}</strong>
-                  </span>
-                  <span className={`activity-team${awaySelected ? " activity-team--selected" : ""}`}>
-                    <span className="activity-team__line">
-                      <strong>{pick.awayTeamCode}</strong>
-                      <span className="activity-team__call">
-                        {pick.awayScore !== null ? <b>{pick.awayScore}</b> : null}
-                        {awaySelected ? <Icon name="check" /> : null}
-                      </span>
-                    </span>
-                    <small>{pick.awayTeamName}</small>
-                  </span>
-                  <span className="activity-matchup__at">@</span>
-                  <span className={`activity-team${homeSelected ? " activity-team--selected" : ""}`}>
-                    <span className="activity-team__line">
-                      <strong>{pick.homeTeamCode}</strong>
-                      <span className="activity-team__call">
-                        {pick.homeScore !== null ? <b>{pick.homeScore}</b> : null}
-                        {homeSelected ? <Icon name="check" /> : null}
-                      </span>
-                    </span>
-                    <small>{pick.homeTeamName}</small>
-                  </span>
-                  <span className={`activity-outcome activity-outcome--${pick.outcome}`}>
-                    {outcomeLabel(pick)}
-                  </span>
+            {pickGroups.map((group) => (
+              <section className="activity-day-group" key={group.label}>
+                <h4>{group.label}</h4>
+                <div className="activity-day-group__games">
+                  {group.picks.map((pick) => {
+                    const awaySelected = pick.selectedTeamCode === pick.awayTeamCode;
+                    const homeSelected = pick.selectedTeamCode === pick.homeTeamCode;
+                    return (
+                      <div
+                        className={`activity-matchup activity-matchup--${pick.gameStatus} activity-matchup--${pick.outcome}`}
+                        key={pick.gameId}
+                        aria-label={`${pick.awayTeamName} at ${pick.homeTeamName}. ${pick.selectedTeamName ? `${pick.selectedTeamName} selected.` : "No selection."} ${outcomeLabel(pick)}.`}
+                      >
+                        <span className="activity-matchup__date">
+                          <strong>{gameStateLabel(pick)}</strong>
+                        </span>
+                        <span className={`activity-team${awaySelected ? " activity-team--selected" : ""}`}>
+                          <span className="activity-team__line">
+                            <strong>{pick.awayTeamCode}</strong>
+                            <span className="activity-team__call">
+                              {pick.awayScore !== null ? <b>{pick.awayScore}</b> : null}
+                              {awaySelected ? <Icon name="check" /> : null}
+                            </span>
+                          </span>
+                          <small>{pick.awayTeamName}</small>
+                        </span>
+                        <span className="activity-matchup__at">@</span>
+                        <span className={`activity-team${homeSelected ? " activity-team--selected" : ""}`}>
+                          <span className="activity-team__line">
+                            <strong>{pick.homeTeamCode}</strong>
+                            <span className="activity-team__call">
+                              {pick.homeScore !== null ? <b>{pick.homeScore}</b> : null}
+                              {homeSelected ? <Icon name="check" /> : null}
+                            </span>
+                          </span>
+                          <small>{pick.homeTeamName}</small>
+                        </span>
+                        <span className={`activity-outcome activity-outcome--${pick.outcome}`}>
+                          {outcomeLabel(pick)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </section>
+            ))}
           </div>
         ) : (
           <div className="activity-card__empty">

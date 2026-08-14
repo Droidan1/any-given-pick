@@ -82,6 +82,7 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
     games: gameRows.map((game) => ({
       id: game.id,
       kickoffAt: game.kickoffAt.toISOString(),
+      status: game.status,
       ...formatKickoff(game.kickoffAt),
       away: { abbreviation: game.awayTeamCode, name: game.awayTeamName },
       home: { abbreviation: game.homeTeamCode, name: game.homeTeamName },

@@ -1,6 +1,7 @@
 export type PlayerGame = {
   id: string;
   kickoffAt: string;
+  status: "scheduled" | "in_progress" | "final" | "postponed" | "canceled";
   day: string;
   time: string;
   away: { abbreviation: string; name: string };
