@@ -7,7 +7,7 @@ import { getCurrentPlayerWeek } from "@/lib/entries/service";
 import { getSeasonStandings } from "@/lib/standings/service";
 import { auth } from "@clerk/nextjs/server";
 
-const initialViews = new Set(["home", "picks", "standings", "profile"] as const);
+const initialViews = new Set(["home", "picks", "standings"] as const);
 
 export default async function Home({
   searchParams,
@@ -16,9 +16,10 @@ export default async function Home({
 }) {
   const [{ userId }, params] = await Promise.all([auth(), searchParams]);
   if (!userId) redirect("/sign-in");
+  if (params.view === "profile") redirect("/profile");
 
-  const initialView = initialViews.has(params.view as "home" | "picks" | "standings" | "profile")
-    ? params.view as "home" | "picks" | "standings" | "profile"
+  const initialView = initialViews.has(params.view as "home" | "picks" | "standings")
+    ? params.view as "home" | "picks" | "standings"
     : "home";
 
   const appUser = await requireAppUser(userId);

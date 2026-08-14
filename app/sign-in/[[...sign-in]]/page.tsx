@@ -25,6 +25,13 @@ export default function SignInPage() {
         path="/sign-in"
         signUpUrl="/sign-up"
         fallbackRedirectUrl="/"
+        appearance={{
+          elements: {
+            logoBox: { display: "none" },
+            headerTitle: { display: "none" },
+            headerSubtitle: { display: "none" },
+          },
+        }}
       />
       <section className="auth-game-plan" aria-labelledby="game-plan-title">
         <h2 id="game-plan-title">How the game works</h2>

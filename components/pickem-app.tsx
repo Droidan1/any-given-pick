@@ -13,9 +13,9 @@ import type { StandingsSnapshot } from "@/lib/standings/types";
 import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
 import { MobileAppNav } from "./mobile-app-nav";
-import { PwaInstallHomeCard, PwaInstallProfileAccess } from "./pwa-install-experience";
+import { PwaInstallHomeCard } from "./pwa-install-experience";
 
-type View = "home" | "picks" | "standings" | "profile";
+type View = "home" | "picks" | "standings";
 type Picks = Record<string, string>;
 type ReceiptData = {
   versionNumber: number;
@@ -98,19 +98,17 @@ const navItems: { view: View; label: string; icon: IconName }[] = [
   { view: "home", label: "Home", icon: "home" },
   { view: "picks", label: "Picks", icon: "picks" },
   { view: "standings", label: "Standings", icon: "standings" },
-  { view: "profile", label: "Profile", icon: "profile" },
 ];
 
 const viewHrefs: Record<View, string> = {
   home: "/?view=home",
   picks: "/?view=picks",
   standings: "/?view=standings",
-  profile: "/?view=profile",
 };
 
 function viewFromCurrentUrl(): View {
   const candidate = new URLSearchParams(window.location.search).get("view");
-  return candidate === "picks" || candidate === "standings" || candidate === "profile"
+  return candidate === "picks" || candidate === "standings"
     ? candidate
     : "home";
 }
@@ -128,7 +126,7 @@ export function PickemApp({
   isAdmin: boolean;
   draftOwnerId: string;
   standings: StandingsSnapshot;
-  initialView: "home" | "picks" | "standings" | "profile";
+  initialView: "home" | "picks" | "standings";
 }) {
   const [view, setView] = useState<View>(initialView);
   const [picks, setPicks] = useState<Picks>(() =>
@@ -354,7 +352,6 @@ export function PickemApp({
   const missingCount = games.length - selectedCount;
   const firstMissingId = games.find((game) => !picks[game.id])?.id;
   const isComplete = selectedCount === games.length && mondayTotal !== null && Number.isInteger(mondayTotal) && mondayTotal >= 0;
-  const selectedTeams = games.map((game) => picks[game.id]).filter(Boolean);
 
   const chooseTeam = (gameId: string, abbreviation: string) => {
     if (isLocked) return;
@@ -484,7 +481,6 @@ export function PickemApp({
       )}
       {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => selectView("picks")} account={liveAccount} canParticipate={canParticipate} hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0} />}
       {view === "standings" && <StandingsView standings={standings} currentUserId={draftOwnerId} />}
-      {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={liveAccount} isAdmin={isAdmin} />}
     </AppFrame>
   );
 }
@@ -512,6 +508,9 @@ function AppFrame({
               <Icon name={item.icon} /><span>{item.label}</span>
             </button>
           ))}
+          <Link className="nav-item nav-item--link" href="/profile">
+            <Icon name="profile" /><span>Profile</span>
+          </Link>
           <Link className="nav-item nav-item--link" href="/activity">
             <Icon name="activity" /><span>My activity</span>
           </Link>
@@ -760,7 +759,7 @@ function HomeView({ selectedCount, onContinue, account, week, canParticipate, ha
       : <Link className="review-action review-action--link" href="/profile"><span>{eligibilityActionLabel(account)}</span><Icon name="arrow" /></Link>
     : <Link className="review-action review-action--link" href={`/${homeState.destination}`}><span>{homeState.actionLabel}</span><Icon name="arrow" /></Link>;
   return (
-    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><PwaInstallHomeCard /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">{homeState.lead}</p><div className="home-status"><Icon name={homeState.lockedStatusLabel ? "check" : "shield"} /><span>{statusLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{action}<div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
+    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">{homeState.lead}</p><div className="home-status"><Icon name={homeState.lockedStatusLabel ? "check" : "shield"} /><span>{statusLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{action}<PwaInstallHomeCard /><div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
   );
 }
 
@@ -823,12 +822,6 @@ function StandingsView({
       </div>
       <Link className="standings-results-link" href="/results">View weekly results <Icon name="arrow" /></Link>
     </section>
-  );
-}
-
-function ProfileView({ selectedTeams, totalGames, account, isAdmin }: { selectedTeams: string[]; totalGames: number; account: AccountSummary; isAdmin: boolean }) {
-  return (
-    <section className="single-view profile-view"><p className="week-label">Profile & access</p><h1>{account.displayName ?? "Finish your player card"}</h1><div className="access-lines"><div><Icon name="shield" /><span>Indiana location</span><strong>{account.locationResult === "in_state" ? "Cleared" : "Open"}</strong></div><div><Icon name="check" /><span>Age requirement</span><strong>{account.ageEligible ? "Cleared" : "Open"}</strong></div><div><Icon name="profile" /><span>Verified sign-in</span><strong>{account.verifiedAuth ? "Cleared" : "Open"}</strong></div><div><Icon name="picks" /><span>Draft selections</span><strong>{selectedTeams.length}/{totalGames}</strong></div></div><p className="prototype-note">{account.reasonLabel}. Eligibility evidence is evaluated on the server.</p><PwaInstallProfileAccess /><div className="profile-actions"><Link className="review-action" href="/profile">Open player card</Link>{isAdmin && <Link className="admin-profile-link" href="/admin"><Icon name="settings" />Open admin settings</Link>}</div></section>
   );
 }
 

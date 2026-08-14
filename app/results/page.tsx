@@ -10,7 +10,7 @@ import { ScoreRefreshControl } from "@/components/score-refresh-control";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
-import { getWeeklyResults, type RevealedPick } from "@/lib/results/service";
+import { getWeeklyResults, type RevealedEntry, type RevealedPick } from "@/lib/results/service";
 import { getScoreSyncHealth } from "@/lib/scores/health";
 import { hasScoreRefreshWindow, nextScoreRefreshWindow } from "@/lib/scores/refresh-window";
 
@@ -45,6 +45,19 @@ function resultLabel(pick: RevealedPick): string {
 function scoreLabel(pick: RevealedPick): string {
   if (pick.awayScore === null || pick.homeScore === null) return "—";
   return `${pick.awayTeamCode} ${pick.awayScore} · ${pick.homeTeamCode} ${pick.homeScore}`;
+}
+
+function compactResultSummary(entry: RevealedEntry): string {
+  const lost = entry.picks.filter((pick) => pick.outcome === "lost").length;
+  const tied = entry.picks.filter((pick) => pick.outcome === "tie").length;
+  const pending = Math.max(0, entry.picks.length - entry.gradedPicks);
+  return [
+    `${entry.correctPicks} correct`,
+    `${lost} incorrect`,
+    tied > 0 ? `${tied} tied` : null,
+    `${pending} pending`,
+    `Tiebreaker ${entry.mondayPrediction}`,
+  ].filter(Boolean).join(" · ");
 }
 
 export default async function ResultsPage({
@@ -145,22 +158,15 @@ export default async function ResultsPage({
             {results.entries.length > 0 ? (
               <div className="results-entries">
                 {results.entries.map((entry) => (
-                  <details className="results-entry" open={entry.isCurrentUser} key={entry.userId}>
+                  <details className={`results-entry${entry.isCurrentUser ? " results-entry--current" : ""}`} key={entry.userId}>
                     <summary>
                       <span className="results-entry__player">
                         <strong>{entry.displayName}</strong>
                         <small>Official version {entry.versionNumber} · {formatDateTime(entry.committedAt)}</small>
                       </span>
                       {entry.isCurrentUser ? <span className="results-entry__you">Your card</span> : null}
-                      <span className="results-entry__record">
-                        <strong>{entry.correctPicks}/{entry.gradedPicks}</strong>
-                        <small>correct</small>
-                      </span>
-                      <span className="results-entry__tiebreaker">
-                        <strong>{entry.mondayPrediction}</strong>
-                        <small>tiebreaker</small>
-                      </span>
-                      <span className="results-entry__toggle" aria-hidden="true">View calls</span>
+                      <span className="results-entry__summary">{compactResultSummary(entry)}</span>
+                      <span className="results-entry__toggle" aria-hidden="true"><span>View calls</span><span>Close calls</span></span>
                     </summary>
                     <div className="results-entry__picks">
                       {entry.picks.map((pick) => (

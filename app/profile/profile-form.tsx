@@ -33,27 +33,85 @@ const locationLabels: Record<NonNullable<AccountSummary["locationResult"]>, stri
   indeterminate: "Could not confirm",
 };
 
-export function ProfileForm({
-  account: initialAccount,
-  profile,
-}: {
-  account: AccountSummary;
-  profile: ProfileRecord;
-}) {
+export function PlayerIdentityForm({ profile }: { profile: ProfileRecord }) {
   const router = useRouter();
   const [actionState, formAction, pending] = useActionState(
     saveProfileAction,
     initialProfileActionState,
   );
+
+  useEffect(() => {
+    if (actionState.status === "success") router.refresh();
+  }, [actionState.status, router]);
+
+  return (
+    <section className="profile-card profile-card--identity" aria-labelledby="profile-form-title">
+      <div>
+        <p className="card-kicker">Identity</p>
+        <h2 id="profile-form-title">Build your player card</h2>
+      </div>
+      <form action={formAction} className="profile-form">
+        <label>
+          Display name
+          <input
+            name="displayName"
+            type="text"
+            autoComplete="nickname"
+            defaultValue={profile?.displayName ?? ""}
+            aria-invalid={Boolean(actionState.fieldErrors?.displayName)}
+            aria-describedby="display-name-help display-name-error"
+            required
+          />
+        </label>
+        <p id="display-name-help" className="field-help">
+          Unique site-wide. Changes are limited to once every 30 days.
+        </p>
+        <p id="display-name-error" className="field-error">
+          {actionState.fieldErrors?.displayName?.[0]}
+        </p>
+
+        <label>
+          Date of birth
+          <input
+            name="birthDate"
+            type="date"
+            autoComplete="bday"
+            defaultValue={profile?.birthDate ?? ""}
+            aria-invalid={Boolean(actionState.fieldErrors?.birthDate)}
+            aria-describedby="birth-date-help birth-date-error"
+            required
+          />
+        </label>
+        <p id="birth-date-help" className="field-help">
+          Used only to derive age eligibility. It is never written to application logs.
+          {" "}<Link href="/privacy">How profile data is handled.</Link>
+        </p>
+        <p id="birth-date-error" className="field-error">
+          {actionState.fieldErrors?.birthDate?.[0]}
+        </p>
+
+        <button className="commit-action" type="submit" disabled={pending}>
+          {pending ? "Saving player card…" : profile ? "Update player card" : "Save player card"}
+        </button>
+        <p className={`form-result form-result--${actionState.status}`} aria-live="polite">
+          {actionState.message}
+        </p>
+      </form>
+    </section>
+  );
+}
+
+export function PlayerEligibilityPanel({
+  account: initialAccount,
+}: {
+  account: AccountSummary;
+}) {
+  const router = useRouter();
   const [account, setAccount] = useState(initialAccount);
   const [locationState, setLocationState] = useState<LocationState>({
     status: "idle",
     message: "",
   });
-
-  useEffect(() => {
-    if (actionState.status === "success") router.refresh();
-  }, [actionState.status, router]);
 
   async function submitLocation(payload: Record<string, unknown>) {
     const response = await fetch("/api/eligibility/location", {
@@ -106,64 +164,8 @@ export function ProfileForm({
     : "Not checked this session";
 
   return (
-    <div className="account-grid">
-      <section className="profile-card" aria-labelledby="profile-form-title">
-        <div className="card-number">01</div>
-        <div>
-          <p className="card-kicker">Identity</p>
-          <h2 id="profile-form-title">Build your player card</h2>
-        </div>
-        <form action={formAction} className="profile-form">
-          <label>
-            Display name
-            <input
-              name="displayName"
-              type="text"
-              autoComplete="nickname"
-              defaultValue={profile?.displayName ?? ""}
-              aria-invalid={Boolean(actionState.fieldErrors?.displayName)}
-              aria-describedby="display-name-help display-name-error"
-              required
-            />
-          </label>
-          <p id="display-name-help" className="field-help">
-            Unique site-wide. Changes are limited to once every 30 days.
-          </p>
-          <p id="display-name-error" className="field-error">
-            {actionState.fieldErrors?.displayName?.[0]}
-          </p>
-
-          <label>
-            Date of birth
-            <input
-              name="birthDate"
-              type="date"
-              autoComplete="bday"
-              defaultValue={profile?.birthDate ?? ""}
-              aria-invalid={Boolean(actionState.fieldErrors?.birthDate)}
-              aria-describedby="birth-date-help birth-date-error"
-              required
-            />
-          </label>
-          <p id="birth-date-help" className="field-help">
-            Used only to derive age eligibility. It is never written to application logs.
-            {" "}<Link href="/privacy">How profile data is handled.</Link>
-          </p>
-          <p id="birth-date-error" className="field-error">
-            {actionState.fieldErrors?.birthDate?.[0]}
-          </p>
-
-          <button className="commit-action" type="submit" disabled={pending}>
-            {pending ? "Saving player card…" : profile ? "Update player card" : "Save player card"}
-          </button>
-          <p className={`form-result form-result--${actionState.status}`} aria-live="polite">
-            {actionState.message}
-          </p>
-        </form>
-      </section>
-
+    <div className="account-grid account-grid--eligibility">
       <section className="profile-card profile-card--location" aria-labelledby="location-title">
-        <div className="card-number">02</div>
         <div>
           <p className="card-kicker">Game-day check</p>
           <h2 id="location-title">Verify Indiana</h2>

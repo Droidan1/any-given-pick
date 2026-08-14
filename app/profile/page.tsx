@@ -12,7 +12,7 @@ import { getEmailNotificationPreferences } from "@/lib/email/preferences";
 import { getLatestAccountPrivacyRequest } from "@/lib/privacy/account-requests";
 import { AccountPrivacyControls } from "./account-privacy-controls";
 import { EmailPreferencesForm } from "./email-preferences-form";
-import { ProfileForm } from "./profile-form";
+import { PlayerEligibilityPanel, PlayerIdentityForm } from "./profile-form";
 import { ProfilePhotoEditor } from "./profile-photo-editor";
 import { PwaInstallProfileAccess } from "@/components/pwa-install-experience";
 
@@ -46,7 +46,7 @@ export default async function ProfilePage() {
           <UserButton />
         </div>
       </header>
-      <section className="account-sheet">
+      <section className="account-sheet profile-settings-sheet">
         <div className="account-intro">
           <p className="week-label">{accessBlocked ? "Account access" : "Player card"}</p>
           <h1>{accessBlocked ? (approvalPending ? "Waiting for the green light" : "Access is on hold") : "Clear every eligibility gate"}</h1>
@@ -58,8 +58,6 @@ export default async function ProfilePage() {
               : "One verified sign-in, a unique display name, age 21+, and an Indiana location check unlock participation. Everyone else keeps read-only access."}
           </p>
         </div>
-        <PwaInstallProfileAccess />
-        {!accessBlocked ? <ProfilePhotoEditor /> : null}
         {accessBlocked ? (
           <section className="account-access-notice" aria-labelledby="account-access-title">
             <Icon name={approvalPending ? "clock" : "shield"} />
@@ -73,10 +71,72 @@ export default async function ProfilePage() {
             </div>
           </section>
         ) : (
-          <ProfileForm account={account} profile={profile} />
+          <div className="profile-settings-stack">
+            <details className="profile-settings-section" open>
+              <summary>
+                <span>Personal information</span>
+                <small>Photo, display name, and age verification</small>
+              </summary>
+              <div className="profile-settings-section__content">
+                <ProfilePhotoEditor />
+                <PlayerIdentityForm profile={profile} />
+              </div>
+            </details>
+
+            <details className="profile-settings-section" open={account.overallResult !== "eligible"}>
+              <summary>
+                <span>Eligibility</span>
+                <small>{account.reasonLabel}</small>
+              </summary>
+              <div className="profile-settings-section__content">
+                <PlayerEligibilityPanel account={account} />
+              </div>
+            </details>
+
+            <details className="profile-settings-section">
+              <summary>
+                <span>Notifications</span>
+                <small>Weekly cards, deadlines, receipts, and results</small>
+              </summary>
+              <div className="profile-settings-section__content">
+                <EmailPreferencesForm preferences={emailPreferences} />
+              </div>
+            </details>
+
+            <details className="profile-settings-section">
+              <summary>
+                <span>Privacy and account controls</span>
+                <small>{privacyRequest ? "Deletion request in review" : "Review or delete your account data"}</small>
+              </summary>
+              <div className="profile-settings-section__content">
+                <AccountPrivacyControls request={privacyRequest} />
+              </div>
+            </details>
+          </div>
         )}
-        <EmailPreferencesForm preferences={emailPreferences} />
-        <AccountPrivacyControls request={privacyRequest} />
+        {accessBlocked ? (
+          <div className="profile-settings-stack profile-settings-stack--limited">
+            <details className="profile-settings-section">
+              <summary>
+                <span>Notifications</span>
+                <small>Choose which account emails you receive</small>
+              </summary>
+              <div className="profile-settings-section__content">
+                <EmailPreferencesForm preferences={emailPreferences} />
+              </div>
+            </details>
+            <details className="profile-settings-section">
+              <summary>
+                <span>Privacy and account controls</span>
+                <small>{privacyRequest ? "Deletion request in review" : "Review or delete your account data"}</small>
+              </summary>
+              <div className="profile-settings-section__content">
+                <AccountPrivacyControls request={privacyRequest} />
+              </div>
+            </details>
+          </div>
+        ) : null}
+        <PwaInstallProfileAccess />
       </section>
       <MobileAppNav active="profile" isAdmin={isAdmin} />
     </main>

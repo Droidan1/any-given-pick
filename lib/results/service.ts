@@ -222,6 +222,9 @@ export async function getWeeklyResults(input: {
       gradedPicks: picks.filter((pick) => ["won", "lost", "tie"].includes(pick.outcome)).length,
       picks,
     };
+  }).sort((first, second) => {
+    if (first.isCurrentUser !== second.isCurrentUser) return first.isCurrentUser ? -1 : 1;
+    return first.displayName.localeCompare(second.displayName);
   });
 
   return {

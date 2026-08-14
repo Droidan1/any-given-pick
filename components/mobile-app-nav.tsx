@@ -11,7 +11,7 @@ export type MobileAppDestination =
   | "profile"
   | "admin";
 
-type LocalDestination = "home" | "picks" | "standings" | "profile";
+type LocalDestination = "home" | "picks" | "standings";
 
 const playerDestinations: Array<{
   destination: Exclude<MobileAppDestination, "admin">;
@@ -24,7 +24,7 @@ const playerDestinations: Array<{
   { destination: "picks", label: "Picks", icon: "picks", href: "/?view=picks", localView: "picks" },
   { destination: "standings", label: "Standings", icon: "standings", href: "/?view=standings", localView: "standings" },
   { destination: "activity", label: "Activity", icon: "activity", href: "/activity" },
-  { destination: "profile", label: "Profile", icon: "profile", href: "/profile", localView: "profile" },
+  { destination: "profile", label: "Profile", icon: "profile", href: "/profile" },
 ];
 
 export function MobileAppNav({

@@ -25,6 +25,13 @@ export default function SignUpPage() {
         path="/sign-up"
         signInUrl="/sign-in"
         fallbackRedirectUrl="/"
+        appearance={{
+          elements: {
+            logoBox: { display: "none" },
+            headerTitle: { display: "none" },
+            headerSubtitle: { display: "none" },
+          },
+        }}
       />
       <PublicSiteFooter />
     </main>
