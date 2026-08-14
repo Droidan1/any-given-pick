@@ -36,6 +36,7 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Database-time deadline enforcement for drafts and submissions
 - Home, picks, standings, weekly results, activity archive, and profile surfaces
 - Web app manifest, generated PWA icons, and a static-asset-only offline service worker shell
+- Device-aware mobile installation with first-login, Home, Profile, and persistent fallback entry points
 - Any Given Pick wordmark, route-mark icon, social-sharing image, and install identity
 - Original visual system with no NFL or team marks
 - Clerk passwordless email-code authentication surfaces

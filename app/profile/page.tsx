@@ -14,6 +14,7 @@ import { AccountPrivacyControls } from "./account-privacy-controls";
 import { EmailPreferencesForm } from "./email-preferences-form";
 import { ProfileForm } from "./profile-form";
 import { ProfilePhotoEditor } from "./profile-photo-editor";
+import { PwaInstallProfileAccess } from "@/components/pwa-install-experience";
 
 export const metadata: Metadata = {
   title: "Player profile",
@@ -57,6 +58,7 @@ export default async function ProfilePage() {
               : "One verified sign-in, a unique display name, age 21+, and an Indiana location check unlock participation. Everyone else keeps read-only access."}
           </p>
         </div>
+        <PwaInstallProfileAccess />
         {!accessBlocked ? <ProfilePhotoEditor /> : null}
         {accessBlocked ? (
           <section className="account-access-notice" aria-labelledby="account-access-title">

@@ -3609,41 +3609,218 @@ button:disabled {
   text-align: center;
 }
 
-.pwa-utilities {
-  position: fixed;
-  right: 1rem;
-  top: 1rem;
-  z-index: 50;
-  display: grid;
-  gap: 0.5rem;
-  justify-items: end;
+.pwa-install-home,
+.pwa-install-profile,
+.pwa-install-banner {
+  display: none;
 }
 
-.network-banner,
-.install-prompt {
+.pwa-network-banner {
+  position: fixed;
+  left: 50%;
+  top: max(0.75rem, env(safe-area-inset-top));
+  z-index: 90;
   min-height: 2.75rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 0.9rem;
+  padding: 0.65rem 1rem;
   border: 1px solid var(--maize);
   background: var(--field-950);
   color: var(--paper-100);
   box-shadow: 0 6px 18px var(--shadow);
+  font-weight: 700;
+  transform: translateX(-50%);
 }
 
-.install-prompt {
-  cursor: pointer;
+.pwa-install-dialog {
+  width: min(calc(100% - 1rem), 28rem);
+  max-width: none;
+  max-height: calc(100dvh - 1rem);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--sage);
+  border-radius: 0;
+  background: var(--paper-100);
+  color: var(--ink);
+  box-shadow: 0 18px 50px var(--shadow);
 }
 
-.install-prompt:hover {
+.pwa-install-dialog::backdrop {
+  background: oklch(16% 0.045 163 / 0.9);
+}
+
+.pwa-install-first-run,
+.pwa-install-guide {
+  position: relative;
+  min-height: min(42rem, calc(100dvh - 1rem));
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1.25rem;
+  padding: max(2rem, env(safe-area-inset-top)) 1.5rem max(2rem, env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.pwa-install-first-run > img,
+.pwa-install-guide > img {
+  border: 1px solid var(--sage);
+}
+
+.pwa-install-first-run h2,
+.pwa-install-guide h2,
+.pwa-install-home h2,
+.pwa-install-profile h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.pwa-install-first-run h2 {
+  max-width: 11ch;
+  font-size: clamp(3.35rem, 15vw, 5rem);
+  text-wrap: balance;
+}
+
+.pwa-install-first-run > p,
+.pwa-install-guide > p,
+.pwa-install-home p,
+.pwa-install-profile p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.pwa-install-first-run > p {
+  max-width: 30ch;
+}
+
+.pwa-install-phone-map {
+  width: min(100%, 15rem);
+  min-height: 9rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  padding: 1rem;
+  border: 1px solid var(--sage);
+  background: var(--field-900);
+}
+
+.pwa-install-phone-map img,
+.pwa-install-phone-map span {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid oklch(96% 0.021 92 / 0.16);
   background: var(--field-800);
 }
 
-.install-prompt svg {
-  width: 1.2rem;
-  height: 1.2rem;
-  color: var(--maize);
+.pwa-install-phone-map img {
+  height: auto;
+}
+
+.pwa-install-primary {
+  width: min(100%, 22rem);
+  min-height: 4.9rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 2rem 0.85rem 1.2rem;
+  border: 0;
+  background: var(--maize);
+  color: var(--field-950);
+  clip-path: polygon(0 0, calc(100% - 1.6rem) 0, 100% 50%, calc(100% - 1.6rem) 100%, 0 100%);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.pwa-install-primary:hover {
+  background: var(--maize-deep);
+}
+
+.pwa-install-primary svg {
+  width: 1.65rem;
+  height: 1.65rem;
+  stroke-width: 2.4;
+}
+
+.pwa-install-secondary {
+  min-height: 2.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: underline;
+  text-decoration-color: var(--clay);
+  text-underline-offset: 0.3em;
+  text-transform: uppercase;
+}
+
+.pwa-install-guide {
+  align-content: start;
+  justify-items: stretch;
+  text-align: left;
+}
+
+.pwa-install-guide > img {
+  margin-top: 2rem;
+}
+
+.pwa-install-guide h2 {
+  max-width: 10ch;
+  font-size: 3.35rem;
+}
+
+.pwa-install-guide__close {
+  position: absolute;
+  right: 1rem;
+  top: max(1rem, env(safe-area-inset-top));
+  min-width: 3rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.pwa-install-guide ol {
+  margin: 0;
+  padding: 0;
+  border-top: 2px solid var(--ink);
+  list-style: none;
+}
+
+.pwa-install-guide li {
+  min-height: 4.5rem;
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--sage);
+}
+
+.pwa-install-guide li strong {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+}
+
+.pwa-install-copy {
+  min-height: 3.25rem;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
 }
 
 @media (max-width: 72rem) {
@@ -3839,20 +4016,166 @@ button:disabled {
     align-content: start;
   }
 
-  .pwa-utilities {
-    position: static;
-    justify-items: stretch;
-    padding: 0 1rem 1rem;
-    background: var(--paper-100);
+  html[data-pwa-install-banner="true"] .app-shell,
+  html[data-pwa-install-banner="true"] .account-shell {
+    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
   }
 
-  .install-prompt,
-  .network-banner {
-    justify-content: center;
+  .pwa-install-home {
+    position: relative;
+    z-index: 2;
+    width: min(100%, 38rem);
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1.25rem;
+    border: 1px solid var(--ink);
+    background: var(--paper-200);
+    box-shadow: 0 8px 22px var(--shadow);
+  }
+
+  .pwa-install-home__message {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .pwa-install-home__message > img {
+    border: 1px solid var(--sage);
+  }
+
+  .pwa-install-home h2 {
+    max-width: 16ch;
+    font-size: 1.75rem;
+  }
+
+  .pwa-install-home .pwa-install-primary {
+    width: 100%;
+  }
+
+  .pwa-install-home .pwa-install-secondary {
+    justify-self: center;
+  }
+
+  .pwa-install-profile {
+    width: min(100%, 42rem);
+    min-height: 6rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper-200);
+    color: var(--ink);
+  }
+
+  .account-sheet > .pwa-install-profile {
+    width: auto;
+    margin: 0;
+    padding-inline: clamp(1rem, 5vw, 2.5rem);
+  }
+
+  .pwa-install-profile > img {
+    border: 1px solid var(--sage);
+  }
+
+  .pwa-install-profile h2 {
+    color: var(--ink);
+    font-size: 1.55rem;
+    letter-spacing: 0.045em;
+  }
+
+  .pwa-install-profile button {
+    min-height: 3.25rem;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--maize-deep);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .pwa-install-banner {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(3.65rem + env(safe-area-inset-bottom));
+    z-index: 39;
+    min-height: 3.75rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem max(1rem, env(safe-area-inset-right)) 0.65rem max(1rem, env(safe-area-inset-left));
+    border: 0;
+    border-top: 1px solid var(--field-950);
+    background: var(--maize);
+    color: var(--field-950);
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: 0.045em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .pwa-install-banner svg {
+    width: 1.55rem;
+    height: 1.55rem;
   }
 }
 
 @media (max-width: 40rem) {
+  .pwa-install-dialog {
+    width: calc(100% - 0.5rem);
+    max-height: calc(100dvh - 0.5rem);
+  }
+
+  .pwa-install-first-run,
+  .pwa-install-guide {
+    min-height: calc(100dvh - 0.5rem);
+  }
+
+  .pwa-install-first-run {
+    gap: 1rem;
+    padding-inline: 1rem;
+  }
+
+  .pwa-install-first-run h2 {
+    font-size: clamp(3.35rem, 16vw, 4.4rem);
+  }
+
+  .pwa-install-phone-map {
+    min-height: 7.5rem;
+  }
+
+  .pwa-install-profile {
+    grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+    gap: 0.75rem;
+  }
+
+  .pwa-install-profile > img {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  .pwa-install-profile p {
+    display: none;
+  }
+
+  .pwa-install-profile button {
+    padding-inline: 0.75rem;
+  }
+
   .auth-shell {
     padding: 6rem 1rem 2rem;
   }

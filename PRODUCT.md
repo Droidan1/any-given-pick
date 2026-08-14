@@ -25,6 +25,7 @@ Most user activity happens on a phone around the weekly NFL schedule. The centra
 ## Capabilities and Constraints
 
 - Responsive PWA-oriented web application; no native iOS or Android app in the prototype.
+- Mobile installation uses a progressive, device-aware path: one skippable first-login checkpoint, a snoozable Home callout, and persistent Profile/navigation access until the app is installed. Android uses the browser install prompt; iPhone users receive Safari-specific Add to Home Screen instructions.
 - Passwordless email-code authentication in the first release.
 - Participation requires a verified sign-in method, self-attested age 21+, active account, and server-verified Indiana location.
 - One shared contest per NFL week; every approved player uses the same published call sheet.

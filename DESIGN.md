@@ -260,6 +260,10 @@ Each team option is an unrounded paper cell with a large condensed abbreviation 
 
 Progress combines a numeric fraction with a yard-scale rail, visible tick marks, and a maize fill that grows from the left. The count must remain readable without interpreting the graphic. Animate only the fill transform over `220ms ease-out`, and collapse the transition under reduced-motion preferences.
 
+### PWA Installation
+
+Mobile installation uses the existing call-sheet vocabulary instead of browser-utility chrome. The first-login checkpoint is a single skippable paper screen; Home uses one ruled install callout; Profile carries a compact access row; and a maize action band may dock directly above mobile navigation. Instructions must change with the browser, preserve the user’s dismissal, disappear in standalone mode, and never obscure the primary navigation or submission action.
+
 ### Deadline Marker
 
 Deadlines use a clay banner with a clock icon, concise uppercase copy, and a clipped directional end. Keep the wording explicit about lock status and timezone; visual urgency never substitutes for plain language.

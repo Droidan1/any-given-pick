@@ -6,6 +6,7 @@ import "@fontsource/barlow-condensed/500.css";
 import "@fontsource/barlow-condensed/600.css";
 import "@fontsource/barlow-condensed/700.css";
 import "./globals.css";
+import { PwaInstallGlobal, PwaInstallProvider } from "@/components/pwa-install-experience";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://anygivenpick.app"),
@@ -85,7 +86,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             },
           }}
         >
-          {children}
+          <PwaInstallProvider>
+            {children}
+            <PwaInstallGlobal />
+          </PwaInstallProvider>
         </ClerkProvider>
       </body>
     </html>

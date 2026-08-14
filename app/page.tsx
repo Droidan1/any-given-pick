@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { PickemApp } from "@/components/pickem-app";
-import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { getAccountSummary } from "@/lib/eligibility/service";
@@ -33,16 +32,13 @@ export default async function Home({
   if (account.accountState !== "active" && !isAdmin) redirect("/profile");
 
   return (
-    <>
-      <PickemApp
-        account={account}
-        week={week}
-        isAdmin={isAdmin}
-        draftOwnerId={appUser.id}
-        standings={standings}
-        initialView={initialView}
-      />
-      <ServiceWorkerRegistration />
-    </>
+    <PickemApp
+      account={account}
+      week={week}
+      isAdmin={isAdmin}
+      draftOwnerId={appUser.id}
+      standings={standings}
+      initialView={initialView}
+    />
   );
 }
