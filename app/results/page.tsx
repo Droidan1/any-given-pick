@@ -7,6 +7,7 @@ import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
 import { ScoreRefreshControl } from "@/components/score-refresh-control";
+import { PlayerAvatar } from "@/components/player-avatar";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
@@ -110,6 +111,12 @@ export default async function ResultsPage({
           <Icon name="results" />
         </div>
 
+        <nav className="results-hub-nav" aria-label="Results and activity">
+          <Link className="results-hub-nav__active" href="/results" aria-current="page">Weekly cards</Link>
+          <Link href="/?view=standings">Standings</Link>
+          <Link href="/activity">My activity</Link>
+        </nav>
+
         {results.weeks.length > 0 ? (
           <form className="results-week-picker" method="get">
             <label htmlFor="results-week">Call sheet</label>
@@ -161,8 +168,11 @@ export default async function ResultsPage({
                   <details className={`results-entry${entry.isCurrentUser ? " results-entry--current" : ""}`} key={entry.userId}>
                     <summary>
                       <span className="results-entry__player">
+                        <PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} />
+                        <span>
                         <strong>{entry.displayName}</strong>
                         <small>Official version {entry.versionNumber} · {formatDateTime(entry.committedAt)}</small>
+                        </span>
                       </span>
                       {entry.isCurrentUser ? <span className="results-entry__you">Your card</span> : null}
                       <span className="results-entry__summary">{compactResultSummary(entry)}</span>
@@ -186,7 +196,7 @@ export default async function ResultsPage({
           </section>
         )}
       </section>
-      <MobileAppNav active="standings" isAdmin={isAdmin} />
+      <MobileAppNav active="results" isAdmin={isAdmin} />
     </main>
   );
 }

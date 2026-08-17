@@ -41,6 +41,7 @@ export type RevealedPick = {
 export type RevealedEntry = {
   userId: string;
   displayName: string;
+  profilePhotoUrl: string | null;
   isCurrentUser: boolean;
   versionNumber: number;
   committedAt: string;
@@ -137,6 +138,7 @@ export async function getWeeklyResults(input: {
         versionId: entryVersions.id,
         userId: contestEntries.userId,
         displayName: profiles.displayName,
+        profilePhotoUrl: profiles.profilePhotoUrl,
         versionNumber: entryVersions.versionNumber,
         mondayPrediction: entryVersions.mondayPrediction,
         committedAt: entryVersions.committedAt,
@@ -214,6 +216,7 @@ export async function getWeeklyResults(input: {
     return {
       userId: entry.userId,
       displayName: entry.displayName,
+      profilePhotoUrl: entry.profilePhotoUrl,
       isCurrentUser: entry.userId === input.currentUserId,
       versionNumber: entry.versionNumber,
       committedAt: entry.committedAt.toISOString(),

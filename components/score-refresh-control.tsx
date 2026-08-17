@@ -9,6 +9,7 @@ const BUSINESS_TIME_ZONE = "America/Indiana/Indianapolis";
 type ScoreHealth = {
   status?: "idle" | "running" | "healthy" | "warning" | "failed";
   lastSuccessAt?: string | null;
+  updatedGames?: number;
 };
 
 type CheckReason = "automatic" | "manual";
@@ -80,7 +81,9 @@ export function ScoreRefreshControl({
         latestSuccessRef.current = nextSuccessAt;
         setLastSuccessAt(nextSuccessAt);
         setFeedback("updated");
-        setAnnouncement("New stored results are available and have been loaded.");
+        setAnnouncement(result.updatedGames
+          ? `${result.updatedGames} game ${result.updatedGames === 1 ? "update is" : "updates are"} available and have been loaded.`
+          : "The provider check completed and the latest stored results have been loaded.");
         startRefresh(() => router.refresh());
       } else if (reason === "manual") {
         setFeedback("unchanged");
@@ -134,7 +137,7 @@ export function ScoreRefreshControl({
         <strong>{statusCopy}</strong>
         <span>
           {automaticChecksActive
-            ? "Automatic checks run every minute during active games."
+            ? "The live provider feed refreshes about once per minute during active games."
             : nextAutomaticCheckAt
               ? `Automatic checks begin ${formatNextCheck(nextAutomaticCheckAt)}.`
               : "Automatic checks resume during active game windows."}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
+import { currentUser } from "@clerk/nextjs/server";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getDb } from "@/lib/db";
 import { auditEvents, displayNameHistory, profiles, users } from "@/lib/db/schema";
@@ -55,6 +56,8 @@ export async function saveProfileAction(
     };
   }
   const db = getDb();
+  const clerkUser = await currentUser();
+  const profilePhotoUrl = clerkUser?.hasImage ? clerkUser.imageUrl : null;
   const now = new Date();
   const displayName = parsed.data.displayName.replace(/\s+/g, " ");
   const normalizedDisplayName = normalizeDisplayName(displayName);
@@ -103,6 +106,7 @@ export async function saveProfileAction(
           ageEligible,
           ageCheckedAt: now,
           displayNameChangedAt: now,
+          profilePhotoUrl,
           updatedAt: now,
         })
         .onConflictDoUpdate({
@@ -116,6 +120,7 @@ export async function saveProfileAction(
             displayNameChangedAt: displayNameChanged
               ? now
               : existingProfile?.displayNameChangedAt ?? now,
+            profilePhotoUrl,
             updatedAt: now,
           },
         });
@@ -176,4 +181,28 @@ export async function saveProfileAction(
       ? "Profile saved. Verify your Indiana location to finish eligibility."
       : "Profile saved. Participation is limited to adults 21 and older.",
   };
+}
+
+export async function syncProfilePhotoAction(): Promise<{ ok: boolean; message: string }> {
+  const [appUser, clerkUser] = await Promise.all([requireAppUser(), currentUser()]);
+  if (!clerkUser) return { ok: false, message: "Your account photo could not be confirmed." };
+
+  const [profile] = await getDb()
+    .update(profiles)
+    .set({
+      profilePhotoUrl: clerkUser.hasImage ? clerkUser.imageUrl : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(profiles.userId, appUser.id))
+    .returning({ userId: profiles.userId });
+
+  if (!profile) {
+    return { ok: false, message: "Save your player card before adding a roster photo." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/profile");
+  revalidatePath("/results");
+  revalidatePath("/activity");
+  return { ok: true, message: "Profile photo updated across the player roster." };
 }

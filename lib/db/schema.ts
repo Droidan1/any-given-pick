@@ -98,6 +98,7 @@ export const profiles = pgTable(
     ageEligible: boolean("age_eligible").notNull(),
     ageCheckedAt: timestamp("age_checked_at", { withTimezone: true }).notNull(),
     displayNameChangedAt: timestamp("display_name_changed_at", { withTimezone: true }).notNull(),
+    profilePhotoUrl: varchar("profile_photo_url", { length: 2048 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -335,6 +336,9 @@ export const contestWeeks = pgTable(
       table.weekNumber,
     ),
     index("contest_weeks_status_deadline_idx").on(table.status, table.entryDeadline),
+    uniqueIndex("contest_weeks_one_published_unique")
+      .on(table.status)
+      .where(sql`${table.status} = 'published'`),
     check(
       "contest_weeks_week_number_check",
       sql`(${table.seasonPhase} = 'preseason' and ${table.weekNumber} between 1 and 4) or (${table.seasonPhase} = 'regular' and ${table.weekNumber} between 1 and 22)`,

@@ -12,6 +12,7 @@ const roster: AdminPicksRosterRow[] = [
 const revealedEntry: RevealedEntry = {
   userId: "submitted",
   displayName: "Submitted Player",
+  profilePhotoUrl: null,
   isCurrentUser: false,
   versionNumber: 2,
   committedAt: "2026-09-10T21:50:00.000Z",

@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import {
@@ -18,6 +18,8 @@ import {
   queueAvailableResultsEmails,
 } from "@/lib/email/player-notifications";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
+import { runEspnScoreSyncWithHealth } from "@/lib/scores/health";
+import { validatePublishableSlate } from "@/lib/admin/week-publish-policy";
 
 export type AdminActionResult = {
   ok: boolean;
@@ -176,7 +178,12 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
     }
 
     const weekGames = await transaction
-      .select({ kickoffAt: games.kickoffAt, isMondayTiebreaker: games.isMondayTiebreaker })
+      .select({
+        kickoffAt: games.kickoffAt,
+        awayTeamCode: games.awayTeamCode,
+        homeTeamCode: games.homeTeamCode,
+        isMondayTiebreaker: games.isMondayTiebreaker,
+      })
       .from(games)
       .where(eq(games.contestWeekId, week.id));
     if (weekGames.length === 0) {
@@ -188,14 +195,19 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
     if (weekGames.some((game) => game.kickoffAt <= week.entryDeadline)) {
       return { ok: false as const, message: "Every kickoff must occur after the entry deadline." };
     }
-    if (weekGames.filter((game) => game.isMondayTiebreaker).length !== 1) {
+    const slateIssues = validatePublishableSlate(week.seasonPhase, weekGames);
+    if (slateIssues.length > 0) {
       return {
         ok: false as const,
-        message: week.seasonPhase === "preseason"
-          ? "Designate exactly one preseason tiebreaker game."
-          : "Designate exactly one Monday tiebreaker.",
+        message: slateIssues.join(" "),
       };
     }
+
+    const previouslyPublished = await transaction
+      .update(contestWeeks)
+      .set({ status: "locked", updatedAt: now })
+      .where(and(eq(contestWeeks.status, "published"), ne(contestWeeks.id, week.id)))
+      .returning({ id: contestWeeks.id });
 
     const [publishedWeek] = await transaction
       .update(contestWeeks)
@@ -215,6 +227,7 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
         season_phase: week.seasonPhase,
         week_number: week.weekNumber,
         game_count: weekGames.length,
+        previous_active_weeks_locked: previouslyPublished.length,
       },
     });
 
@@ -227,6 +240,17 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
 
   if (result.ok) {
     after(async () => {
+      try {
+        await runEspnScoreSyncWithHealth();
+      } catch (error) {
+        await reportOperationalIssue({
+          kind: "score_sync",
+          identity: `week_published:${result.weekId}`,
+          severity: "warning",
+          message: "Published week odds could not be preloaded immediately.",
+          context: { error_type: error instanceof Error ? error.name : "unknown" },
+        });
+      }
       try {
         await queueAndProcessWeekPublishedEmails(result.weekId);
       } catch (error) {

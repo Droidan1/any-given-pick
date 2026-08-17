@@ -250,6 +250,12 @@ export default async function ActivityPage() {
           <Icon name="activity" />
         </div>
 
+        <nav className="results-hub-nav" aria-label="Results and activity">
+          <Link href="/results">Weekly cards</Link>
+          <Link href="/?view=standings">Standings</Link>
+          <Link className="results-hub-nav__active" href="/activity" aria-current="page">My activity</Link>
+        </nav>
+
         <div className="activity-scoreboard" aria-label="Activity summary">
           <div><strong>{activity.cards.length}</strong><span>Total cards</span></div>
           <div><strong>{activity.officialCardCount}</strong><span>Official</span></div>
@@ -305,7 +311,7 @@ export default async function ActivityPage() {
           )}
         </section>
       </section>
-      <MobileAppNav active="activity" isAdmin={isAdmin} />
+      <MobileAppNav active="results" isAdmin={isAdmin} />
     </main>
   );
 }

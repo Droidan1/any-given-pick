@@ -32,5 +32,6 @@ export type AccountSummary = {
   reasonLabel: string;
   locationCheckedAt: string | null;
   locationExpiresAt: string | null;
+  locationFresh: boolean;
   profileComplete: boolean;
 };

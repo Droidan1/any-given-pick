@@ -195,7 +195,11 @@ export function PlayerEligibilityPanel({
           <StatusLine label="Verified sign-in" passed={account.verifiedAuth} />
           <StatusLine label="Player profile" passed={account.profileComplete} />
           <StatusLine label="Age 21+" passed={account.ageEligible === true} />
-          <StatusLine label="Indiana location" passed={account.locationResult === "in_state"} />
+          <StatusLine
+            label="Indiana location"
+            passed={account.locationResult === "in_state" && account.locationFresh}
+            openLabel={account.locationResult === "in_state" ? "Expired" : "Open"}
+          />
           <StatusLine label="Active account" passed={account.accountState === "active"} />
         </div>
         <p className="eligibility-verdict">
@@ -206,11 +210,19 @@ export function PlayerEligibilityPanel({
   );
 }
 
-function StatusLine({ label, passed }: { label: string; passed: boolean }) {
+function StatusLine({
+  label,
+  passed,
+  openLabel = "Open",
+}: {
+  label: string;
+  passed: boolean;
+  openLabel?: string;
+}) {
   return (
     <div className="eligibility-gate">
       <span>{label}</span>
-      <strong>{passed ? "Cleared" : "Open"}</strong>
+      <strong>{passed ? "Cleared" : openLabel}</strong>
     </div>
   );
 }

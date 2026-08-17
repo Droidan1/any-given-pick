@@ -6,8 +6,7 @@ import { Icon, type IconName } from "./icons";
 export type MobileAppDestination =
   | "home"
   | "picks"
-  | "standings"
-  | "activity"
+  | "results"
   | "profile"
   | "admin";
 
@@ -22,8 +21,7 @@ const playerDestinations: Array<{
 }> = [
   { destination: "home", label: "Home", icon: "home", href: "/?view=home", localView: "home" },
   { destination: "picks", label: "Picks", icon: "picks", href: "/?view=picks", localView: "picks" },
-  { destination: "standings", label: "Standings", icon: "standings", href: "/?view=standings", localView: "standings" },
-  { destination: "activity", label: "Activity", icon: "activity", href: "/activity" },
+  { destination: "results", label: "Results", icon: "results", href: "/results" },
   { destination: "profile", label: "Profile", icon: "profile", href: "/profile" },
 ];
 

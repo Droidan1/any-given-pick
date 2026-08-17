@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "profile_photo_url" varchar(2048);

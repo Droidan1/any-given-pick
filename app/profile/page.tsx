@@ -93,7 +93,7 @@ export default async function ProfilePage() {
               </div>
             </details>
 
-            <details className="profile-settings-section">
+            <details className="profile-settings-section" id="email-reminders" open>
               <summary>
                 <span>Notifications</span>
                 <small>Weekly cards, deadlines, receipts, and results</small>
@@ -103,7 +103,7 @@ export default async function ProfilePage() {
               </div>
             </details>
 
-            <details className="profile-settings-section">
+            <details className="profile-settings-section" id="email-reminders" open>
               <summary>
                 <span>Privacy and account controls</span>
                 <small>{privacyRequest ? "Deletion request in review" : "Review or delete your account data"}</small>

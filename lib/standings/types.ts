@@ -2,6 +2,7 @@ export type StandingRow = {
   rank: number;
   userId: string;
   displayName: string;
+  profilePhotoUrl: string | null;
   correctPicks: number;
   gradedPicks: number;
   tiebreakerDiff: number | null;

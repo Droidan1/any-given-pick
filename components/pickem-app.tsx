@@ -14,6 +14,7 @@ import { BrandLockup } from "./brand-lockup";
 import { Icon, type IconName, RouteSketch } from "./icons";
 import { MobileAppNav } from "./mobile-app-nav";
 import { PwaInstallHomeCard } from "./pwa-install-experience";
+import { PlayerAvatar } from "./player-avatar";
 
 type View = "home" | "picks" | "standings";
 type Picks = Record<string, string>;
@@ -334,16 +335,21 @@ export function PickemApp({
   }, [canParticipate, draftReady, draftRetryVersion, draftStorageKey, isLocked, mondayTotal, picks, week]);
 
   if (!week) {
+    const emptyContent = view === "standings" ? (
+      <StandingsView standings={standings} currentUserId={draftOwnerId} />
+    ) : (
+      <section className="single-view no-week-view">
+        <RouteSketch /><RouteSketch mirrored />
+        <p className="week-label">Coach&apos;s call sheet</p>
+        <h1>{view === "picks" ? "No picks are open." : "The next slate is being drawn up."}</h1>
+        <p className="lead">There is no published week yet. Once the commissioner publishes one, the official matchups will appear here automatically.</p>
+        <div className="empty-state"><Icon name="picks" /><h2>Check back soon</h2><p>Your player account is ready for kickoff.</p></div>
+        <PwaInstallHomeCard />
+      </section>
+    );
     return (
       <AppFrame view={view} setView={selectView} account={account} isAdmin={isAdmin}>
-        <section className="single-view no-week-view">
-          <RouteSketch /><RouteSketch mirrored />
-          <PwaInstallHomeCard />
-          <p className="week-label">Coach&apos;s call sheet</p>
-          <h1>The next slate is being drawn up.</h1>
-          <p className="lead">There is no published week yet. Once the commissioner publishes one, the official matchups will appear here automatically.</p>
-          <div className="empty-state"><Icon name="picks" /><h2>Check back soon</h2><p>Your player account is ready for kickoff.</p></div>
-        </section>
+        {emptyContent}
       </AppFrame>
     );
   }
@@ -531,7 +537,7 @@ function AppFrame({
         {children}
       </section>
       <MobileAppNav
-        active={view}
+        active={view === "standings" ? "results" : view}
         isAdmin={isAdmin}
         onSelectView={setView}
       />
@@ -564,11 +570,40 @@ type PicksViewProps = {
   onRetryDraft: () => void;
 };
 
+const PICK_DAY_KEY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Indiana/Indianapolis",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const PICK_DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Indiana/Indianapolis",
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+});
+
+function groupPlayerGamesByDay(games: PlayerGame[]) {
+  const groups = new Map<string, { label: string; games: PlayerGame[] }>();
+  for (const game of games) {
+    const kickoff = new Date(game.kickoffAt);
+    const key = PICK_DAY_KEY_FORMATTER.format(kickoff);
+    const label = PICK_DAY_LABEL_FORMATTER.format(kickoff);
+    const group = groups.get(key) ?? { label, games: [] };
+    group.games.push(game);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
 function PicksView(props: PicksViewProps) {
   const tiebreakerLabel = props.week.seasonPhase === "preseason" ? "Tiebreaker" : "Monday";
   const oddsProviders = Array.from(new Set(
     props.games.flatMap((game) => game.odds?.provider ? [game.odds.provider] : []),
   ));
+  const gameGroups = groupPlayerGamesByDay(props.games);
+  const missingCount = props.games.length - props.selectedCount;
   return (
     <div className="picks-layout">
       <section className="pick-sheet" aria-labelledby="picks-title">
@@ -587,12 +622,17 @@ function PicksView(props: PicksViewProps) {
         <ProgressMeasure selected={props.selectedCount} total={props.games.length} />
 
         <div className="matchup-list" aria-label="Weekly matchups">
-          {props.games.map((game) => {
+          {gameGroups.map((group) => (
+            <section className="matchup-day-group" key={group.label}>
+              <h2>{group.label}</h2>
+              {group.games.map((game) => {
             const selected = props.picks[game.id];
             const missing = !selected;
             const awayMoneyline = game.odds?.awayMoneyline ?? null;
             const homeMoneyline = game.odds?.homeMoneyline ?? null;
-            const mondayTotal = game.day === "Mon" ? game.odds?.overUnder ?? null : null;
+            const mondayTotal = props.week.seasonPhase === "regular" && game.isMondayTiebreaker
+              ? game.odds?.overUnder ?? null
+              : null;
             return (
               <fieldset id={`matchup-${game.id}`} className={`matchup${missing ? " matchup--missing" : ""}${mondayTotal !== null ? " matchup--with-total" : ""}`} key={game.id} ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}>
                 <legend className="sr-only">{game.away.name} at {game.home.name}, {game.day} at {game.time}{mondayTotal !== null ? `, over under ${mondayTotal}` : ""}</legend>
@@ -613,7 +653,9 @@ function PicksView(props: PicksViewProps) {
                 ) : null}
               </fieldset>
             );
-          })}
+              })}
+            </section>
+          ))}
         </div>
         <p className="prototype-note">
           Official commissioner-published slate · kickoff times shown in Eastern Time.
@@ -659,6 +701,13 @@ function PicksView(props: PicksViewProps) {
           </div>
         ) : null}
       </aside>
+      <div className="mobile-pick-dock" aria-label="Pick progress and next action">
+        <span><strong>{props.selectedCount}/{props.games.length}</strong> picks</span>
+        <button type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending || props.isLocked}>
+          {props.isLocked ? "Entry locked" : missingCount > 0 ? `Next missing (${missingCount})` : "Review card"}
+          <Icon name="arrow" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -738,6 +787,7 @@ function Receipt({ receipt, games, picks, mondayTotal, tiebreakerLabel, onEdit, 
       </ol>
       <p>{tiebreakerLabel} Total <strong>{mondayTotal ?? "—"}</strong></p>
       <time dateTime={receipt.committedAt}>{time} ET</time><small>Official version {receipt.versionNumber} · Keep this timestamp as your receipt.</small>
+      <Link className="receipt-reminders-link" href="/profile#email-reminders">Manage deadline and results reminders</Link>
       {!locked && <button className="text-action" type="button" onClick={onEdit}>Edit and resubmit</button>}
     </section>
   );
@@ -759,7 +809,7 @@ function HomeView({ selectedCount, onContinue, account, week, canParticipate, ha
       : <Link className="review-action review-action--link" href="/profile"><span>{eligibilityActionLabel(account)}</span><Icon name="arrow" /></Link>
     : <Link className="review-action review-action--link" href={`/${homeState.destination}`}><span>{homeState.actionLabel}</span><Icon name="arrow" /></Link>;
   return (
-    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">{homeState.lead}</p><div className="home-status"><Icon name={homeState.lockedStatusLabel ? "check" : "shield"} /><span>{statusLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{action}<PwaInstallHomeCard /><div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
+    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">{homeState.lead}</p><div className="home-status"><Icon name={homeState.lockedStatusLabel ? "check" : "shield"} /><span>{statusLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{action}<Link className="home-reminders-link" href="/profile#email-reminders">Set deadline and results reminders</Link><PwaInstallHomeCard /><div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
   );
 }
 
@@ -790,7 +840,7 @@ function StandingsView({
               key={entry.userId}
             >
               <strong>{entry.rank}</strong>
-              <span>{entry.displayName}</span>
+              <span className="standings-player"><PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} size={32} />{entry.displayName}</span>
               <span>{entry.correctPicks}/{entry.gradedPicks}</span>
               <span>{entry.tiebreakerDiff ?? "—"}</span>
             </div>

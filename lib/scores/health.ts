@@ -200,6 +200,46 @@ export async function recoverStaleScoreSyncWithHealth(
   return claimed ? completeScoreSyncAttempt(now) : null;
 }
 
+export async function refreshScoreSyncIfDueWithHealth(
+  now = new Date(),
+  minimumIntervalMs = 55_000,
+): Promise<ScoreSyncSummary | null> {
+  const db = getDb();
+  const dueBefore = new Date(now.getTime() - minimumIntervalMs);
+  const runningState = {
+    provider: SCORE_SYNC_PROVIDER,
+    status: "running",
+    lastAttemptAt: now,
+    errorMessage: null,
+    updatedAt: now,
+  } as const;
+
+  const [inserted] = await db
+    .insert(providerSyncStates)
+    .values({ key: SCORE_SYNC_KEY, ...runningState })
+    .onConflictDoNothing({ target: providerSyncStates.key })
+    .returning({ key: providerSyncStates.key });
+
+  let claimed = Boolean(inserted);
+  if (!claimed) {
+    const [updated] = await db
+      .update(providerSyncStates)
+      .set(runningState)
+      .where(and(
+        eq(providerSyncStates.key, SCORE_SYNC_KEY),
+        or(
+          eq(providerSyncStates.status, "failed"),
+          isNull(providerSyncStates.lastAttemptAt),
+          lt(providerSyncStates.lastAttemptAt, dueBefore),
+        ),
+      ))
+      .returning({ key: providerSyncStates.key });
+    claimed = Boolean(updated);
+  }
+
+  return claimed ? completeScoreSyncAttempt(now) : null;
+}
+
 export async function runEspnScoreSyncWithHealth(
   now = new Date(),
 ): Promise<ScoreSyncSummary> {

@@ -77,6 +77,7 @@ export async function getSeasonStandings(): Promise<StandingsSnapshot> {
         versionId: entryVersions.id,
         userId: contestEntries.userId,
         displayName: profiles.displayName,
+        profilePhotoUrl: profiles.profilePhotoUrl,
         mondayPrediction: entryVersions.mondayPrediction,
       })
       .from(contestEntries)
@@ -122,6 +123,7 @@ export async function getSeasonStandings(): Promise<StandingsSnapshot> {
     const standing = participants.get(entry.userId) ?? {
       userId: entry.userId,
       displayName: entry.displayName,
+      profilePhotoUrl: entry.profilePhotoUrl,
       correctPicks: 0,
       gradedPicks: 0,
       tiebreakerDiff: 0,

@@ -69,6 +69,7 @@ export async function getAccountSummary(userId: string): Promise<AccountSummary>
     reasonLabel: reasonLabels[reason],
     locationCheckedAt: location?.checkedAt.toISOString() ?? null,
     locationExpiresAt: location?.expiresAt.toISOString() ?? null,
+    locationFresh: locationIsFresh,
     profileComplete,
   };
 }
