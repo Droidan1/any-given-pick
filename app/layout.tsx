@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
-import "@fontsource/barlow-condensed/500.css";
 import "@fontsource/barlow-condensed/600.css";
 import "@fontsource/barlow-condensed/700.css";
 import "./globals.css";
@@ -89,6 +89,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <PwaInstallProvider>
             {children}
             <PwaInstallGlobal />
+            <SpeedInsights />
           </PwaInstallProvider>
         </ClerkProvider>
       </body>

@@ -89,14 +89,14 @@ export default async function ResultsPage({
   return (
     <main className="account-shell results-shell">
       <header className="account-header">
-        <Link href="/" className="account-brand" aria-label="Any Given Pick home">
+        <Link href="/" className="account-brand" aria-label="Any Given Pick home" prefetch={false}>
           <BrandLockup />
         </Link>
         <div className="account-header__actions">
-          <Link href="/" className="text-link">Current call sheet</Link>
-          <Link href="/?view=standings" className="text-link">Standings</Link>
-          <Link href="/activity" className="text-link">My activity</Link>
-          {isAdmin ? <Link href="/admin" className="text-link">Admin</Link> : null}
+          <Link href="/" className="text-link" prefetch={false}>Current call sheet</Link>
+          <Link href="/standings" className="text-link" prefetch={false}>Standings</Link>
+          <Link href="/activity" className="text-link" prefetch={false}>My activity</Link>
+          {isAdmin ? <Link href="/admin" className="text-link" prefetch={false}>Admin</Link> : null}
           <UserButton />
         </div>
       </header>
@@ -113,8 +113,8 @@ export default async function ResultsPage({
 
         <nav className="results-hub-nav" aria-label="Results and activity">
           <Link className="results-hub-nav__active" href="/results" aria-current="page">Weekly cards</Link>
-          <Link href="/?view=standings">Standings</Link>
-          <Link href="/activity">My activity</Link>
+          <Link href="/standings" prefetch={false}>Standings</Link>
+          <Link href="/activity" prefetch={false}>My activity</Link>
         </nav>
 
         {results.weeks.length > 0 ? (

@@ -37,12 +37,12 @@ export default async function ProfilePage() {
   return (
     <main className="account-shell">
       <header className="account-header">
-        <Link href="/" className="account-brand" aria-label="Any Given Pick home">
+        <Link href="/" className="account-brand" aria-label="Any Given Pick home" prefetch={false}>
           <BrandLockup />
         </Link>
         <div className="account-header__actions">
-          <Link href="/activity" className="text-link">My activity</Link>
-          <Link href="/" className="text-link">Back to call sheet</Link>
+          <Link href="/activity" className="text-link" prefetch={false}>My activity</Link>
+          <Link href="/" className="text-link" prefetch={false}>Back to call sheet</Link>
           <UserButton />
         </div>
       </header>

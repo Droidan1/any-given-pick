@@ -198,7 +198,7 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
         )}
 
         {card.isCurrent ? (
-          <Link className="activity-card__action" href="/">
+          <Link className="activity-card__action" href="/" prefetch={false}>
             <span>{card.pickCount > 0 ? "Open current card" : "Make current picks"}</span>
             <Icon name="arrow" />
           </Link>
@@ -226,14 +226,14 @@ export default async function ActivityPage() {
   return (
     <main className="account-shell activity-shell">
       <header className="account-header">
-        <Link href="/" className="account-brand" aria-label="Any Given Pick home">
+        <Link href="/" className="account-brand" aria-label="Any Given Pick home" prefetch={false}>
           <BrandLockup />
         </Link>
         <div className="account-header__actions">
-          <Link href="/" className="text-link">Current call sheet</Link>
-          <Link href="/results" className="text-link">Weekly results</Link>
-          <Link href="/profile" className="text-link">Player card</Link>
-          {isAdmin ? <Link href="/admin" className="text-link">Admin</Link> : null}
+          <Link href="/" className="text-link" prefetch={false}>Current call sheet</Link>
+          <Link href="/results" className="text-link" prefetch={false}>Weekly results</Link>
+          <Link href="/profile" className="text-link" prefetch={false}>Player card</Link>
+          {isAdmin ? <Link href="/admin" className="text-link" prefetch={false}>Admin</Link> : null}
           <UserButton />
         </div>
       </header>
@@ -251,8 +251,8 @@ export default async function ActivityPage() {
         </div>
 
         <nav className="results-hub-nav" aria-label="Results and activity">
-          <Link href="/results">Weekly cards</Link>
-          <Link href="/?view=standings">Standings</Link>
+          <Link href="/results" prefetch={false}>Weekly cards</Link>
+          <Link href="/standings" prefetch={false}>Standings</Link>
           <Link className="results-hub-nav__active" href="/activity" aria-current="page">My activity</Link>
         </nav>
 

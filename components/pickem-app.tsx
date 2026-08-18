@@ -102,12 +102,14 @@ const navItems: { view: View; label: string; icon: IconName }[] = [
 ];
 
 const viewHrefs: Record<View, string> = {
-  home: "/?view=home",
-  picks: "/?view=picks",
-  standings: "/?view=standings",
+  home: "/",
+  picks: "/picks",
+  standings: "/standings",
 };
 
 function viewFromCurrentUrl(): View {
+  if (window.location.pathname === "/picks") return "picks";
+  if (window.location.pathname === "/standings") return "standings";
   const candidate = new URLSearchParams(window.location.search).get("view");
   return candidate === "picks" || candidate === "standings"
     ? candidate
@@ -126,7 +128,7 @@ export function PickemApp({
   week: PlayerWeek | null;
   isAdmin: boolean;
   draftOwnerId: string;
-  standings: StandingsSnapshot;
+  standings: StandingsSnapshot | null;
   initialView: "home" | "picks" | "standings";
 }) {
   const [view, setView] = useState<View>(initialView);
@@ -335,7 +337,7 @@ export function PickemApp({
   }, [canParticipate, draftReady, draftRetryVersion, draftStorageKey, isLocked, mondayTotal, picks, week]);
 
   if (!week) {
-    const emptyContent = view === "standings" ? (
+    const emptyContent = view === "standings" && standings ? (
       <StandingsView standings={standings} currentUserId={draftOwnerId} />
     ) : (
       <section className="single-view no-week-view">
@@ -486,7 +488,7 @@ export function PickemApp({
         />
       )}
       {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => selectView("picks")} account={liveAccount} canParticipate={canParticipate} hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0} />}
-      {view === "standings" && <StandingsView standings={standings} currentUserId={draftOwnerId} />}
+      {view === "standings" && standings ? <StandingsView standings={standings} currentUserId={draftOwnerId} /> : null}
     </AppFrame>
   );
 }
@@ -509,22 +511,32 @@ function AppFrame({
       <aside className="side-nav" aria-label="Primary navigation">
         <button className="brand-home" type="button" onClick={() => setView("home")} aria-label="Any Given Pick home"><BrandLockup /></button>
         <div className="nav-list">
-          {navItems.map((item) => (
+          {navItems.map((item) => item.view === "standings" ? (
+            <Link
+              className={`nav-item nav-item--link${view === item.view ? " nav-item--active" : ""}`}
+              href={viewHrefs[item.view]}
+              key={item.view}
+              prefetch={false}
+              aria-current={view === item.view ? "page" : undefined}
+            >
+              <Icon name={item.icon} /><span>{item.label}</span>
+            </Link>
+          ) : (
             <button className={`nav-item${view === item.view ? " nav-item--active" : ""}`} key={item.view} type="button" onClick={() => setView(item.view)} aria-current={view === item.view ? "page" : undefined}>
               <Icon name={item.icon} /><span>{item.label}</span>
             </button>
           ))}
-          <Link className="nav-item nav-item--link" href="/profile">
+          <Link className="nav-item nav-item--link" href="/profile" prefetch={false}>
             <Icon name="profile" /><span>Profile</span>
           </Link>
-          <Link className="nav-item nav-item--link" href="/activity">
+          <Link className="nav-item nav-item--link" href="/activity" prefetch={false}>
             <Icon name="activity" /><span>My activity</span>
           </Link>
-          <Link className="nav-item nav-item--link" href="/results">
+          <Link className="nav-item nav-item--link" href="/results" prefetch={false}>
             <Icon name="results" /><span>Results</span>
           </Link>
           {isAdmin && (
-            <Link className="nav-item nav-item--link" href="/admin">
+            <Link className="nav-item nav-item--link" href="/admin" prefetch={false}>
               <Icon name="settings" /><span>Admin</span>
             </Link>
           )}
@@ -768,7 +780,7 @@ function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, on
       </ol>
       <p>{tiebreakerLabel} Total <strong>{mondayTotal}</strong></p>
       <button className="commit-action" type="button" onClick={onReceipt} disabled={!canParticipate || isPending}>{isPending ? "Submitting…" : canParticipate ? (hasSubmitted ? "Submit changes" : "Submit official entry") : isLocked ? "Entry locked" : "Eligibility required"}</button>
-      {!canParticipate && !isLocked && <Link className="text-action text-action--link" href="/profile">{account.reasonLabel}</Link>}
+          {!canParticipate && !isLocked && <Link className="text-action text-action--link" href="/profile" prefetch={false}>{account.reasonLabel}</Link>}
       <button className="text-action" type="button" onClick={onEdit} disabled={isPending}>Back to picks</button>
     </section>
   );
@@ -787,7 +799,7 @@ function Receipt({ receipt, games, picks, mondayTotal, tiebreakerLabel, onEdit, 
       </ol>
       <p>{tiebreakerLabel} Total <strong>{mondayTotal ?? "—"}</strong></p>
       <time dateTime={receipt.committedAt}>{time} ET</time><small>Official version {receipt.versionNumber} · Keep this timestamp as your receipt.</small>
-      <Link className="receipt-reminders-link" href="/profile#email-reminders">Manage deadline and results reminders</Link>
+      <Link className="receipt-reminders-link" href="/profile#email-reminders" prefetch={false}>Manage deadline and results reminders</Link>
       {!locked && <button className="text-action" type="button" onClick={onEdit}>Edit and resubmit</button>}
     </section>
   );
@@ -806,10 +818,10 @@ function HomeView({ selectedCount, onContinue, account, week, canParticipate, ha
   const action = homeState.destination === "picks"
     ? canParticipate
       ? <button className="review-action" type="button" onClick={onContinue}><span>{homeState.actionLabel}</span><Icon name="arrow" /></button>
-      : <Link className="review-action review-action--link" href="/profile"><span>{eligibilityActionLabel(account)}</span><Icon name="arrow" /></Link>
-    : <Link className="review-action review-action--link" href={`/${homeState.destination}`}><span>{homeState.actionLabel}</span><Icon name="arrow" /></Link>;
+      : <Link className="review-action review-action--link" href="/profile" prefetch={false}><span>{eligibilityActionLabel(account)}</span><Icon name="arrow" /></Link>
+    : <Link className="review-action review-action--link" href={`/${homeState.destination}`} prefetch={false}><span>{homeState.actionLabel}</span><Icon name="arrow" /></Link>;
   return (
-    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">{homeState.lead}</p><div className="home-status"><Icon name={homeState.lockedStatusLabel ? "check" : "shield"} /><span>{statusLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{action}<Link className="home-reminders-link" href="/profile#email-reminders">Set deadline and results reminders</Link><PwaInstallHomeCard /><div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
+    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">{homeState.lead}</p><div className="home-status"><Icon name={homeState.lockedStatusLabel ? "check" : "shield"} /><span>{statusLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{action}<Link className="home-reminders-link" href="/profile#email-reminders" prefetch={false}>Set deadline and results reminders</Link><PwaInstallHomeCard /><div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
   );
 }
 
@@ -846,7 +858,7 @@ function StandingsView({
             </div>
           ))}
         </div>
-        <Link className="standings-results-link" href="/results">View weekly results <Icon name="arrow" /></Link>
+        <Link className="standings-results-link" href="/results" prefetch={false}>View weekly results <Icon name="arrow" /></Link>
       </section>
     );
   }
@@ -870,11 +882,11 @@ function StandingsView({
               : "Week 1 results will set the first official leaderboard."}
         </p>
       </div>
-      <Link className="standings-results-link" href="/results">View weekly results <Icon name="arrow" /></Link>
+      <Link className="standings-results-link" href="/results" prefetch={false}>View weekly results <Icon name="arrow" /></Link>
     </section>
   );
 }
 
 function AccountDock({ account, compact = false }: { account: AccountSummary; compact?: boolean }) {
-  return <div className={`account-dock${compact ? " account-dock--compact" : ""}`}><UserButton /><Link href="/profile"><span>{account.displayName ?? "Player card"}</span><small>{account.overallResult === "eligible" ? "Eligible" : "Read-only"}</small></Link></div>;
+  return <div className={`account-dock${compact ? " account-dock--compact" : ""}`}><UserButton /><Link href="/profile" prefetch={false}><span>{account.displayName ?? "Player card"}</span><small>{account.overallResult === "eligible" ? "Eligible" : "Read-only"}</small></Link></div>;
 }

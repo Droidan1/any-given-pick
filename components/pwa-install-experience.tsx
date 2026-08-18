@@ -89,9 +89,16 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
   const installedKey = "agp:pwa:installed-at:v1";
 
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-    }
+    let registrationTimer = 0;
+    const queueServiceWorkerRegistration = () => {
+      registrationTimer = window.setTimeout(() => {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+        }
+      }, 1_200);
+    };
+    if (document.readyState === "complete") queueServiceWorkerRegistration();
+    else window.addEventListener("load", queueServiceWorkerRegistration, { once: true });
 
     const mobileQuery = window.matchMedia("(max-width: 61.25rem)");
     const standaloneQuery = window.matchMedia("(display-mode: standalone)");
@@ -128,6 +135,8 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
     mobileQuery.addEventListener("change", syncEnvironment);
     standaloneQuery.addEventListener("change", syncEnvironment);
     return () => {
+      window.clearTimeout(registrationTimer);
+      window.removeEventListener("load", queueServiceWorkerRegistration);
       window.removeEventListener("online", syncEnvironment);
       window.removeEventListener("offline", syncEnvironment);
       window.removeEventListener("beforeinstallprompt", captureInstall);

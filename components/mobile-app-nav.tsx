@@ -19,8 +19,8 @@ const playerDestinations: Array<{
   href: string;
   localView?: LocalDestination;
 }> = [
-  { destination: "home", label: "Home", icon: "home", href: "/?view=home", localView: "home" },
-  { destination: "picks", label: "Picks", icon: "picks", href: "/?view=picks", localView: "picks" },
+  { destination: "home", label: "Home", icon: "home", href: "/", localView: "home" },
+  { destination: "picks", label: "Picks", icon: "picks", href: "/picks", localView: "picks" },
   { destination: "results", label: "Results", icon: "results", href: "/results" },
   { destination: "profile", label: "Profile", icon: "profile", href: "/profile" },
 ];
@@ -58,6 +58,7 @@ export function MobileAppNav({
             className={`${className} bottom-nav__item--link`}
             href={item.href}
             key={item.destination}
+            prefetch={false}
             aria-current={active === item.destination ? "page" : undefined}
           >
             {content}
@@ -68,6 +69,7 @@ export function MobileAppNav({
         <Link
           className={`bottom-nav__item bottom-nav__item--link${active === "admin" ? " bottom-nav__item--active" : ""}`}
           href="/admin"
+          prefetch={false}
           aria-current={active === "admin" ? "page" : undefined}
         >
           <Icon name="settings" /><span>Admin</span>

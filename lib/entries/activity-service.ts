@@ -11,7 +11,6 @@ import {
   games,
 } from "@/lib/db/schema";
 import { draftPayloadSignature, sanitizeDraftPicks } from "./rules";
-import { getCurrentPlayerWeek } from "./service";
 import { calculatePickOutcome, type PickOutcome } from "./pick-outcome";
 
 export type ActivityPick = {
@@ -107,8 +106,19 @@ function picksMatch(
 
 export async function getPlayerActivity(userId: string): Promise<PlayerActivity> {
   const db = getDb();
-  const [currentWeek, entryRows] = await Promise.all([
-    getCurrentPlayerWeek(userId),
+  const [currentWeekRows, entryRows] = await Promise.all([
+    db
+      .select({
+        id: contestWeeks.id,
+        season: contestWeeks.season,
+        seasonPhase: contestWeeks.seasonPhase,
+        weekNumber: contestWeeks.weekNumber,
+        label: contestWeeks.label,
+      })
+      .from(contestWeeks)
+      .where(eq(contestWeeks.status, "published"))
+      .orderBy(desc(contestWeeks.publishedAt), desc(contestWeeks.updatedAt))
+      .limit(1),
     db
       .select({
         entryId: contestEntries.id,
@@ -131,6 +141,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
         desc(contestWeeks.weekNumber),
       ),
   ]);
+  const currentWeek = currentWeekRows[0] ?? null;
 
   const rows: EntryRow[] = [...entryRows];
   if (currentWeek && !rows.some((row) => row.weekId === currentWeek.id)) {
