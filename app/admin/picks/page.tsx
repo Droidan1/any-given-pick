@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 const adminPicksDesignContract = `<!--
-THESIS: Player review is one transparent post-lock roster, not a surveillance dashboard; submission presence is visible early, selections are not.
+THESIS: Player review is one transparent official-entry roster, not a surveillance dashboard; the separate player board carries the same live saved calls for everyone.
 OWN-WORLD: Field-green booth, warm ruled paper, maize revealed calls, clay exceptions, condensed commands, and hard-edged roster rows.
 STORY: Choose a week, confirm who submitted, wait for the server lock, then open each official card and inspect every call.
 FIRST VIEWPORT: The booth header leads into the selected week, lock policy, and one scannable player ledger with no decorative metrics.
@@ -135,14 +135,14 @@ export default async function AdminPicksPage({
                 <p>{board.players.length} approved {board.players.length === 1 ? "player" : "players"} · {board.submittedCount} official {board.submittedCount === 1 ? "entry" : "entries"}{board.disqualifiedCount > 0 ? ` · ${board.disqualifiedCount} disqualified` : ""}</p>
               </div>
               <span className={`admin-picks-lock-state admin-picks-lock-state--${board.revealStatus}`}>
-                {board.revealStatus === "revealed" ? "Picks revealed" : "Picks sealed"}
+                {board.revealStatus === "revealed" ? "Official picks revealed" : "Official cards locked"}
               </span>
             </div>
 
             {board.revealStatus === "open" && board.selectedWeek ? (
               <section className="admin-picks-seal-note">
                 <Icon name="shield" />
-                <div><h2>Selections unlock at the deadline</h2><p>Submission status is available now. Actual team selections remain sealed until {formatDateTime(board.selectedWeek.entryDeadline)} so administrators who also play never gain an early advantage.</p></div>
+                <div><h2>Official cards unlock at the deadline</h2><p>The player picks page shows the same autosaved calls to every approved active player. This audit view waits until {formatDateTime(board.selectedWeek.entryDeadline)} to reveal each timestamped official version.</p></div>
               </section>
             ) : null}
 

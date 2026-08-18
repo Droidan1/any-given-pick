@@ -26,6 +26,13 @@ export type PlayerEntry = {
   updatedAt: string;
 };
 
+export type LivePlayerPicks = {
+  userId: string;
+  displayName: string;
+  picks: Record<string, string>;
+  updatedAt: string | null;
+};
+
 export type PlayerWeek = {
   id: string;
   season: number;
@@ -37,6 +44,7 @@ export type PlayerWeek = {
   isLocked: boolean;
   games: PlayerGame[];
   entry: PlayerEntry | null;
+  livePlayerPicks: LivePlayerPicks[];
 };
 
 export type EntryMutationInput = {

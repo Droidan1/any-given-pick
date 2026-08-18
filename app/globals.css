@@ -2344,6 +2344,299 @@ button:disabled {
   border-top: 1px solid var(--sage);
 }
 
+.scoreboard-toolbar {
+  min-height: 3.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--sage);
+  border-bottom: 1px solid var(--sage);
+  background: var(--paper-200);
+}
+
+.scoreboard-toolbar p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 1rem;
+}
+
+.scoreboard-live-state {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--field-800);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.scoreboard-live-state::before {
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1px solid currentColor;
+  background: var(--maize);
+  content: "";
+}
+
+.scoreboard-live-state--refreshing::before {
+  animation: scoreboard-pulse 900ms ease-in-out infinite alternate;
+}
+
+.scoreboard-live-state--stale {
+  color: var(--clay-deep);
+}
+
+@keyframes scoreboard-pulse {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+.scoreboard-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  background: var(--paper-100);
+  scrollbar-color: var(--clay-deep) var(--paper-200);
+  scrollbar-width: thin;
+}
+
+.scoreboard-scroll:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.scoreboard-entry-table {
+  width: max-content;
+  min-width: 100%;
+  border-spacing: 0;
+  table-layout: fixed;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.scoreboard-entry-table th,
+.scoreboard-entry-table td {
+  width: 8.25rem;
+  min-width: 8.25rem;
+  height: 5.6rem;
+  padding: 0.55rem;
+  border-right: 1px solid var(--sage);
+  border-bottom: 1px solid var(--sage);
+  text-align: center;
+}
+
+.scoreboard-entry-table thead th {
+  height: 7.4rem;
+  background: var(--field-950);
+  color: var(--paper-100);
+  font-family: var(--font-display);
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.scoreboard-entry-table thead th > strong,
+.scoreboard-entry-table thead th > span {
+  display: block;
+}
+
+.scoreboard-entry-table thead th > strong {
+  color: var(--maize);
+  font-size: 1rem;
+}
+
+.scoreboard-entry-table thead th > span:not(.scoreboard-odds) {
+  margin-top: 0.2rem;
+  color: var(--sage);
+  font-size: 0.82rem;
+}
+
+.scoreboard-odds {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid oklch(69% 0.045 92 / 0.52);
+  color: var(--paper-200);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.scoreboard-odds b {
+  display: block;
+  font-weight: 600;
+}
+
+.scoreboard-odds em {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--maize);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.scoreboard-odds--empty {
+  color: var(--sage);
+}
+
+.scoreboard-entry-table .scoreboard-player-column {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: 10.75rem;
+  min-width: 10.75rem;
+  padding-inline: 0.85rem;
+  text-align: left;
+}
+
+.scoreboard-entry-table thead .scoreboard-player-column {
+  z-index: 5;
+  color: var(--maize);
+  vertical-align: middle;
+}
+
+.scoreboard-entry-table tbody .scoreboard-player-column {
+  background: var(--paper-200);
+}
+
+.scoreboard-entry-table tbody .scoreboard-player-column strong,
+.scoreboard-entry-table tbody .scoreboard-player-column span {
+  display: block;
+}
+
+.scoreboard-entry-table tbody .scoreboard-player-column strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.scoreboard-entry-table tbody .scoreboard-player-column span {
+  margin-top: 0.28rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.scoreboard-entry-table tbody td {
+  background: var(--paper-100);
+}
+
+.scoreboard-your-row td {
+  background: var(--paper-200);
+}
+
+.scoreboard-entry-table tbody .scoreboard-your-row .scoreboard-player-column {
+  background: var(--maize);
+  color: var(--field-950);
+}
+
+.scoreboard-entry-table tbody .scoreboard-your-row .scoreboard-player-column span {
+  color: var(--field-800);
+}
+
+.scoreboard-entry-choice {
+  min-inline-size: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  scroll-margin: 8rem;
+}
+
+.scoreboard-entry-choice--missing {
+  outline: 1px dashed var(--sage);
+  outline-offset: 0.25rem;
+}
+
+.scoreboard-team-choice {
+  position: relative;
+  min-width: 0;
+  min-height: 4.25rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.12rem;
+  padding: 0.4rem 0.2rem;
+  border: 1px solid var(--ink-soft);
+  background: var(--paper-100);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  transition: background-color 180ms ease-out, color 180ms ease-out, transform 180ms ease-out;
+}
+
+.scoreboard-team-choice:hover {
+  background: var(--paper-200);
+}
+
+.scoreboard-team-choice:active {
+  transform: scale(0.97);
+}
+
+.scoreboard-team-choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+
+.scoreboard-team-choice > span {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.scoreboard-team-choice > small {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.scoreboard-team-choice svg {
+  position: absolute;
+  top: 0.18rem;
+  right: 0.18rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  stroke-width: 3;
+}
+
+.scoreboard-team-choice--selected,
+.scoreboard-team-choice--selected:hover {
+  border-color: var(--field-950);
+  background: var(--maize);
+  color: var(--field-950);
+  clip-path: polygon(0 0, calc(100% - 0.35rem) 0, 100% 50%, calc(100% - 0.35rem) 100%, 0 100%);
+}
+
+.scoreboard-team-choice--selected > small {
+  color: var(--field-800);
+}
+
+.scoreboard-saved-pick {
+  min-height: 3.35rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--sage);
+  color: var(--sage);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.scoreboard-saved-pick--selected {
+  border-color: var(--field-800);
+  background: var(--field-800);
+  color: var(--paper-100);
+}
+
 .matchup-day-group > h2 {
   margin: 0;
   padding: 0.7rem 1rem;
@@ -4783,6 +5076,56 @@ button:disabled {
     right: 1rem;
     width: calc(100% - 2rem);
     bottom: 0.08rem;
+  }
+
+  .scoreboard-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-block: 0.8rem;
+  }
+
+  .scoreboard-toolbar p::after {
+    content: " Swipe games left to right.";
+    color: var(--clay-deep);
+    font-weight: 700;
+  }
+
+  .scoreboard-entry-table th,
+  .scoreboard-entry-table td {
+    width: 7.5rem;
+    min-width: 7.5rem;
+    padding: 0.45rem;
+  }
+
+  .scoreboard-entry-table .scoreboard-player-column {
+    width: 7.75rem;
+    min-width: 7.75rem;
+    padding-inline: 0.65rem;
+  }
+
+  .scoreboard-entry-table thead th {
+    height: 7rem;
+  }
+
+  .scoreboard-entry-table tbody .scoreboard-player-column strong {
+    font-size: 1rem;
+  }
+
+  .scoreboard-entry-table tbody .scoreboard-player-column span {
+    font-size: 0.82rem;
+  }
+
+  .scoreboard-team-choice {
+    min-height: 4.1rem;
+  }
+
+  .scoreboard-team-choice > span {
+    font-size: 1rem;
+  }
+
+  .scoreboard-saved-pick {
+    min-height: 3.2rem;
   }
 
   .matchup {

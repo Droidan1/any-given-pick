@@ -7,7 +7,7 @@ import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import type { AccountSummary } from "@/lib/account-types";
 import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
 import { unscopedDraftStorageKeys, userDraftStorageKey } from "@/lib/entries/draft-storage";
-import type { PlayerGame, PlayerWeek } from "@/lib/entries/types";
+import type { LivePlayerPicks, PlayerGame, PlayerWeek } from "@/lib/entries/types";
 import { getHomeWeekState } from "@/lib/home-week-state";
 import type { StandingsSnapshot } from "@/lib/standings/types";
 import { BrandLockup } from "./brand-lockup";
@@ -27,6 +27,7 @@ type DraftSyncState = {
   state: "idle" | "local" | "syncing" | "synced" | "error";
   syncedAt: string | null;
 };
+type LivePicksFeedState = "live" | "refreshing" | "stale";
 
 function gameRulesForCurrentSlate(games: PlayerGame[]) {
   return games.map((game) => ({
@@ -154,6 +155,8 @@ export function PickemApp({
     syncedAt: week?.entry?.updatedAt ?? null,
   });
   const [draftRetryVersion, setDraftRetryVersion] = useState(0);
+  const [livePlayerPicks, setLivePlayerPicks] = useState<LivePlayerPicks[]>(() => week?.livePlayerPicks ?? []);
+  const [livePicksFeedState, setLivePicksFeedState] = useState<LivePicksFeedState>("live");
   const [isPending, startTransition] = useTransition();
   const firstMissingRef = useRef<HTMLFieldSetElement | null>(null);
   const lastSavedSignatureRef = useRef("");
@@ -162,6 +165,7 @@ export function PickemApp({
   const draftSaveQueuedRef = useRef(false);
 
   const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id) : null;
+  const activeWeekId = week?.id ?? null;
   const games = week?.games ?? [];
   const canParticipate = hasFreshEligibility(liveAccount, eligibilityClock);
   const isLocked = week?.isLocked ?? true;
@@ -187,6 +191,40 @@ export function PickemApp({
     const timer = window.setInterval(() => setEligibilityClock(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!activeWeekId || view !== "picks") return;
+    let active = true;
+
+    const refreshLivePicks = async () => {
+      if (document.visibilityState === "hidden") return;
+      setLivePicksFeedState("refreshing");
+      try {
+        const response = await fetch(`/api/picks/live?weekId=${encodeURIComponent(activeWeekId)}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("LIVE_PICKS_REFRESH_FAILED");
+        const body = await response.json() as { players: LivePlayerPicks[] };
+        if (!active) return;
+        setLivePlayerPicks(body.players);
+        setLivePicksFeedState("live");
+      } catch {
+        if (active) setLivePicksFeedState("stale");
+      }
+    };
+
+    const interval = window.setInterval(() => void refreshLivePicks(), 12_000);
+    const resumeRefresh = () => {
+      if (document.visibilityState === "visible") void refreshLivePicks();
+    };
+    void refreshLivePicks();
+    document.addEventListener("visibilitychange", resumeRefresh);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", resumeRefresh);
+    };
+  }, [activeWeekId, view]);
 
   useEffect(() => {
     const retryAfterReconnect = () => {
@@ -485,6 +523,9 @@ export function PickemApp({
             setDraftRetryVersion((version) => version + 1);
           }}
           onEdit={() => { setReviewing(false); setReceipt(null); setStatus("Edit mode restored. Submit again to make changes official."); }}
+          currentUserId={draftOwnerId}
+          livePlayerPicks={livePlayerPicks}
+          livePicksFeedState={livePicksFeedState}
         />
       )}
       {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => selectView("picks")} account={liveAccount} canParticipate={canParticipate} hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0} />}
@@ -580,33 +621,15 @@ type PicksViewProps = {
   isLocked: boolean;
   hasSubmitted: boolean;
   onRetryDraft: () => void;
+  currentUserId: string;
+  livePlayerPicks: LivePlayerPicks[];
+  livePicksFeedState: LivePicksFeedState;
 };
 
-const PICK_DAY_KEY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/Indiana/Indianapolis",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-const PICK_DAY_LABEL_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Indiana/Indianapolis",
-  weekday: "long",
-  month: "short",
-  day: "numeric",
-});
-
-function groupPlayerGamesByDay(games: PlayerGame[]) {
-  const groups = new Map<string, { label: string; games: PlayerGame[] }>();
-  for (const game of games) {
-    const kickoff = new Date(game.kickoffAt);
-    const key = PICK_DAY_KEY_FORMATTER.format(kickoff);
-    const label = PICK_DAY_LABEL_FORMATTER.format(kickoff);
-    const group = groups.get(key) ?? { label, games: [] };
-    group.games.push(game);
-    groups.set(key, group);
-  }
-  return [...groups.values()];
+function savedPickCount(games: PlayerGame[], picks: Picks): number {
+  return games.filter((game) => (
+    picks[game.id] === game.away.abbreviation || picks[game.id] === game.home.abbreviation
+  )).length;
 }
 
 function PicksView(props: PicksViewProps) {
@@ -614,7 +637,14 @@ function PicksView(props: PicksViewProps) {
   const oddsProviders = Array.from(new Set(
     props.games.flatMap((game) => game.odds?.provider ? [game.odds.provider] : []),
   ));
-  const gameGroups = groupPlayerGamesByDay(props.games);
+  const latestOddsUpdate = props.games.reduce<string | null>((latest, game) => {
+    if (!game.odds) return latest;
+    if (!latest || new Date(game.odds.updatedAt).getTime() > new Date(latest).getTime()) {
+      return game.odds.updatedAt;
+    }
+    return latest;
+  }, null);
+  const otherPlayers = props.livePlayerPicks.filter((player) => player.userId !== props.currentUserId);
   const missingCount = props.games.length - props.selectedCount;
   return (
     <div className="picks-layout">
@@ -633,45 +663,109 @@ function PicksView(props: PicksViewProps) {
 
         <ProgressMeasure selected={props.selectedCount} total={props.games.length} />
 
-        <div className="matchup-list" aria-label="Weekly matchups">
-          {gameGroups.map((group) => (
-            <section className="matchup-day-group" key={group.label}>
-              <h2>{group.label}</h2>
-              {group.games.map((game) => {
-            const selected = props.picks[game.id];
-            const missing = !selected;
-            const awayMoneyline = game.odds?.awayMoneyline ?? null;
-            const homeMoneyline = game.odds?.homeMoneyline ?? null;
-            const mondayTotal = props.week.seasonPhase === "regular" && game.isMondayTiebreaker
-              ? game.odds?.overUnder ?? null
-              : null;
-            return (
-              <fieldset id={`matchup-${game.id}`} className={`matchup${missing ? " matchup--missing" : ""}${mondayTotal !== null ? " matchup--with-total" : ""}`} key={game.id} ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}>
-                <legend className="sr-only">{game.away.name} at {game.home.name}, {game.day} at {game.time}{mondayTotal !== null ? `, over under ${mondayTotal}` : ""}</legend>
-                <div className="matchup-time"><span>{game.day}</span><span>{game.time}</span></div>
-                <button className={`team-choice${selected === game.away.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.away.abbreviation)} aria-pressed={selected === game.away.abbreviation} aria-label={`Pick ${game.away.name} over ${game.home.name}. ${game.day}, ${game.time}${awayMoneyline !== null ? `. Moneyline ${formatMoneyline(awayMoneyline)}` : ""}`} disabled={!props.canParticipate || props.isLocked || props.isPending}>
-                  {selected === game.away.abbreviation && <Icon name="check" />}<span className="team-choice__code">{game.away.abbreviation}</span><small className="team-choice__name">{game.away.name}</small>{awayMoneyline !== null ? <small className="team-choice__moneyline">ML {formatMoneyline(awayMoneyline)}</small> : null}
-                </button>
-                <span className="at-mark" aria-hidden="true">@</span>
-                <button className={`team-choice${selected === game.home.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.home.abbreviation)} aria-pressed={selected === game.home.abbreviation} aria-label={`Pick ${game.home.name} over ${game.away.name}. ${game.day}, ${game.time}${homeMoneyline !== null ? `. Moneyline ${formatMoneyline(homeMoneyline)}` : ""}`} disabled={!props.canParticipate || props.isLocked || props.isPending}>
-                  {selected === game.home.abbreviation && <Icon name="check" />}<span className="team-choice__code">{game.home.abbreviation}</span><small className="team-choice__name">{game.home.name}</small>{homeMoneyline !== null ? <small className="team-choice__moneyline">ML {formatMoneyline(homeMoneyline)}</small> : null}
-                </button>
-                {mondayTotal !== null && game.odds ? (
-                  <div className="matchup-total">
-                    <span>Monday reference total</span>
-                    <strong>O/U {mondayTotal}</strong>
-                    <small>{game.odds.provider} · updated {formatOddsUpdate(game.odds.updatedAt)}</small>
-                  </div>
-                ) : null}
-              </fieldset>
-            );
+        <div className="scoreboard-toolbar">
+          <p>Your highlighted row is editable. Every active player&apos;s saved calls appear below.</p>
+          <span className={`scoreboard-live-state scoreboard-live-state--${props.livePicksFeedState}`} aria-live="polite">
+            {props.livePicksFeedState === "refreshing" ? "Refreshing…" : props.livePicksFeedState === "stale" ? "Refresh paused" : "Live board"}
+          </span>
+        </div>
+
+        <div className="scoreboard-scroll" role="region" aria-label="Live player picks scoreboard" tabIndex={0}>
+          <table className="scoreboard-entry-table">
+            <caption className="sr-only">Make your picks in the first row and compare them with other active players&apos; saved picks.</caption>
+            <thead>
+              <tr>
+                <th className="scoreboard-player-column" scope="col">Player</th>
+                {props.games.map((game) => {
+                  const mondayTotal = props.week.seasonPhase === "regular" && game.isMondayTiebreaker
+                    ? game.odds?.overUnder ?? null
+                    : null;
+                  return (
+                    <th scope="col" key={game.id}>
+                      <strong>{game.away.abbreviation} @ {game.home.abbreviation}</strong>
+                      <span>{game.day} · {game.time}</span>
+                      {game.odds ? (
+                        <span className="scoreboard-odds">
+                          <b>{game.away.abbreviation} {game.odds.awayMoneyline === null ? "—" : formatMoneyline(game.odds.awayMoneyline)}</b>
+                          <b>{game.home.abbreviation} {game.odds.homeMoneyline === null ? "—" : formatMoneyline(game.odds.homeMoneyline)}</b>
+                          {mondayTotal !== null ? <em>O/U {mondayTotal}</em> : null}
+                        </span>
+                      ) : <span className="scoreboard-odds scoreboard-odds--empty">Odds pending</span>}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="scoreboard-your-row">
+                <th className="scoreboard-player-column" scope="row">
+                  <strong>{props.account.displayName ?? "Your picks"}</strong>
+                  <span>You · {props.selectedCount}/{props.games.length} picked</span>
+                </th>
+                {props.games.map((game) => {
+                  const selected = props.picks[game.id];
+                  return (
+                    <td key={game.id}>
+                      <fieldset
+                        id={`matchup-${game.id}`}
+                        className={`scoreboard-entry-choice${selected ? "" : " scoreboard-entry-choice--missing"}`}
+                        ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}
+                      >
+                        <legend className="sr-only">Pick {game.away.name} or {game.home.name}</legend>
+                        {[game.away, game.home].map((team) => {
+                          const moneyline = team.abbreviation === game.away.abbreviation
+                            ? game.odds?.awayMoneyline ?? null
+                            : game.odds?.homeMoneyline ?? null;
+                          const isSelected = selected === team.abbreviation;
+                          return (
+                            <button
+                              className={`scoreboard-team-choice${isSelected ? " scoreboard-team-choice--selected" : ""}`}
+                              type="button"
+                              key={team.abbreviation}
+                              onClick={() => props.onChoose(game.id, team.abbreviation)}
+                              aria-pressed={isSelected}
+                              aria-label={`Pick ${team.name}${moneyline !== null ? `. Moneyline ${formatMoneyline(moneyline)}` : ""}`}
+                              disabled={!props.canParticipate || props.isLocked || props.isPending}
+                            >
+                              {isSelected ? <Icon name="check" /> : null}
+                              <span>{team.abbreviation}</span>
+                              <small>{moneyline === null ? "ML —" : `ML ${formatMoneyline(moneyline)}`}</small>
+                            </button>
+                          );
+                        })}
+                      </fieldset>
+                    </td>
+                  );
+                })}
+              </tr>
+              {otherPlayers.map((player) => {
+                const playerPickCount = savedPickCount(props.games, player.picks);
+                return (
+                  <tr key={player.userId}>
+                    <th className="scoreboard-player-column" scope="row">
+                      <strong>{player.displayName}</strong>
+                      <span>{playerPickCount}/{props.games.length} saved</span>
+                    </th>
+                    {props.games.map((game) => {
+                      const selection = player.picks[game.id];
+                      const validSelection = selection === game.away.abbreviation || selection === game.home.abbreviation;
+                      return (
+                        <td key={game.id}>
+                          <span className={`scoreboard-saved-pick${validSelection ? " scoreboard-saved-pick--selected" : ""}`}>
+                            {validSelection ? selection : "—"}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
               })}
-            </section>
-          ))}
+            </tbody>
+          </table>
         </div>
         <p className="prototype-note">
           Official commissioner-published slate · kickoff times shown in Eastern Time.
-          {oddsProviders.length > 0 ? ` Moneylines and Monday O/U are informational reference lines from ${oddsProviders.join(" / ")} via ESPN; they may change and never affect scoring.` : ""}
+          {oddsProviders.length > 0 && latestOddsUpdate ? ` Moneylines and Monday O/U are informational reference lines from ${oddsProviders.join(" / ")} via ESPN; they may change and never affect scoring. Latest line update ${formatOddsUpdate(latestOddsUpdate)}.` : ""}
         </p>
       </section>
 

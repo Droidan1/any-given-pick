@@ -32,6 +32,7 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Variable-size weekly picks flow using imported matchup data
 - Monday combined-score tiebreaker
 - Local recovery plus authenticated server-side draft sync
+- Authenticated live scoreboard showing every active player's autosaved team selections
 - Explicit submit/edit flow with immutable version history and timestamped receipts
 - Database-time deadline enforcement for drafts and submissions
 - Home, picks, standings, weekly results, activity archive, and profile surfaces

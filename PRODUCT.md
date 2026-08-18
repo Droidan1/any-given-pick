@@ -8,7 +8,7 @@ web
 
 ## Users
 
-The primary user is an Indiana adult age 21 or older who wants to make one complete set of weekly professional-football winner picks before a fixed deadline, then follow transparent scoring and standings. Approved signed-in users can review official weekly results after lock. Admins approve players, configure schedules, publish weeks, monitor score health, and enter fallback results without gaining visibility or scoring advantages.
+The primary user is an Indiana adult age 21 or older who wants to make one complete set of weekly professional-football winner picks before a fixed deadline, compare saved calls on a shared live board, then follow transparent scoring and standings. Approved signed-in users can see other active players' autosaved selections while making their own picks and review official weekly results after lock. Admins approve players, configure schedules, publish weeks, monitor score health, and enter fallback results without receiving special pick visibility.
 
 ## Product Purpose
 
@@ -16,7 +16,7 @@ Provide a simple, trustworthy, free-entry weekly pick'em experience. A successfu
 
 ## Positioning
 
-The product treats pick submission as an auditable weekly commitment rather than a wagering slip: one complete entry, a clearly visible deadline, transparent post-lock reveal, provider-owned scoring, and non-cash digital prizes.
+The product treats pick submission as an auditable weekly commitment rather than a wagering slip: one complete entry, a clearly visible deadline, a transparent live call board, provider-owned scoring, and non-cash digital prizes.
 
 ## Operating Context
 
@@ -30,7 +30,7 @@ Most user activity happens on a phone around the weekly NFL schedule. The centra
 - Participation requires a verified sign-in method, self-attested age 21+, active account, and server-verified Indiana location.
 - One shared contest per NFL week; every approved player uses the same published call sheet.
 - Every required pick and one whole-number Monday combined-score prediction are required for submission.
-- The server controls deadlines, eligibility, locking, reveal, and scoring authority.
+- The server controls deadlines, eligibility, locking, live-board access, and scoring authority.
 - Free entry only. No payments, entry fees, cash balances, cash prizes, withdrawals, or bet placement. The pick sheet may show provider-attributed informational moneylines for each matchup and an over/under only for Monday games; those reference lines never affect scoring and include no sportsbook links or promotions.
 - NFL/team mark licensing and the sports-data provider remain open decisions. Concepts must not depend on official logos or protected team artwork.
 - The approved product name is Any Given Pick and the primary domain is `anygivenpick.app`.
@@ -50,7 +50,7 @@ Any Given Pick is the approved product name. The brand must communicate clarity,
 ## Product Principles
 
 - Deadline integrity: the server, not the browser, decides whether an entry is open or locked.
-- Transparent competition: submitted picks become visible after the deadline according to contest visibility rules.
+- Transparent competition: approved active players can compare autosaved team selections on the shared live board before the deadline; official versions, scoring, and tiebreaker results remain server-controlled.
 - Conservative eligibility: uncertain age, location, verification, or account state means read-only participation.
 - Provider authority: official schedules and results come from an approved sports-data provider.
 - Prototype discipline: the public weekly contest loop comes before optional channels, groups, moderation depth, or monetization.

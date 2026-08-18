@@ -3,8 +3,8 @@ import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getDb } from "@/lib/db";
-import { contestEntries, contestWeeks, games } from "@/lib/db/schema";
-import type { PlayerWeek } from "./types";
+import { contestEntries, contestWeeks, games, profiles, users } from "@/lib/db/schema";
+import type { LivePlayerPicks, PlayerWeek } from "./types";
 
 const BUSINESS_TIME_ZONE = "America/Indiana/Indianapolis";
 
@@ -34,7 +34,48 @@ function formatDeadline(deadline: Date): string {
   }).format(deadline);
 }
 
-export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek | null> {
+async function loadLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[]> {
+  const rows = await getDb()
+    .select({
+      userId: users.id,
+      displayName: profiles.displayName,
+      picks: contestEntries.draftPicks,
+      updatedAt: contestEntries.updatedAt,
+    })
+    .from(users)
+    .innerJoin(profiles, eq(profiles.userId, users.id))
+    .leftJoin(
+      contestEntries,
+      and(
+        eq(contestEntries.userId, users.id),
+        eq(contestEntries.contestWeekId, weekId),
+      ),
+    )
+    .where(eq(users.accountState, "active"))
+    .orderBy(asc(profiles.normalizedDisplayName));
+
+  return rows.map((row) => ({
+    userId: row.userId,
+    displayName: row.displayName,
+    picks: row.picks ?? {},
+    updatedAt: row.updatedAt?.toISOString() ?? null,
+  }));
+}
+
+export async function getLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[] | null> {
+  const [week] = await getDb()
+    .select({ id: contestWeeks.id })
+    .from(contestWeeks)
+    .where(and(eq(contestWeeks.id, weekId), eq(contestWeeks.status, "published")))
+    .limit(1);
+  if (!week) return null;
+  return loadLivePlayerPicks(week.id);
+}
+
+export async function getCurrentPlayerWeek(
+  userId: string,
+  input: { includeLivePicks?: boolean } = {},
+): Promise<PlayerWeek | null> {
   const db = getDb();
   const [week] = await db
     .select()
@@ -45,7 +86,7 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
 
   if (!week) return null;
 
-  const [gameRows, entryRows] = await Promise.all([
+  const [gameRows, entryRows, livePlayerPicks] = await Promise.all([
     db
       .select()
       .from(games)
@@ -61,6 +102,7 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
         ),
       )
       .limit(1),
+    input.includeLivePicks ? loadLivePlayerPicks(week.id) : Promise.resolve([]),
   ]);
 
   const entry = entryRows[0] ?? null;
@@ -104,5 +146,6 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
           updatedAt: entry.updatedAt.toISOString(),
         }
       : null,
+    livePlayerPicks,
   };
 }

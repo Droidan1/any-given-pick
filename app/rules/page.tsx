@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function RulesPage() {
   return (
     <PublicInfoShell
-      eyebrow="Public beta · Rules version 1.0 · August 11, 2026"
+      eyebrow="Public beta · Rules version 1.1 · August 18, 2026"
       title="Call it fair. Keep it fun."
       summary="Any Given Pick is a free weekly football pick’em beta for approved Indiana adults. There is no purchase, wager, entry fee, or cash prize."
     >
@@ -19,7 +19,7 @@ export default function RulesPage() {
       </section>
       <section>
         <h2>2. Making an official entry</h2>
-        <p>Pick one team in every published matchup and enter the requested combined-score tiebreaker. Drafts are not official. Your latest complete submission accepted by the server before the displayed deadline is your official entry. Server time controls the deadline.</p>
+        <p>Pick one team in every published matchup and enter the requested combined-score tiebreaker. Autosaved team selections appear on the live player board while entry is open, but drafts are not official. Your latest complete submission accepted by the server before the displayed deadline is your official entry. Server time controls the deadline.</p>
       </section>
       <section>
         <h2>3. Scoring and standings</h2>
@@ -27,11 +27,11 @@ export default function RulesPage() {
       </section>
       <section>
         <h2>4. Schedules and corrections</h2>
-        <p>The commissioner publishes each week’s slate and may correct team, kickoff, provider, or score data when a reliable source changes. Informational moneylines and Monday over/under may be shown before picks; they can change, do not affect scoring, and are not an offer to place a bet. Picks remain sealed from administrators until the entry deadline. Material corrections will be reflected in the app as soon as reasonably possible.</p>
+        <p>The commissioner publishes each week’s slate and may correct team, kickoff, provider, or score data when a reliable source changes. Informational moneylines and Monday over/under may be shown before picks; they can change, do not affect scoring, and are not an offer to place a bet. All approved active players, including administrators who participate, see the same live saved-picks board. Material corrections will be reflected in the app as soon as reasonably possible.</p>
       </section>
       <section>
         <h2>5. Fair play</h2>
-        <p>One person may use one approved account. Do not automate submissions, impersonate another player, interfere with the service, exploit errors, or attempt to view sealed picks. The commissioner may restrict or disqualify accounts to protect the beta and its participants, with an audit record of account actions.</p>
+        <p>One person may use one approved account. Do not automate submissions, impersonate another player, interfere with the service, scrape the live board, or exploit errors. The commissioner may restrict or disqualify accounts to protect the beta and its participants, with an audit record of account actions.</p>
       </section>
       <section>
         <h2>6. Beta availability</h2>

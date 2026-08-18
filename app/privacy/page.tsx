@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <PublicInfoShell
-      eyebrow="Privacy notice · Effective August 11, 2026"
+      eyebrow="Privacy notice · Effective August 18, 2026"
       title="Your data has one job."
       summary="We collect the information described below to run an age- and location-restricted pick’em beta. We do not sell personal data or use it for targeted advertising."
     >
@@ -29,6 +29,7 @@ export default function PrivacyPage() {
       <section>
         <h2>Why we use it</h2>
         <p>We use this information to authenticate accounts, enforce manual beta approval, notify administrators when an account needs review, confirm approval to the account holder, calculate age eligibility, verify Indiana participation, save and score entries, deliver requested contest reminders and receipts, prevent abuse, answer support requests, investigate errors, and maintain contest integrity.</p>
+        <p>Your display name and autosaved team selections are visible to other approved active players on the live board while a published week is open. Your email address, birth date, location result, and tiebreaker prediction are not included in that board.</p>
       </section>
       <section>
         <h2>Service providers</h2>

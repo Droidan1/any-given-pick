@@ -13,7 +13,7 @@ export default async function PicksPage() {
   const appUser = await requireAppUser(userId);
   const [account, week, isAdmin] = await Promise.all([
     getAccountSummary(appUser.id),
-    getCurrentPlayerWeek(appUser.id),
+    getCurrentPlayerWeek(appUser.id, { includeLivePicks: true }),
     hasAdminRole(appUser.id),
   ]);
   if (account.accountState !== "active" && !isAdmin) redirect("/profile");
