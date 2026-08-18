@@ -4241,6 +4241,9 @@ button:disabled {
   }
 
   .mobile-brand {
+    position: sticky;
+    top: 0;
+    z-index: 11;
     width: 100%;
     min-height: calc(3.6rem + env(safe-area-inset-top));
     display: flex;
