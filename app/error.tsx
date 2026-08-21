@@ -20,7 +20,7 @@ export default function ErrorPage({
       <BrandLockup />
       <p className="week-label">The play broke down</p>
       <h1>We hit an unexpected error.</h1>
-      <p>The incident was logged without your birth date, location coordinates, picks, or profile photo.</p>
+      <p>The incident was logged without your birth date, picks, or profile photo.</p>
       <div className="error-call-sheet__actions">
         <button type="button" onClick={reset}>Try this play again</button>
         <Link href="/support">Contact support</Link>

@@ -23,7 +23,7 @@ export function AccountPrivacyControls({ request }: { request: AccountPrivacyReq
         <h2 id="privacy-controls-title">Account deletion is in review</h2>
         <p>{processing
           ? "Identity deletion has started and can no longer be canceled. The administrator is removing direct profile and eligibility data while retaining only de-identified official contest records."
-          : "Your account is read-only. An administrator will remove your Clerk identity, profile photo, birth date, identity mappings, and location-check history, then retain only de-identified official contest records."}</p>
+          : "Your account is read-only. An administrator will remove your Clerk identity, profile photo, birth date, identity mappings, and legacy eligibility history, then retain only de-identified official contest records."}</p>
         {!processing ? (
           <>
             <form action={cancelAction}>

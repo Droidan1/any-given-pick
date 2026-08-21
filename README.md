@@ -43,8 +43,7 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Clerk passwordless email-code authentication surfaces
 - Internal Postgres user IDs mapped to verified Clerk identities
 - Unique case-normalized player names with 30-day history enforcement
-- Server-calculated age eligibility and session-time Indiana verification
-- Read-only fallbacks for denied, unavailable, stale, outside-state, or indeterminate location
+- Server-calculated age eligibility and administrator-controlled participation access
 - Postgres roles, eligibility history, and append-only application audit events
 - Provider-neutral CSV/JSON schedule importer and admin week operations
 - Admin-only settings hub with direct links to week management and full-season import
@@ -79,7 +78,7 @@ The committed score workflow requests a sync every ten minutes during typical Th
 
 ## Temporary player approval gate
 
-New Clerk accounts start in a pending state by default. An administrator must approve the verified identity from **Admin settings → Player access** before that person can create a player card, verify location, make picks, or submit an entry. The configured support administrator receives a deduplicated approval-queue email for each new pending account, and the player receives a transactional confirmation after approval. Removing access is reversible and preserves the player’s account and historical records.
+New Clerk accounts start in a pending state by default. An administrator must approve the verified identity from **Admin settings → Player access** before that person can create a player card, make picks, or submit an entry. The configured support administrator receives a deduplicated approval-queue email for each new pending account, and the player receives a transactional confirmation after approval. Removing access is reversible and preserves the player’s account and historical records.
 
 Set `USER_APPROVAL_REQUIRED=false` and redeploy when manual approval is no longer needed. Existing pending accounts still require an administrator to approve them.
 

@@ -10,34 +10,13 @@ import { PwaInstallHomeCard } from "./pwa-install-experience";
 
 type ServerShellView = "home" | "standings";
 
-function hasFreshEligibility(account: AccountSummary): boolean {
-  return account.overallResult === "eligible" && account.locationFresh;
-}
-
 function eligibilityActionLabel(account: AccountSummary): string {
   if (!account.profileComplete) return "Finish your player card";
-  if (account.overallResult === "eligible" && !account.locationFresh) return "Verify your Indiana location";
-  if (["location_required", "location_stale", "location_denied", "location_unavailable", "location_indeterminate"].includes(account.reason)) {
-    return "Verify your Indiana location";
-  }
   return "Review your player access";
 }
 
 function eligibilityStatusLabel(account: AccountSummary): string {
-  if (account.overallResult === "eligible" && !account.locationFresh) {
-    return "Location verification expired";
-  }
   return account.reasonLabel;
-}
-
-function locationValidityLabel(account: AccountSummary): string | null {
-  if (!account.locationExpiresAt || !account.locationFresh) return null;
-  return `Location valid until ${new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/Indiana/Indianapolis",
-    timeZoneName: "short",
-  }).format(new Date(account.locationExpiresAt))}`;
 }
 
 function AccountDock({ account, compact = false }: { account: AccountSummary; compact?: boolean }) {
@@ -126,7 +105,7 @@ export function PickemHome({
   const selectedCount = week
     ? week.games.filter((game) => Boolean(week.entry?.draftPicks[game.id])).length
     : 0;
-  const canParticipate = hasFreshEligibility(account);
+  const canParticipate = account.overallResult === "eligible";
   const hasSubmitted = (week?.entry?.currentVersionNumber ?? 0) > 0;
 
   let content;
@@ -149,9 +128,8 @@ export function PickemHome({
       isLocked: week.isLocked,
       selectedCount,
     });
-    const validUntil = locationValidityLabel(account);
     const statusLabel = homeState.lockedStatusLabel
-      ?? `${eligibilityStatusLabel(account)}${validUntil ? ` · ${validUntil}` : ""}`;
+      ?? eligibilityStatusLabel(account);
     const destination = homeState.destination === "picks"
       ? "/picks"
       : `/${homeState.destination}`;

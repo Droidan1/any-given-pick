@@ -2161,12 +2161,6 @@ button:disabled {
   text-transform: uppercase;
 }
 
-.eligibility-validity {
-  margin: 0.3rem 0 0;
-  color: var(--ink-soft);
-  font-size: 0.9rem;
-}
-
 .eligibility-action {
   min-height: 2.75rem;
   display: inline-flex;
@@ -4083,16 +4077,6 @@ button:disabled {
   border-bottom: 1px solid var(--sage);
 }
 
-.account-grid--eligibility {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
-}
-
-.account-grid--eligibility .profile-card:first-child {
-  grid-row: auto;
-  border-right: 1px solid var(--sage);
-}
-
 .profile-card,
 .eligibility-card {
   position: relative;
@@ -4204,11 +4188,6 @@ button:disabled {
 
 .profile-form .commit-action {
   margin-top: 1.25rem;
-}
-
-.profile-card--location .review-action {
-  width: 100%;
-  margin: 1rem 0;
 }
 
 .eligibility-gates {
@@ -4979,11 +4958,6 @@ button:disabled {
 
   .account-grid {
     grid-template-columns: 1fr;
-  }
-
-  .account-grid--eligibility .profile-card:first-child {
-    border-right: 0;
-    border-bottom: 1px solid var(--sage);
   }
 
   .profile-settings-section > summary {

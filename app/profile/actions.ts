@@ -178,7 +178,7 @@ export async function saveProfileAction(
   return {
     status: "success",
     message: ageEligible
-      ? "Profile saved. Verify your Indiana location to finish eligibility."
+      ? "Profile saved. Your player card is ready."
       : "Profile saved. Participation is limited to adults 21 and older.",
   };
 }

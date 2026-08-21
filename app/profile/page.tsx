@@ -18,7 +18,7 @@ import { PwaInstallProfileAccess } from "@/components/pwa-install-experience";
 
 export const metadata: Metadata = {
   title: "Player profile",
-  description: "Set up your Any Given Pick player profile and eligibility.",
+  description: "Set up your Any Given Pick player profile and account preferences.",
 };
 
 export default async function ProfilePage() {
@@ -49,13 +49,13 @@ export default async function ProfilePage() {
       <section className="account-sheet profile-settings-sheet">
         <div className="account-intro">
           <p className="week-label">{accessBlocked ? "Account access" : "Player card"}</p>
-          <h1>{accessBlocked ? (approvalPending ? "Waiting for the green light" : "Access is on hold") : "Clear every eligibility gate"}</h1>
+          <h1>{accessBlocked ? (approvalPending ? "Waiting for the green light" : "Access is on hold") : "Set up your player card"}</h1>
           <p>
             {accessBlocked
               ? approvalPending
                 ? "Your sign-in is verified. An administrator will review your account before you can create a player card or enter the contest."
                 : "Your player card and contest access are currently unavailable. Contact an administrator if you believe this should be restored."
-              : "One verified sign-in, a unique display name, age 21+, and an Indiana location check unlock participation. Everyone else keeps read-only access."}
+              : "A verified sign-in, unique display name, age 21+, and an active approved account unlock participation."}
           </p>
         </div>
         {accessBlocked ? (
@@ -66,7 +66,7 @@ export default async function ProfilePage() {
               <p>
                 {approvalPending
                   ? "There is nothing else you need to submit. Your player card stays unopened until an administrator recognizes and approves your verified account."
-                  : "Your records have been preserved, but this account cannot create a player card, verify location, save picks, or submit entries."}
+                  : "Your records have been preserved, but this account cannot create a player card, save picks, or submit entries."}
               </p>
             </div>
           </section>

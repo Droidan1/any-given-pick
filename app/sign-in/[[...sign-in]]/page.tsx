@@ -47,7 +47,7 @@ export default function SignInPage() {
             </li>
             <li>
               <strong>Review before lock</strong>
-              <span>Finish every pick and eligibility check before the weekly deadline.</span>
+              <span>Finish every pick and submit your card before the weekly deadline.</span>
             </li>
           </ol>
           <p className="auth-game-plan__note">

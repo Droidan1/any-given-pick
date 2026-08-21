@@ -8,7 +8,7 @@ web
 
 ## Users
 
-The primary user is an Indiana adult age 21 or older who wants to make one complete set of weekly professional-football winner picks before a fixed deadline, compare saved calls on a shared live board, then follow transparent scoring and standings. Approved signed-in users can see other active players' autosaved selections while making their own picks and review official weekly results after lock. Admins approve players, configure schedules, publish weeks, monitor score health, and enter fallback results without receiving special pick visibility.
+The primary user is an approved adult age 21 or older who wants to make one complete set of weekly professional-football winner picks before a fixed deadline, compare saved calls on a shared live board, then follow transparent scoring and standings. Approved signed-in users can see other active players' autosaved selections while making their own picks and review official weekly results after lock. Admins approve players, configure schedules, publish weeks, monitor score health, and enter fallback results without receiving special pick visibility.
 
 ## Product Purpose
 
@@ -27,7 +27,7 @@ Most user activity happens on a phone around the weekly NFL schedule. The centra
 - Responsive PWA-oriented web application; no native iOS or Android app in the prototype.
 - Mobile installation uses a progressive, device-aware path: one skippable first-login checkpoint, a snoozable Home callout, and persistent Profile/navigation access until the app is installed. Android uses the browser install prompt; iPhone users receive Safari-specific Add to Home Screen instructions.
 - Passwordless email-code authentication in the first release.
-- Participation requires a verified sign-in method, self-attested age 21+, active account, and server-verified Indiana location.
+- Participation requires a verified sign-in method, self-attested age 21+, and an active administrator-approved account.
 - One shared contest per NFL week; every approved player uses the same published call sheet.
 - Every required pick and one whole-number Monday combined-score prediction are required for submission.
 - The server controls deadlines, eligibility, locking, live-board access, and scoring authority.
@@ -51,7 +51,7 @@ Any Given Pick is the approved product name. The brand must communicate clarity,
 
 - Deadline integrity: the server, not the browser, decides whether an entry is open or locked.
 - Transparent competition: approved active players can compare autosaved team selections on the shared live board before the deadline; official versions, scoring, and tiebreaker results remain server-controlled.
-- Conservative eligibility: uncertain age, location, verification, or account state means read-only participation.
+- Conservative eligibility: uncertain age, identity verification, or account state means read-only participation.
 - Provider authority: official schedules and results come from an approved sports-data provider.
 - Prototype discipline: the public weekly contest loop comes before optional channels, groups, moderation depth, or monetization.
 

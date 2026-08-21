@@ -49,36 +49,17 @@ function signatureForDraft(games: PlayerGame[], picks: Picks, mondayPrediction: 
   });
 }
 
-function hasFreshEligibility(account: AccountSummary, now = Date.now()): boolean {
-  if (account.overallResult !== "eligible") return false;
-  if (!account.locationExpiresAt) return false;
-  return new Date(account.locationExpiresAt).getTime() > now;
+function hasParticipationAccess(account: AccountSummary): boolean {
+  return account.overallResult === "eligible";
 }
 
 function eligibilityActionLabel(account: AccountSummary): string {
   if (!account.profileComplete) return "Finish your player card";
-  if (account.overallResult === "eligible" && !hasFreshEligibility(account)) return "Verify your Indiana location";
-  if (["location_required", "location_stale", "location_denied", "location_unavailable", "location_indeterminate"].includes(account.reason)) {
-    return "Verify your Indiana location";
-  }
   return "Review your player access";
 }
 
 function eligibilityStatusLabel(account: AccountSummary): string {
-  if (account.overallResult === "eligible" && !hasFreshEligibility(account)) {
-    return "Location verification expired";
-  }
   return account.reasonLabel;
-}
-
-function locationValidityLabel(account: AccountSummary): string | null {
-  if (!account.locationExpiresAt || !hasFreshEligibility(account)) return null;
-  return `Location valid until ${new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/Indiana/Indianapolis",
-    timeZoneName: "short",
-  }).format(new Date(account.locationExpiresAt))}`;
 }
 
 function formatMoneyline(value: number): string {
@@ -138,7 +119,6 @@ export function PickemApp({
   );
   const [mondayTotal, setMondayTotal] = useState<number | null>(() => week?.entry?.mondayPrediction ?? null);
   const [liveAccount, setLiveAccount] = useState(account);
-  const [eligibilityClock, setEligibilityClock] = useState(() => Date.now());
   const [status, setStatus] = useState(week?.entry ? "Your saved entry is loaded." : "");
   const [reviewing, setReviewing] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(() => {
@@ -167,7 +147,7 @@ export function PickemApp({
   const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id) : null;
   const activeWeekId = week?.id ?? null;
   const games = week?.games ?? [];
-  const canParticipate = hasFreshEligibility(liveAccount, eligibilityClock);
+  const canParticipate = hasParticipationAccess(liveAccount);
   const isLocked = week?.isLocked ?? true;
 
   const selectView = (nextView: View) => {
@@ -185,11 +165,6 @@ export function PickemApp({
     };
     window.addEventListener("popstate", syncViewFromHistory);
     return () => window.removeEventListener("popstate", syncViewFromHistory);
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setEligibilityClock(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -248,7 +223,6 @@ export function PickemApp({
     if (!response.ok) throw new Error("ELIGIBILITY_REFRESH_FAILED");
     const body = await response.json() as { account: AccountSummary };
     setLiveAccount(body.account);
-    setEligibilityClock(Date.now());
     return body.account;
   }
 
@@ -428,29 +402,16 @@ export function PickemApp({
       return;
     }
     if (!canParticipate) {
-      setStatus(`${eligibilityStatusLabel(liveAccount)}. Reverify eligibility before reviewing this card.`);
+      setStatus(`${eligibilityStatusLabel(liveAccount)}. Complete account setup before reviewing this card.`);
       return;
     }
-
-    startTransition(async () => {
-      setStatus("Confirming your eligibility before review…");
-      try {
-        const currentAccount = await refreshEligibility();
-        if (!hasFreshEligibility(currentAccount)) {
-          setStatus(`${currentAccount.reasonLabel}. Your selections are still saved on this device.`);
-          return;
-        }
-        setReviewing(true);
-        setStatus("Review every selection before submitting your official entry.");
-      } catch {
-        setStatus("Eligibility could not be confirmed. Check your connection and try review again.");
-      }
-    });
+    setReviewing(true);
+    setStatus("Review every selection before submitting your official entry.");
   };
 
   const commitEntry = () => {
     if (!canParticipate) {
-      setStatus(`${eligibilityStatusLabel(liveAccount)}. Reverify before submitting; your selections are preserved.`);
+      setStatus(`${eligibilityStatusLabel(liveAccount)}. Review your player access before submitting; your selections are preserved.`);
       return;
     }
     if (isLocked) {
@@ -460,10 +421,10 @@ export function PickemApp({
 
     startTransition(async () => {
       try {
-        setStatus("Rechecking eligibility before submission…");
+        setStatus("Confirming account access before submission…");
         const currentAccount = await refreshEligibility();
-        if (!hasFreshEligibility(currentAccount)) {
-          setStatus(`${currentAccount.reasonLabel}. Reverify and return to submit; your selections are preserved.`);
+        if (!hasParticipationAccess(currentAccount)) {
+          setStatus(`${currentAccount.reasonLabel}. Review your player access and return to submit; your selections are preserved.`);
           return;
         }
 
@@ -655,7 +616,6 @@ function PicksView(props: PicksViewProps) {
           <h1 id="picks-title">Make your picks</h1>
           <div className="deadline-marker"><Icon name="clock" /><span>{props.isLocked ? "Locked" : "Locks"} · {props.week.deadlineLabel}</span></div>
           <div className="eligibility-line"><Icon name="shield" /><span>{eligibilityStatusLabel(props.account)}</span></div>
-          {locationValidityLabel(props.account) ? <p className="eligibility-validity">{locationValidityLabel(props.account)}</p> : null}
           {!props.canParticipate && !props.isLocked ? (
             <Link className="eligibility-action" href="/profile">{eligibilityActionLabel(props.account)}</Link>
           ) : null}
@@ -783,7 +743,7 @@ function PicksView(props: PicksViewProps) {
           <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} canParticipate={props.canParticipate} isPending={props.isPending} isLocked={props.isLocked} hasSubmitted={props.hasSubmitted} />
         ) : (
           <button className="review-action" type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending || props.isLocked}>
-            <Icon name="whistle" /><span>{props.isLocked ? "Entry locked" : !props.canParticipate ? "Eligibility required" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
+            <Icon name="whistle" /><span>{props.isLocked ? "Entry locked" : !props.canParticipate ? "Account setup required" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
           </button>
         )}
         <p className="status-message" aria-live="polite">{props.status || (props.isLocked ? "The deadline has passed. Your latest submitted entry is official." : "Draft changes sync automatically.")}</p>
@@ -908,7 +868,7 @@ function HomeView({ selectedCount, onContinue, account, week, canParticipate, ha
     selectedCount,
   });
   const statusLabel = homeState.lockedStatusLabel
-    ?? `${eligibilityStatusLabel(account)}${locationValidityLabel(account) ? ` · ${locationValidityLabel(account)}` : ""}`;
+    ?? eligibilityStatusLabel(account);
   const action = homeState.destination === "picks"
     ? canParticipate
       ? <button className="review-action" type="button" onClick={onContinue}><span>{homeState.actionLabel}</span><Icon name="arrow" /></button>

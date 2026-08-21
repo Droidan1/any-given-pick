@@ -321,8 +321,8 @@ export async function submitEntry(
           mondayPrediction: parsed.data.mondayPrediction,
           eligibilitySnapshot: {
             reason: account.reason,
-            locationResult: account.locationResult,
-            locationCheckedAt: account.locationCheckedAt,
+            locationResult: null,
+            locationCheckedAt: null,
           },
           committedAt: now,
         })

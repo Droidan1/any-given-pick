@@ -1,16 +1,14 @@
 import "server-only";
 
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import type { AccountSummary } from "@/lib/account-types";
 import { getDb } from "@/lib/db";
-import { authIdentities, eligibilityChecks, profiles, users } from "@/lib/db/schema";
+import { authIdentities, profiles, users } from "@/lib/db/schema";
 import { deriveEligibilityReason, reasonLabels } from "@/lib/eligibility/rules";
 
 export async function getAccountSummary(userId: string): Promise<AccountSummary> {
   const db = getDb();
-  const now = new Date();
-
-  const [accountRows, verifiedRows, locationRows] = await Promise.all([
+  const [accountRows, verifiedRows] = await Promise.all([
     db
       .select({
         accountState: users.accountState,
@@ -27,33 +25,19 @@ export async function getAccountSummary(userId: string): Promise<AccountSummary>
       .from(authIdentities)
       .where(and(eq(authIdentities.userId, userId), isNotNull(authIdentities.verifiedAt)))
       .limit(1),
-    db
-      .select({
-        locationResult: eligibilityChecks.locationResult,
-        checkedAt: eligibilityChecks.checkedAt,
-        expiresAt: eligibilityChecks.expiresAt,
-      })
-      .from(eligibilityChecks)
-      .where(eq(eligibilityChecks.userId, userId))
-      .orderBy(desc(eligibilityChecks.checkedAt))
-      .limit(1),
   ]);
 
   const account = accountRows[0];
   if (!account) throw new Error("APP_USER_NOT_FOUND");
 
-  const location = locationRows[0] ?? null;
   const profileComplete = Boolean(account.displayName && account.ageEligible !== null);
   const verifiedAuth = verifiedRows.length > 0;
-  const locationIsFresh = Boolean(location && location.expiresAt > now);
   const reason = deriveEligibilityReason({
     accountState: account.accountState,
     stateReason: account.stateReason,
     verifiedAuth,
     profileComplete,
     ageEligible: account.ageEligible,
-    locationResult: location?.locationResult ?? null,
-    locationIsFresh,
   });
 
   return {
@@ -63,13 +47,9 @@ export async function getAccountSummary(userId: string): Promise<AccountSummary>
     stateReason: account.stateReason,
     verifiedAuth,
     ageEligible: account.ageEligible,
-    locationResult: location?.locationResult ?? null,
     overallResult: reason === "eligible" ? "eligible" : "read_only",
     reason,
     reasonLabel: reasonLabels[reason],
-    locationCheckedAt: location?.checkedAt.toISOString() ?? null,
-    locationExpiresAt: location?.expiresAt.toISOString() ?? null,
-    locationFresh: locationIsFresh,
     profileComplete,
   };
 }

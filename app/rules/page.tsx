@@ -9,13 +9,13 @@ export const metadata: Metadata = {
 export default function RulesPage() {
   return (
     <PublicInfoShell
-      eyebrow="Public beta · Rules version 1.1 · August 18, 2026"
+      eyebrow="Public beta · Rules version 1.2 · August 20, 2026"
       title="Call it fair. Keep it fun."
-      summary="Any Given Pick is a free weekly football pick’em beta for approved Indiana adults. There is no purchase, wager, entry fee, or cash prize."
+      summary="Any Given Pick is a free weekly football pick’em beta for approved adults. There is no purchase, wager, entry fee, or cash prize."
     >
       <section>
         <h2>1. Who can participate</h2>
-        <p>You must be at least 21 years old, use a verified sign-in, complete a unique player card, receive administrator approval during the beta, and pass a fresh Indiana location check that remains valid for up to eight hours. A failed, denied, unavailable, outside-state, indeterminate, or expired location check leaves the account in read-only mode.</p>
+        <p>You must be at least 21 years old, use a verified sign-in, complete a unique player card, and receive administrator approval during the beta. Accounts that do not clear these requirements remain in read-only mode.</p>
       </section>
       <section>
         <h2>2. Making an official entry</h2>

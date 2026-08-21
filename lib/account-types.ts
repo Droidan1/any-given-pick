@@ -5,13 +5,7 @@ export type EligibilityReason =
   | "account_inactive"
   | "auth_unverified"
   | "profile_incomplete"
-  | "age_ineligible"
-  | "location_required"
-  | "location_outside_indiana"
-  | "location_denied"
-  | "location_unavailable"
-  | "location_indeterminate"
-  | "location_stale";
+  | "age_ineligible";
 
 export type AccountSummary = {
   signedIn: true;
@@ -20,18 +14,8 @@ export type AccountSummary = {
   stateReason: string | null;
   verifiedAuth: boolean;
   ageEligible: boolean | null;
-  locationResult:
-    | "in_state"
-    | "outside_state"
-    | "denied"
-    | "unavailable"
-    | "indeterminate"
-    | null;
   overallResult: "eligible" | "read_only";
   reason: EligibilityReason;
   reasonLabel: string;
-  locationCheckedAt: string | null;
-  locationExpiresAt: string | null;
-  locationFresh: boolean;
   profileComplete: boolean;
 };

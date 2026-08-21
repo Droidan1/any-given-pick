@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     template: "%s | Any Given Pick",
   },
   description:
-    "Make every call in a free-entry weekly professional-football pick'em experience built for eligible Indiana adults.",
+    "Make every call in a free-entry weekly professional-football pick'em experience built for approved adults.",
   applicationName: "Any Given Pick",
   alternates: { canonical: "/" },
   category: "sports",

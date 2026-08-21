@@ -104,7 +104,7 @@ export function buildAccountLifecycleEmail(
   }
 
   const subject = "You're approved to play Any Given Pick";
-  const body = "Your account has been approved. Complete your player card, verify that you are in Indiana, and then make your picks when a weekly call sheet is open.";
+  const body = "Your account has been approved. Complete your player card, then make your picks when a weekly call sheet is open.";
   const detail = `Access approved ${occurredAt}.`;
   return {
     subject,
