@@ -3390,6 +3390,8 @@ button:disabled {
 .home-live-board__games {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1px;
+  background: var(--sage);
 }
 
 .home-live-game {
@@ -3398,7 +3400,7 @@ button:disabled {
   grid-template-columns: 1fr 1fr;
   gap: 0.4rem 0.75rem;
   padding: 0.85rem;
-  border-bottom: 1px solid var(--sage);
+  background: var(--paper-200);
 }
 
 .home-live-game > span {
