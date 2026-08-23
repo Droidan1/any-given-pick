@@ -11,6 +11,7 @@ import type { LivePlayerPicks, PlayerGame, PlayerWeek } from "@/lib/entries/type
 import { getHomeWeekState } from "@/lib/home-week-state";
 import type { StandingsSnapshot } from "@/lib/standings/types";
 import { BrandLockup } from "./brand-lockup";
+import { DeadlineCountdown } from "./deadline-countdown";
 import { Icon, type IconName, RouteSketch } from "./icons";
 import { MobileAppNav } from "./mobile-app-nav";
 import { PwaInstallHomeCard } from "./pwa-install-experience";
@@ -28,6 +29,10 @@ type DraftSyncState = {
   syncedAt: string | null;
 };
 type LivePicksFeedState = "live" | "refreshing" | "stale";
+type MobileAlertState = {
+  message: string;
+  tone: "warning" | "error";
+} | null;
 
 function gameRulesForCurrentSlate(games: PlayerGame[]) {
   return games.map((game) => ({
@@ -137,6 +142,10 @@ export function PickemApp({
   const [draftRetryVersion, setDraftRetryVersion] = useState(0);
   const [livePlayerPicks, setLivePlayerPicks] = useState<LivePlayerPicks[]>(() => week?.livePlayerPicks ?? []);
   const [livePicksFeedState, setLivePicksFeedState] = useState<LivePicksFeedState>("live");
+  const [deadlineLockedWeekId, setDeadlineLockedWeekId] = useState<string | null>(
+    week?.isLocked ? week.id : null,
+  );
+  const [mobileAlert, setMobileAlert] = useState<MobileAlertState>(null);
   const [isPending, startTransition] = useTransition();
   const firstMissingRef = useRef<HTMLFieldSetElement | null>(null);
   const lastSavedSignatureRef = useRef("");
@@ -148,7 +157,7 @@ export function PickemApp({
   const activeWeekId = week?.id ?? null;
   const games = week?.games ?? [];
   const canParticipate = hasParticipationAccess(liveAccount);
-  const isLocked = week?.isLocked ?? true;
+  const isLocked = (week?.isLocked ?? true) || deadlineLockedWeekId === activeWeekId;
 
   const selectView = (nextView: View) => {
     if (nextView !== view) {
@@ -168,7 +177,7 @@ export function PickemApp({
   }, []);
 
   useEffect(() => {
-    if (!activeWeekId || view !== "picks") return;
+    if (!activeWeekId || view !== "picks" || isLocked) return;
     let active = true;
 
     const refreshLivePicks = async () => {
@@ -199,7 +208,7 @@ export function PickemApp({
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", resumeRefresh);
     };
-  }, [activeWeekId, view]);
+  }, [activeWeekId, isLocked, view]);
 
   useEffect(() => {
     const retryAfterReconnect = () => {
@@ -314,6 +323,7 @@ export function PickemApp({
           });
           if (result.ok) {
             lastSavedSignatureRef.current = signature;
+            setMobileAlert(null);
             const newerChangesAreWaiting = currentDraftSignatureRef.current !== signature;
             setDraftSync({
               state: newerChangesAreWaiting ? "local" : "synced",
@@ -331,11 +341,24 @@ export function PickemApp({
               return;
             }
           }
-          if (!result.ok) setDraftSync((current) => ({ ...current, state: "error" }));
-          if (!result.ok) setStatus(result.message);
+          if (!result.ok) {
+            if (result.code === "deadline_passed") {
+              setDeadlineLockedWeekId(activeWeekId);
+              setReviewing(false);
+            } else {
+              setMobileAlert({
+                message: result.message,
+                tone: result.code === "rate_limited" ? "warning" : "error",
+              });
+            }
+            setDraftSync((current) => ({ ...current, state: "error" }));
+            setStatus(result.message);
+          }
         } catch {
           setDraftSync((current) => ({ ...current, state: "error" }));
-          setStatus("This draft is saved on your device but has not reached the server. Retry when your connection is stable.");
+          const message = "This draft is saved on your device but has not reached the server. Retry when your connection is stable.";
+          setStatus(message);
+          setMobileAlert({ message, tone: "error" });
         } finally {
           draftSaveInFlightRef.current = false;
           if (draftSaveQueuedRef.current) {
@@ -346,7 +369,7 @@ export function PickemApp({
       })();
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [canParticipate, draftReady, draftRetryVersion, draftStorageKey, isLocked, mondayTotal, picks, week]);
+  }, [activeWeekId, canParticipate, draftReady, draftRetryVersion, draftStorageKey, isLocked, mondayTotal, picks, week]);
 
   if (!week) {
     const emptyContent = view === "standings" && standings ? (
@@ -381,6 +404,7 @@ export function PickemApp({
     }
     setPicks((current) => ({ ...current, [gameId]: abbreviation }));
     setDraftSync((current) => ({ ...current, state: "local" }));
+    setMobileAlert(null);
     setStatus(`${abbreviation} selected. Syncing your draft…`);
     setReviewing(false);
     setReceipt(null);
@@ -437,18 +461,43 @@ export function PickemApp({
         });
         setStatus(result.message);
         if (result.ok && result.receipt) {
+          setMobileAlert(null);
           setReceipt(result.receipt);
           setReviewing(false);
           lastSavedSignatureRef.current = signatureForDraft(week.games, picks, mondayTotal);
           setDraftSync({ state: "synced", syncedAt: result.receipt.committedAt });
           if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
-        } else if (result.code === "ineligible") {
-          await refreshEligibility().catch(() => undefined);
+        } else {
+          if (result.code === "deadline_passed") {
+            setDeadlineLockedWeekId(activeWeekId);
+            setReviewing(false);
+          } else {
+            setMobileAlert({
+              message: result.message,
+              tone: result.code === "rate_limited" ? "warning" : "error",
+            });
+          }
+          if (result.code === "ineligible") {
+            await refreshEligibility().catch(() => undefined);
+          }
         }
       } catch {
-        setStatus("Your entry was not submitted. Check your connection and try again; your selections are preserved.");
+        const message = "Your entry was not submitted. Check your connection and try again; your selections are preserved.";
+        setStatus(message);
+        setMobileAlert({ message, tone: "error" });
       }
     });
+  };
+
+  const handleDeadlineLock = () => {
+    setDeadlineLockedWeekId(week.id);
+    setReviewing(false);
+    setMobileAlert(null);
+    setStatus(
+      (week.entry?.currentVersionNumber ?? 0) > 0
+        ? "Deadline reached. Your latest submitted card is official."
+        : "Deadline reached. Picks are locked for this week.",
+    );
   };
 
   return (
@@ -461,6 +510,7 @@ export function PickemApp({
           selectedCount={selectedCount}
           mondayTotal={mondayTotal}
           status={status}
+          mobileAlert={mobileAlert}
           draftSync={draftSync}
           reviewing={reviewing}
           receipt={receipt}
@@ -477,12 +527,15 @@ export function PickemApp({
           canParticipate={canParticipate}
           isPending={isPending}
           isLocked={isLocked}
+          onDeadlineLock={handleDeadlineLock}
           hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0}
           onRetryDraft={() => {
             setDraftSync((current) => ({ ...current, state: "local" }));
             setStatus("Retrying your saved draft…");
+            setMobileAlert({ message: "Retrying your saved draft…", tone: "warning" });
             setDraftRetryVersion((version) => version + 1);
           }}
+          onDismissMobileAlert={() => setMobileAlert(null)}
           onEdit={() => { setReviewing(false); setReceipt(null); setStatus("Edit mode restored. Submit again to make changes official."); }}
           currentUserId={draftOwnerId}
           livePlayerPicks={livePlayerPicks}
@@ -566,6 +619,7 @@ type PicksViewProps = {
   selectedCount: number;
   mondayTotal: number | null;
   status: string;
+  mobileAlert: MobileAlertState;
   draftSync: DraftSyncState;
   reviewing: boolean;
   receipt: ReceiptData | null;
@@ -580,8 +634,10 @@ type PicksViewProps = {
   canParticipate: boolean;
   isPending: boolean;
   isLocked: boolean;
+  onDeadlineLock: () => void;
   hasSubmitted: boolean;
   onRetryDraft: () => void;
+  onDismissMobileAlert: () => void;
   currentUserId: string;
   livePlayerPicks: LivePlayerPicks[];
   livePicksFeedState: LivePicksFeedState;
@@ -608,22 +664,38 @@ function PicksView(props: PicksViewProps) {
   const otherPlayers = props.livePlayerPicks.filter((player) => player.userId !== props.currentUserId);
   const missingCount = props.games.length - props.selectedCount;
   return (
-    <div className="picks-layout">
+    <div className={`picks-layout${props.isLocked ? " picks-layout--locked" : ""}`}>
       <section className="pick-sheet" aria-labelledby="picks-title">
         <header className="pick-header">
           <RouteSketch /><RouteSketch mirrored />
           <p className="week-label">{props.week.label} Pick&apos;em</p>
-          <h1 id="picks-title">Make your picks</h1>
-          <div className="deadline-marker"><Icon name="clock" /><span>{props.isLocked ? "Locked" : "Locks"} · {props.week.deadlineLabel}</span></div>
+          <h1 id="picks-title">{props.isLocked ? "Calls are locked" : "Make your picks"}</h1>
+          <div className={`deadline-marker${props.isLocked ? " deadline-marker--locked" : ""}`}>
+            <Icon name="clock" />
+            <span className="deadline-marker__copy">
+              <strong>{props.isLocked ? "Locked" : "Locks"} · {props.week.deadlineLabel}</strong>
+              {!props.isLocked ? (
+                <DeadlineCountdown
+                  deadline={props.week.entryDeadline}
+                  fallbackLabel={props.week.deadlineLabel}
+                  onLock={props.onDeadlineLock}
+                />
+              ) : null}
+            </span>
+          </div>
           <div className="eligibility-line"><Icon name="shield" /><span>{eligibilityStatusLabel(props.account)}</span></div>
           {!props.canParticipate && !props.isLocked ? (
             <Link className="eligibility-action" href="/profile">{eligibilityActionLabel(props.account)}</Link>
           ) : null}
         </header>
 
-        <ProgressMeasure selected={props.selectedCount} total={props.games.length} />
+        {props.isLocked ? (
+          <LockedResultsHandoff hasSubmitted={props.hasSubmitted} />
+        ) : (
+          <>
+            <ProgressMeasure selected={props.selectedCount} total={props.games.length} />
 
-        <div className="scoreboard-toolbar">
+            <div className="scoreboard-toolbar">
           <p>Your highlighted row is editable. Every active player&apos;s saved calls appear below.</p>
           <span className={`scoreboard-live-state scoreboard-live-state--${props.livePicksFeedState}`} aria-live="polite">
             {props.livePicksFeedState === "refreshing" ? "Refreshing…" : props.livePicksFeedState === "stale" ? "Refresh paused" : "Live board"}
@@ -722,59 +794,119 @@ function PicksView(props: PicksViewProps) {
               })}
             </tbody>
           </table>
-        </div>
-        <p className="prototype-note">
-          Official commissioner-published slate · kickoff times shown in Eastern Time.
-          {oddsProviders.length > 0 && latestOddsUpdate ? ` Moneylines and Monday O/U are informational reference lines from ${oddsProviders.join(" / ")} via ESPN; they may change and never affect scoring. Latest line update ${formatOddsUpdate(latestOddsUpdate)}.` : ""}
-        </p>
+            </div>
+            <p className="prototype-note">
+              Official commissioner-published slate · kickoff times shown in Eastern Time.
+              {oddsProviders.length > 0 && latestOddsUpdate ? ` Moneylines and Monday O/U are informational reference lines from ${oddsProviders.join(" / ")} via ESPN; they may change and never affect scoring. Latest line update ${formatOddsUpdate(latestOddsUpdate)}.` : ""}
+            </p>
+          </>
+        )}
       </section>
 
       <aside className="game-panel" aria-label="Entry controls">
-        <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} /></div>
-        <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isLocked || props.isPending} />
-        <div className="rules-note">
-          <RouteSketch mirrored /><h2>How this week works</h2>
-          <ul><li>Pick one team in each matchup.</li><li>Each correct pick counts as one point.</li><li>{tiebreakerLabel} Total breaks a tie.</li><li>Your latest submitted version before the deadline is official.</li></ul>
-        </div>
-
-        {props.receipt ? (
-          <Receipt receipt={props.receipt} games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={props.isLocked} />
-        ) : props.reviewing ? (
-          <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} canParticipate={props.canParticipate} isPending={props.isPending} isLocked={props.isLocked} hasSubmitted={props.hasSubmitted} />
+        {props.isLocked ? (
+          <LockedControlPanel hasSubmitted={props.hasSubmitted} />
         ) : (
-          <button className="review-action" type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending || props.isLocked}>
-            <Icon name="whistle" /><span>{props.isLocked ? "Entry locked" : !props.canParticipate ? "Account setup required" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
-          </button>
+          <>
+            <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} /></div>
+            <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isPending} />
+            <div className="rules-note">
+              <RouteSketch mirrored /><h2>How this week works</h2>
+              <ul><li>Pick one team in each matchup.</li><li>Each correct pick counts as one point.</li><li>{tiebreakerLabel} Total breaks a tie.</li><li>Your latest submitted version before the deadline is official.</li></ul>
+            </div>
+
+            {props.receipt ? (
+              <Receipt receipt={props.receipt} games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={false} />
+            ) : props.reviewing ? (
+              <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} canParticipate={props.canParticipate} isPending={props.isPending} isLocked={false} hasSubmitted={props.hasSubmitted} />
+            ) : (
+              <button className="review-action" type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending}>
+                <Icon name="whistle" /><span>{!props.canParticipate ? "Account setup required" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
+              </button>
+            )}
+            <p className="status-message" aria-live="polite">{props.status || "Draft changes sync automatically."}</p>
+            <div className={`draft-sync-status draft-sync-status--${props.draftSync.state}`}>
+              <span aria-hidden="true" />
+              <p>
+                {props.draftSync.state === "synced"
+                  ? "Synced securely"
+                  : props.draftSync.state === "syncing"
+                    ? "Syncing with the server"
+                    : props.draftSync.state === "error"
+                      ? "Saved on this device · Not yet synced"
+                      : props.draftSync.state === "local"
+                        ? "Saved on this device · Waiting to sync"
+                        : "Ready for your first pick"}
+              </p>
+              {props.draftSync.state === "error" ? (
+                <button type="button" onClick={props.onRetryDraft} disabled={!props.canParticipate}>Retry draft</button>
+              ) : null}
+            </div>
+          </>
         )}
-        <p className="status-message" aria-live="polite">{props.status || (props.isLocked ? "The deadline has passed. Your latest submitted entry is official." : "Draft changes sync automatically.")}</p>
-        {!props.isLocked ? (
-          <div className={`draft-sync-status draft-sync-status--${props.draftSync.state}`}>
-            <span aria-hidden="true" />
-            <p>
-              {props.draftSync.state === "synced"
-                ? "Synced securely"
-                : props.draftSync.state === "syncing"
-                  ? "Syncing with the server"
-                  : props.draftSync.state === "error"
-                    ? "Saved on this device · Not yet synced"
-                    : props.draftSync.state === "local"
-                      ? "Saved on this device · Waiting to sync"
-                      : "Ready for your first pick"}
-            </p>
-            {props.draftSync.state === "error" ? (
-              <button type="button" onClick={props.onRetryDraft} disabled={!props.canParticipate}>Retry draft</button>
-            ) : null}
-          </div>
-        ) : null}
       </aside>
-      <div className="mobile-pick-dock" aria-label="Pick progress and next action">
-        <span><strong>{props.selectedCount}/{props.games.length}</strong> picks</span>
-        <button type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending || props.isLocked}>
-          {props.isLocked ? "Entry locked" : missingCount > 0 ? `Next missing (${missingCount})` : "Review card"}
-          <Icon name="arrow" />
-        </button>
-      </div>
+      {props.isLocked ? (
+        <div className="mobile-pick-dock mobile-pick-dock--locked" role="status" aria-live="polite">
+          <span><strong>Locked</strong>{props.hasSubmitted ? "Card official" : "Entry closed"}</span>
+          <Link href="/results" prefetch={false}>See results <Icon name="arrow" /></Link>
+        </div>
+      ) : props.mobileAlert ? (
+        <div
+          className={`mobile-pick-dock mobile-pick-dock--alert mobile-pick-dock--${props.mobileAlert.tone}`}
+          role={props.mobileAlert.tone === "error" ? "alert" : "status"}
+        >
+          <p>{props.mobileAlert.message}</p>
+          <button
+            type="button"
+            onClick={props.draftSync.state === "error" ? props.onRetryDraft : props.onDismissMobileAlert}
+            disabled={props.isPending}
+          >
+            {props.draftSync.state === "error" ? "Retry" : "Dismiss"}
+          </button>
+        </div>
+      ) : (
+        <div className="mobile-pick-dock" aria-label="Pick progress and next action">
+          <span><strong>{props.selectedCount}/{props.games.length}</strong> picks</span>
+          <button type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending}>
+            {missingCount > 0 ? `Next missing (${missingCount})` : "Review card"}
+            <Icon name="arrow" />
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+function LockedResultsHandoff({ hasSubmitted }: { hasSubmitted: boolean }) {
+  return (
+    <section className="locked-results-handoff" aria-labelledby="locked-results-title">
+      <div className="locked-results-handoff__mark"><Icon name="whistle" /></div>
+      <div>
+        <h2 id="locked-results-title">The board has moved to results.</h2>
+        <p>
+          {hasSubmitted
+            ? "Your latest submitted card is official. Follow every matchup and compare the official calls as scores arrive."
+            : "The deadline has passed, so this call sheet is read-only. Follow the official cards and game results from here."}
+        </p>
+        <div className="locked-results-handoff__actions">
+          <Link className="review-action review-action--link" href="/results" prefetch={false}>
+            <span>See official cards</span><Icon name="arrow" />
+          </Link>
+          {hasSubmitted ? <Link href="/activity" prefetch={false}>View my card</Link> : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LockedControlPanel({ hasSubmitted }: { hasSubmitted: boolean }) {
+  return (
+    <section className="locked-control-panel">
+      <Icon name="shield" />
+      <h2>{hasSubmitted ? "Your card is official." : "Entry is closed."}</h2>
+      <span>The Results page now carries the weekly action.</span>
+      <Link href="/results" prefetch={false}>Open results <Icon name="arrow" /></Link>
+    </section>
   );
 }
 

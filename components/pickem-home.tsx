@@ -4,6 +4,7 @@ import type { AccountSummary } from "@/lib/account-types";
 import type { PlayerWeek } from "@/lib/entries/types";
 import { getHomeWeekState } from "@/lib/home-week-state";
 import { BrandLockup } from "./brand-lockup";
+import { DeadlineCountdown } from "./deadline-countdown";
 import { Icon, RouteSketch } from "./icons";
 import { MobileAppNav } from "./mobile-app-nav";
 import { PwaInstallHomeCard } from "./pwa-install-experience";
@@ -146,6 +147,13 @@ export function PickemHome({
         <p className="week-label">{week.label} Pick&apos;em</p>
         <h1>One sheet. {week.games.length} calls.</h1>
         <p className="lead">{homeState.lead}</p>
+        {!week.isLocked ? (
+          <DeadlineCountdown
+            deadline={week.entryDeadline}
+            fallbackLabel={week.deadlineLabel}
+            refreshOnLock
+          />
+        ) : null}
         <div className="home-status">
           <Icon name={homeState.lockedStatusLabel ? "check" : "shield"} />
           <span>{statusLabel}</span>
