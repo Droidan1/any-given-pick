@@ -22,19 +22,33 @@ function eligibilityStatusLabel(account: AccountSummary): string {
 }
 
 function LiveScoreBoard({ week }: { week: PlayerWeek }) {
-  const liveGames = week.games.filter((game) => game.status === "in_progress");
-  if (liveGames.length === 0) return null;
+  if (!week.isLocked || week.games.length === 0) return null;
+  const liveCount = week.games.filter((game) => game.status === "in_progress").length;
+  const finalCount = week.games.filter((game) => game.status === "final").length;
+  const boardTitle = liveCount > 0 ? `${liveCount} ${liveCount === 1 ? "game" : "games"} live` : "Week scoreboard";
+
+  const gameStatusLabel = (status: PlayerWeek["games"][number]["status"]): string => {
+    if (status === "in_progress") return "Live";
+    if (status === "final") return "Final";
+    if (status === "postponed") return "Postponed";
+    if (status === "canceled") return "Canceled";
+    return "Upcoming";
+  };
 
   return (
     <section className="home-live-board" aria-labelledby="home-live-title">
       <header>
-        <span className="home-live-board__pulse" aria-hidden="true" />
-        <h2 id="home-live-title">Games live now</h2>
+        <span className={`home-live-board__pulse${liveCount > 0 ? " home-live-board__pulse--live" : ""}`} aria-hidden="true" />
+        <div>
+          <h2 id="home-live-title">{boardTitle}</h2>
+          <small>{finalCount} final · {liveCount} live · {week.games.length - finalCount - liveCount} waiting</small>
+        </div>
         <Link href="/results" prefetch={false}>All results</Link>
       </header>
       <div className="home-live-board__games" aria-live="polite">
-        {liveGames.map((game) => {
-          const selection = week.entry?.draftPicks[game.id];
+        {week.games.map((game) => {
+          const selection = week.entry?.officialPicks[game.id];
+          const statusLabel = gameStatusLabel(game.status);
           return (
             <div className="home-live-game" key={game.id}>
               <span className={selection === game.away.abbreviation ? "home-live-game__picked" : undefined}>
@@ -45,7 +59,10 @@ function LiveScoreBoard({ week }: { week: PlayerWeek }) {
                 <strong>{game.home.abbreviation}</strong>
                 <b>{game.homeScore ?? "—"}</b>
               </span>
-              <small>{selection ? `Your pick: ${selection}` : "No official pick"}</small>
+              <small>
+                <b className={`home-live-game__status home-live-game__status--${game.status}`}>{statusLabel}</b>
+                <span>{selection ? `Your pick: ${selection}` : "No official pick"}</span>
+              </small>
             </div>
           );
         })}
@@ -177,7 +194,7 @@ export function PickemHome({
       : destination;
 
     content = (
-      <section className="single-view home-view">
+      <section className={`single-view home-view${week.isLocked ? " home-view--scoreboard" : ""}`}>
         <RouteSketch /><RouteSketch mirrored />
         <p className="week-label">{week.label} Pick&apos;em</p>
         <h1>One sheet. {week.games.length} calls.</h1>

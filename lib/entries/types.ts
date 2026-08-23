@@ -22,6 +22,7 @@ export type PlayerEntry = {
   id: string;
   status: "draft" | "submitted" | "locked" | "scored" | "disqualified";
   draftPicks: Record<string, string>;
+  officialPicks: Record<string, string>;
   mondayPrediction: number | null;
   currentVersionNumber: number;
   submittedAt: string | null;

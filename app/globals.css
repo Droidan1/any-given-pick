@@ -3296,6 +3296,10 @@ button:disabled {
   align-content: center;
 }
 
+.home-view--scoreboard {
+  align-content: start;
+}
+
 .home-view > .deadline-countdown {
   margin: -0.75rem 0 1.1rem;
   padding: 0.55rem 0.75rem;
@@ -3354,6 +3358,17 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.home-live-board > header > div {
+  min-width: 0;
+}
+
+.home-live-board > header small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--paper-200);
+  font-size: 0.82rem;
+}
+
 .home-live-board > header a {
   margin-inline-start: auto;
   color: var(--maize);
@@ -3365,6 +3380,10 @@ button:disabled {
   width: 0.65rem;
   height: 0.65rem;
   border-radius: 50%;
+  background: var(--sage);
+}
+
+.home-live-board__pulse--live {
   background: var(--maize);
 }
 
@@ -3403,7 +3422,28 @@ button:disabled {
 
 .home-live-game > small {
   grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   color: var(--ink-soft);
+}
+
+.home-live-game__status {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-live-game__status--in_progress {
+  color: var(--clay-deep);
+}
+
+.home-live-game__status--postponed,
+.home-live-game__status--canceled {
+  color: var(--clay-deep);
 }
 
 .home-live-board__refresh {
@@ -5039,6 +5079,18 @@ button:disabled {
 
   .home-view {
     align-content: start;
+  }
+
+  .home-live-board__games {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-live-game {
+    padding: 0.7rem;
+  }
+
+  .home-live-board > header {
+    align-items: flex-start;
   }
 
   .home-trust-links a {

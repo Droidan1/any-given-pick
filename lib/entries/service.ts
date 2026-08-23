@@ -3,7 +3,7 @@ import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getDb } from "@/lib/db";
-import { contestEntries, contestWeeks, games, profiles, users } from "@/lib/db/schema";
+import { contestEntries, contestWeeks, entryVersionPicks, entryVersions, games, profiles, users } from "@/lib/db/schema";
 import type { LivePlayerPicks, PlayerWeek } from "./types";
 
 const BUSINESS_TIME_ZONE = "America/Indiana/Indianapolis";
@@ -86,7 +86,10 @@ export async function getCurrentPlayerWeek(
 
   if (!week) return null;
 
-  const [gameRows, entryRows, livePlayerPicks] = await Promise.all([
+  const now = new Date();
+  const isLocked = now >= week.entryDeadline;
+
+  const [gameRows, entryRows, officialPickRows, livePlayerPicks] = await Promise.all([
     db
       .select()
       .from(games)
@@ -102,12 +105,30 @@ export async function getCurrentPlayerWeek(
         ),
       )
       .limit(1),
+    isLocked ? db
+      .select({
+        gameId: entryVersionPicks.gameId,
+        selectedTeamCode: entryVersionPicks.selectedTeamCode,
+      })
+      .from(contestEntries)
+      .innerJoin(
+        entryVersions,
+        and(
+          eq(entryVersions.contestEntryId, contestEntries.id),
+          eq(entryVersions.versionNumber, contestEntries.currentVersionNumber),
+        ),
+      )
+      .innerJoin(entryVersionPicks, eq(entryVersionPicks.entryVersionId, entryVersions.id))
+      .where(
+        and(
+          eq(contestEntries.contestWeekId, week.id),
+          eq(contestEntries.userId, userId),
+        ),
+      ) : Promise.resolve([]),
     input.includeLivePicks ? loadLivePlayerPicks(week.id) : Promise.resolve([]),
   ]);
 
   const entry = entryRows[0] ?? null;
-  const now = new Date();
-
   return {
     id: week.id,
     season: week.season,
@@ -116,7 +137,7 @@ export async function getCurrentPlayerWeek(
     label: week.label || formatWeekName(week.seasonPhase, week.weekNumber),
     entryDeadline: week.entryDeadline.toISOString(),
     deadlineLabel: formatDeadline(week.entryDeadline),
-    isLocked: now >= week.entryDeadline,
+    isLocked,
     games: gameRows.map((game) => ({
       id: game.id,
       kickoffAt: game.kickoffAt.toISOString(),
@@ -142,6 +163,9 @@ export async function getCurrentPlayerWeek(
           id: entry.id,
           status: entry.status,
           draftPicks: entry.draftPicks,
+          officialPicks: Object.fromEntries(
+            officialPickRows.map((pick) => [pick.gameId, pick.selectedTeamCode]),
+          ),
           mondayPrediction: entry.draftMondayPrediction,
           currentVersionNumber: entry.currentVersionNumber,
           submittedAt: entry.submittedAt?.toISOString() ?? null,
