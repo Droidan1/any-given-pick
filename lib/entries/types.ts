@@ -6,6 +6,8 @@ export type PlayerGame = {
   time: string;
   away: { abbreviation: string; name: string };
   home: { abbreviation: string; name: string };
+  awayScore: number | null;
+  homeScore: number | null;
   isMondayTiebreaker: boolean;
   odds: {
     awayMoneyline: number | null;

@@ -26,7 +26,7 @@ export function PickemStandings({
       </p>
       <div className="standings-table" role="table" aria-label={`${standings.season} regular-season standings`}>
         <div className="standings-row standings-row--header" role="row">
-          <span>Rank</span><span>Player</span><span>Correct</span><span>TB diff</span>
+          <span role="columnheader">Rank</span><span role="columnheader">Player</span><span role="columnheader">Correct</span><span role="columnheader">TB diff</span>
         </div>
         {standings.rows.map((entry) => (
           <div
@@ -34,10 +34,10 @@ export function PickemStandings({
             role="row"
             key={entry.userId}
           >
-            <strong>{entry.rank}</strong>
-            <span className="standings-player"><PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} size={32} />{entry.displayName}</span>
-            <span>{entry.correctPicks}/{entry.gradedPicks}</span>
-            <span>{entry.tiebreakerDiff ?? "—"}</span>
+            <span className="standings-rank" role="cell"><strong>{entry.rank}</strong>{entry.rankChange !== null && entry.rankChange !== 0 ? <small className={entry.rankChange > 0 ? "standings-rank--up" : "standings-rank--down"}>{entry.rankChange > 0 ? `↑${entry.rankChange}` : `↓${Math.abs(entry.rankChange)}`}</small> : null}</span>
+            <span className="standings-player" role="cell"><PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} size={32} />{entry.displayName}</span>
+            <span role="cell">{entry.correctPicks}/{entry.gradedPicks}</span>
+            <span role="cell">{entry.tiebreakerDiff ?? "—"}</span>
           </div>
         ))}
       </div>

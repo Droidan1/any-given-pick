@@ -22,7 +22,7 @@ export function buildAdminPlayerPickCards(input: {
   revealStatus: WeeklyResults["revealStatus"];
 }): AdminPlayerPickCard[] {
   const revealedEntries = new Map(input.entries.map((entry) => [entry.userId, entry]));
-  return input.roster.map((player): AdminPlayerPickCard => {
+  const players = input.roster.map((player): AdminPlayerPickCard => {
     const submissionStatus: AdminPlayerPickStatus = player.entryStatus === "disqualified"
       ? "disqualified"
       : (player.currentVersionNumber ?? 0) > 0
@@ -37,4 +37,13 @@ export function buildAdminPlayerPickCards(input: {
         : null,
     };
   });
+  const order: Record<AdminPlayerPickStatus, number> = {
+    not_submitted: 0,
+    submitted: 1,
+    disqualified: 2,
+  };
+  return players.toSorted((left, right) => (
+    order[left.submissionStatus] - order[right.submissionStatus]
+    || left.displayName.localeCompare(right.displayName, "en-US")
+  ));
 }

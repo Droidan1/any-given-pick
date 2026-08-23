@@ -31,8 +31,8 @@ describe("buildAdminPlayerPickCards", () => {
     });
 
     expect(players.map(({ submissionStatus, entry }) => ({ submissionStatus, entry }))).toEqual([
-      { submissionStatus: "submitted", entry: null },
       { submissionStatus: "not_submitted", entry: null },
+      { submissionStatus: "submitted", entry: null },
       { submissionStatus: "disqualified", entry: null },
     ]);
   });
@@ -44,8 +44,8 @@ describe("buildAdminPlayerPickCards", () => {
       revealStatus: "revealed",
     });
 
-    expect(players[0]?.entry).toBe(revealedEntry);
-    expect(players[1]?.entry).toBeNull();
+    expect(players[0]?.entry).toBeNull();
+    expect(players[1]?.entry).toBe(revealedEntry);
     expect(players[2]?.entry).toBeNull();
   });
 });

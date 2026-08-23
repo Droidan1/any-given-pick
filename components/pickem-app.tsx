@@ -693,7 +693,7 @@ function PicksView(props: PicksViewProps) {
           <LockedResultsHandoff hasSubmitted={props.hasSubmitted} />
         ) : (
           <>
-            <ProgressMeasure selected={props.selectedCount} total={props.games.length} />
+            <ProgressMeasure selected={props.selectedCount} total={props.games.length} tiebreakerSet={props.mondayTotal !== null} />
 
             <div className="scoreboard-toolbar">
           <p>Your highlighted row is editable. Every active player&apos;s saved calls appear below.</p>
@@ -808,7 +808,7 @@ function PicksView(props: PicksViewProps) {
           <LockedControlPanel hasSubmitted={props.hasSubmitted} />
         ) : (
           <>
-            <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} /></div>
+            <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} tiebreakerSet={props.mondayTotal !== null} /></div>
             <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isPending} />
             <div className="rules-note">
               <RouteSketch mirrored /><h2>How this week works</h2>
@@ -821,7 +821,7 @@ function PicksView(props: PicksViewProps) {
               <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} canParticipate={props.canParticipate} isPending={props.isPending} isLocked={false} hasSubmitted={props.hasSubmitted} />
             ) : (
               <button className="review-action" type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending}>
-                <Icon name="whistle" /><span>{!props.canParticipate ? "Account setup required" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
+                <Icon name="whistle" /><span>{!props.canParticipate ? "Account setup required" : missingCount > 0 ? `Finish ${missingCount} ${missingCount === 1 ? "pick" : "picks"}` : props.mondayTotal === null ? "Set tiebreaker" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
               </button>
             )}
             <p className="status-message" aria-live="polite">{props.status || "Draft changes sync automatically."}</p>
@@ -866,9 +866,9 @@ function PicksView(props: PicksViewProps) {
         </div>
       ) : (
         <div className="mobile-pick-dock" aria-label="Pick progress and next action">
-          <span><strong>{props.selectedCount}/{props.games.length}</strong> picks</span>
+          <span><strong>{props.selectedCount}/{props.games.length}</strong>{missingCount === 0 && props.mondayTotal === null ? "Tiebreaker needed" : "picks"}</span>
           <button type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending}>
-            {missingCount > 0 ? `Next missing (${missingCount})` : "Review card"}
+            {missingCount > 0 ? `Next missing (${missingCount})` : props.mondayTotal === null ? "Set tiebreaker" : "Review card"}
             <Icon name="arrow" />
           </button>
         </div>
@@ -910,11 +910,12 @@ function LockedControlPanel({ hasSubmitted }: { hasSubmitted: boolean }) {
   );
 }
 
-function ProgressMeasure({ selected, total }: { selected: number; total: number }) {
+function ProgressMeasure({ selected, total, tiebreakerSet }: { selected: number; total: number; tiebreakerSet: boolean }) {
   const percent = total ? Math.round((selected / total) * 100) : 0;
+  const progressLabel = `${selected} of ${total} picks selected. Tiebreaker ${tiebreakerSet ? "set" : "still required"}.`;
   return (
-    <div className="progress-measure" aria-label={`${selected} of ${total} picks selected`}>
-      <div className="progress-copy"><strong>{selected}</strong><span>of {total} selected</span></div>
+    <div className="progress-measure" aria-label={progressLabel}>
+      <div className="progress-copy"><strong>{selected}</strong><span>of {total} selected · TB {tiebreakerSet ? "set" : "needed"}</span></div>
       <div className="yard-scale" aria-hidden="true"><span className="yard-fill" style={{ transform: `scaleX(${percent / 100})` }} />{Array.from({ length: total + 1 }, (_, index) => <i key={index} />)}</div>
       <div className="scale-labels" aria-hidden="true"><span>0</span><span>{Math.floor(total / 2)}</span><span>{total}</span></div>
     </div>
@@ -1029,7 +1030,7 @@ function StandingsView({
         </p>
         <div className="standings-table" role="table" aria-label={`${standings.season} regular-season standings`}>
           <div className="standings-row standings-row--header" role="row">
-            <span>Rank</span><span>Player</span><span>Correct</span><span>TB diff</span>
+            <span role="columnheader">Rank</span><span role="columnheader">Player</span><span role="columnheader">Correct</span><span role="columnheader">TB diff</span>
           </div>
           {standings.rows.map((entry) => (
             <div
@@ -1037,10 +1038,10 @@ function StandingsView({
               role="row"
               key={entry.userId}
             >
-              <strong>{entry.rank}</strong>
-              <span className="standings-player"><PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} size={32} />{entry.displayName}</span>
-              <span>{entry.correctPicks}/{entry.gradedPicks}</span>
-              <span>{entry.tiebreakerDiff ?? "—"}</span>
+              <span className="standings-rank" role="cell"><strong>{entry.rank}</strong>{entry.rankChange !== null && entry.rankChange !== 0 ? <small className={entry.rankChange > 0 ? "standings-rank--up" : "standings-rank--down"}>{entry.rankChange > 0 ? `↑${entry.rankChange}` : `↓${Math.abs(entry.rankChange)}`}</small> : null}</span>
+              <span className="standings-player" role="cell"><PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} size={32} />{entry.displayName}</span>
+              <span role="cell">{entry.correctPicks}/{entry.gradedPicks}</span>
+              <span role="cell">{entry.tiebreakerDiff ?? "—"}</span>
             </div>
           ))}
         </div>

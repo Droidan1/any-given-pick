@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#123f31" />
+    <title>Offline | Any Given Pick</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Verdana, sans-serif;
+        background: oklch(21% 0.052 163);
+        color: oklch(96% 0.021 92);
+      }
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        min-height: 100svh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: max(1.5rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+        background: oklch(21% 0.052 163);
+      }
+      main {
+        width: min(100%, 34rem);
+        padding: clamp(1.5rem, 6vw, 3rem);
+        border: 1px solid oklch(69% 0.045 92);
+      }
+      img { width: 4.5rem; height: 4.5rem; }
+      h1 {
+        max-width: 10ch;
+        margin: 1.5rem 0 0;
+        font-family: "Arial Narrow", sans-serif;
+        font-size: clamp(3rem, 13vw, 5rem);
+        line-height: 0.9;
+        letter-spacing: -0.025em;
+        text-transform: uppercase;
+      }
+      p { max-width: 36ch; margin: 1.25rem 0 0; color: oklch(91% 0.028 90); font-size: 1.05rem; line-height: 1.55; }
+      a {
+        min-height: 3.5rem;
+        margin-top: 1.75rem;
+        display: inline-flex;
+        align-items: center;
+        padding: 0.75rem 1.1rem;
+        background: oklch(84% 0.168 94);
+        color: oklch(21% 0.052 163);
+        font-weight: 700;
+        text-decoration: none;
+      }
+      a:focus-visible { outline: 3px solid oklch(98% 0.012 92); outline-offset: 4px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/pwa-icon-192.png" alt="" />
+      <h1>The signal dropped.</h1>
+      <p>Your picks saved on this device are still here. Reconnect before the deadline so the server can receive them.</p>
+      <a href="/">Try the connection again</a>
+    </main>
+  </body>
+</html>

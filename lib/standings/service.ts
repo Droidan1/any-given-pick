@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, desc, eq, gt, inArray, ne } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 import { getDb } from "@/lib/db";
 import {
   contestEntries,
@@ -10,10 +11,12 @@ import {
   games,
   profiles,
 } from "@/lib/db/schema";
-import { rankStandings } from "./rules";
+import { addRankChanges, rankStandings } from "./rules";
 import type { StandingsSnapshot, UnrankedStanding } from "./types";
 
-export async function getSeasonStandings(): Promise<StandingsSnapshot> {
+export const STANDINGS_CACHE_TAG = "season-standings";
+
+async function computeSeasonStandings(): Promise<StandingsSnapshot> {
   const db = getDb();
   const [latestWeek] = await db
     .select({ season: contestWeeks.season })
@@ -79,6 +82,7 @@ export async function getSeasonStandings(): Promise<StandingsSnapshot> {
         displayName: profiles.displayName,
         profilePhotoUrl: profiles.profilePhotoUrl,
         mondayPrediction: entryVersions.mondayPrediction,
+        weekNumber: contestWeeks.weekNumber,
       })
       .from(contestEntries)
       .innerJoin(contestWeeks, eq(contestWeeks.id, contestEntries.contestWeekId))
@@ -118,17 +122,46 @@ export async function getSeasonStandings(): Promise<StandingsSnapshot> {
     picksByVersion.set(pick.versionId, versionPicks);
   }
 
-  const participants = new Map<string, UnrankedStanding & { hasTiebreaker: boolean }>();
+  const throughWeek = gameRows.reduce<number | null>((latest, game) => {
+    if (game.status !== "final") return latest;
+    return latest === null ? game.weekNumber : Math.max(latest, game.weekNumber);
+  }, null);
+  type StandingAccumulator = UnrankedStanding & { hasTiebreaker: boolean };
+  const participants = new Map<string, StandingAccumulator>();
+  const priorParticipants = new Map<string, StandingAccumulator>();
+
+  const newStanding = (entry: typeof entryRows[number]): StandingAccumulator => ({
+    userId: entry.userId,
+    displayName: entry.displayName,
+    profilePhotoUrl: entry.profilePhotoUrl,
+    correctPicks: 0,
+    gradedPicks: 0,
+    tiebreakerDiff: 0,
+    hasTiebreaker: false,
+  });
+
+  const applyFinalPick = (
+    standing: StandingAccumulator,
+    entry: typeof entryRows[number],
+    game: typeof gameRows[number],
+    selectedTeamCode: string,
+  ) => {
+    standing.gradedPicks += 1;
+    if (game.awayScore !== game.homeScore) {
+      const winner = (game.awayScore ?? 0) > (game.homeScore ?? 0)
+        ? game.awayTeamCode
+        : game.homeTeamCode;
+      if (selectedTeamCode === winner) standing.correctPicks += 1;
+    }
+    if (game.isTiebreaker) {
+      standing.tiebreakerDiff = (standing.tiebreakerDiff ?? 0)
+        + Math.abs(entry.mondayPrediction - ((game.awayScore ?? 0) + (game.homeScore ?? 0)));
+      standing.hasTiebreaker = true;
+    }
+  };
+
   for (const entry of entryRows) {
-    const standing = participants.get(entry.userId) ?? {
-      userId: entry.userId,
-      displayName: entry.displayName,
-      profilePhotoUrl: entry.profilePhotoUrl,
-      correctPicks: 0,
-      gradedPicks: 0,
-      tiebreakerDiff: 0,
-      hasTiebreaker: false,
-    };
+    const standing = participants.get(entry.userId) ?? newStanding(entry);
     const versionPicks = picksByVersion.get(entry.versionId) ?? [];
     for (const pick of versionPicks) {
       const game = gamesById.get(pick.gameId);
@@ -139,33 +172,31 @@ export async function getSeasonStandings(): Promise<StandingsSnapshot> {
         game.homeScore === null
       ) continue;
 
-      standing.gradedPicks += 1;
-      if (game.awayScore !== game.homeScore) {
-        const winner = game.awayScore > game.homeScore
-          ? game.awayTeamCode
-          : game.homeTeamCode;
-        if (pick.selectedTeamCode === winner) standing.correctPicks += 1;
-      }
-
-      if (game.isTiebreaker) {
-        standing.tiebreakerDiff = (standing.tiebreakerDiff ?? 0)
-          + Math.abs(entry.mondayPrediction - (game.awayScore + game.homeScore));
-        standing.hasTiebreaker = true;
+      applyFinalPick(standing, entry, game, pick.selectedTeamCode);
+      if (throughWeek !== null && game.weekNumber < throughWeek) {
+        const priorStanding = priorParticipants.get(entry.userId) ?? newStanding(entry);
+        applyFinalPick(priorStanding, entry, game, pick.selectedTeamCode);
+        priorParticipants.set(entry.userId, priorStanding);
       }
     }
     participants.set(entry.userId, standing);
   }
 
-  const rows = rankStandings(
+  const rankedRows = rankStandings(
     [...participants.values()].map(({ hasTiebreaker, ...standing }) => ({
       ...standing,
       tiebreakerDiff: hasTiebreaker ? standing.tiebreakerDiff : null,
     })),
   );
-  const throughWeek = gameRows.reduce<number | null>((latest, game) => {
-    if (game.status !== "final") return latest;
-    return latest === null ? game.weekNumber : Math.max(latest, game.weekNumber);
-  }, null);
+  const previousRows = rankStandings(
+    [...priorParticipants.values()].map(({ hasTiebreaker, ...standing }) => ({
+      ...standing,
+      tiebreakerDiff: hasTiebreaker ? standing.tiebreakerDiff : null,
+    })),
+  );
+  const rows = throughWeek !== null && throughWeek > 1
+    ? addRankChanges(rankedRows, previousRows)
+    : rankedRows;
 
   return {
     status: "ready",
@@ -175,4 +206,14 @@ export async function getSeasonStandings(): Promise<StandingsSnapshot> {
     throughWeek,
     rows,
   };
+}
+
+const getCachedSeasonStandings = unstable_cache(
+  computeSeasonStandings,
+  [STANDINGS_CACHE_TAG],
+  { revalidate: 300, tags: [STANDINGS_CACHE_TAG] },
+);
+
+export async function getSeasonStandings(): Promise<StandingsSnapshot> {
+  return getCachedSeasonStandings();
 }

@@ -1,6 +1,6 @@
 const CACHE_PREFIX = "any-given-pick-";
-const CACHE_NAME = `${CACHE_PREFIX}v5-static-only`;
-const APP_SHELL = ["/manifest.webmanifest", "/pwa-icon-192.png", "/pwa-icon-512.png"];
+const CACHE_NAME = `${CACHE_PREFIX}v6-offline-fallback`;
+const APP_SHELL = ["/offline.html", "/manifest.webmanifest", "/pwa-icon-192.png", "/pwa-icon-512.png"];
 
 function isCacheableStaticRequest(request) {
   if (request.method !== "GET") return false;
@@ -32,6 +32,13 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (event.request.method === "GET" && event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match("/offline.html")),
+    );
+    return;
+  }
+
   if (!isCacheableStaticRequest(event.request)) return;
 
   event.respondWith(

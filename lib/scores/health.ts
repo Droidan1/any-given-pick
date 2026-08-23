@@ -1,9 +1,11 @@
 import "server-only";
 
 import { and, eq, isNull, lt, or } from "drizzle-orm";
+import { revalidateTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import { providerSyncStates } from "@/lib/db/schema";
 import { reportOperationalIssue, resolveOperationalIssue } from "@/lib/monitoring/operational-alerts";
+import { STANDINGS_CACHE_TAG } from "@/lib/standings/service";
 import { syncRecentEspnScores, type ScoreSyncSummary } from "./sync";
 import { isScoreSyncReady, scoreSyncFreshnessWindowMinutes } from "./watchdog-policy";
 
@@ -120,6 +122,7 @@ async function completeScoreSyncAttempt(now: Date): Promise<ScoreSyncSummary> {
         updatedAt: now,
       })
       .where(eq(providerSyncStates.key, SCORE_SYNC_KEY));
+    if (summary.updatedGames > 0) revalidateTag(STANDINGS_CACHE_TAG, "max");
     if (errorMessage) {
       await reportOperationalIssue({
         kind: "score_sync",

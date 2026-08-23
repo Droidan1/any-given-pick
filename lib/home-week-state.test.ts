@@ -11,6 +11,8 @@ function game(status: PlayerGame["status"]): PlayerGame {
     time: "7:00 PM EDT",
     away: { abbreviation: "DET", name: "Detroit Lions" },
     home: { abbreviation: "CIN", name: "Cincinnati Bengals" },
+    awayScore: status === "scheduled" ? null : 10,
+    homeScore: status === "scheduled" ? null : 7,
     isMondayTiebreaker: false,
     odds: null,
   };

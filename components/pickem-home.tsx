@@ -6,6 +6,7 @@ import { getHomeWeekState } from "@/lib/home-week-state";
 import { BrandLockup } from "./brand-lockup";
 import { DeadlineCountdown } from "./deadline-countdown";
 import { Icon, RouteSketch } from "./icons";
+import { HomeLiveScoreRefresh } from "./home-live-score-refresh";
 import { MobileAppNav } from "./mobile-app-nav";
 import { PwaInstallHomeCard } from "./pwa-install-experience";
 
@@ -18,6 +19,40 @@ function eligibilityActionLabel(account: AccountSummary): string {
 
 function eligibilityStatusLabel(account: AccountSummary): string {
   return account.reasonLabel;
+}
+
+function LiveScoreBoard({ week }: { week: PlayerWeek }) {
+  const liveGames = week.games.filter((game) => game.status === "in_progress");
+  if (liveGames.length === 0) return null;
+
+  return (
+    <section className="home-live-board" aria-labelledby="home-live-title">
+      <header>
+        <span className="home-live-board__pulse" aria-hidden="true" />
+        <h2 id="home-live-title">Games live now</h2>
+        <Link href="/results" prefetch={false}>All results</Link>
+      </header>
+      <div className="home-live-board__games" aria-live="polite">
+        {liveGames.map((game) => {
+          const selection = week.entry?.draftPicks[game.id];
+          return (
+            <div className="home-live-game" key={game.id}>
+              <span className={selection === game.away.abbreviation ? "home-live-game__picked" : undefined}>
+                <strong>{game.away.abbreviation}</strong>
+                <b>{game.awayScore ?? "—"}</b>
+              </span>
+              <span className={selection === game.home.abbreviation ? "home-live-game__picked" : undefined}>
+                <strong>{game.home.abbreviation}</strong>
+                <b>{game.homeScore ?? "—"}</b>
+              </span>
+              <small>{selection ? `Your pick: ${selection}` : "No official pick"}</small>
+            </div>
+          );
+        })}
+      </div>
+      <HomeLiveScoreRefresh />
+    </section>
+  );
 }
 
 function AccountDock({ account, compact = false }: { account: AccountSummary; compact?: boolean }) {
@@ -162,6 +197,7 @@ export function PickemHome({
         <Link className="review-action review-action--link" href={actionHref} prefetch={false}>
           <span>{actionLabel}</span><Icon name="arrow" />
         </Link>
+        <LiveScoreBoard week={week} />
         <Link className="home-reminders-link" href="/profile#email-reminders" prefetch={false}>Set deadline and results reminders</Link>
         <PwaInstallHomeCard />
         <div className="home-trust-links">

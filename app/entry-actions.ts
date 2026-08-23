@@ -71,6 +71,18 @@ function failureFromError(error: unknown): EntryActionResult {
   };
 }
 
+function draftsMatch(
+  currentPicks: Record<string, string>,
+  nextPicks: Record<string, string>,
+  currentMondayPrediction: number | null,
+  nextMondayPrediction: number | null,
+): boolean {
+  const nextEntries = Object.entries(nextPicks);
+  return currentMondayPrediction === nextMondayPrediction
+    && Object.keys(currentPicks).length === nextEntries.length
+    && nextEntries.every(([gameId, teamCode]) => currentPicks[gameId] === teamCode);
+}
+
 export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryActionResult> {
   const parsed = entryInputSchema.safeParse(input);
   if (!parsed.success || Object.keys(parsed.data.picks).length > 32) return invalidInput();
@@ -106,22 +118,6 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
         return { ok: false, code: "deadline_passed", message: "The entry deadline has passed." };
       }
 
-      const weekGames = await transaction
-        .select({
-          id: games.id,
-          awayTeamCode: games.awayTeamCode,
-          homeTeamCode: games.homeTeamCode,
-        })
-        .from(games)
-        .where(eq(games.contestWeekId, week.id));
-      const validated = validateEntrySelections({
-        games: weekGames,
-        picks: parsed.data.picks,
-        mondayPrediction: parsed.data.mondayPrediction,
-        requireComplete: false,
-      });
-      if (validated.issues.length > 0) return selectionFailure(validated.issues, false);
-
       const [existing] = await transaction
         .select()
         .from(contestEntries)
@@ -138,39 +134,56 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
         return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
       }
 
-      const [entry] = existing
-        ? await transaction
-            .update(contestEntries)
-            .set({
-              draftPicks: validated.picks,
-              draftMondayPrediction: parsed.data.mondayPrediction,
-              updatedAt: now,
-            })
-            .where(eq(contestEntries.id, existing.id))
-            .returning({ id: contestEntries.id })
-        : await transaction
-            .insert(contestEntries)
-            .values({
-              contestWeekId: week.id,
-              userId: appUser.id,
-              draftPicks: validated.picks,
-              draftMondayPrediction: parsed.data.mondayPrediction,
-              updatedAt: now,
-            })
-            .returning({ id: contestEntries.id });
+      if (existing && draftsMatch(
+        existing.draftPicks,
+        parsed.data.picks,
+        existing.draftMondayPrediction,
+        parsed.data.mondayPrediction,
+      )) {
+        return {
+          ok: true,
+          code: "saved",
+          message: "Draft already synced.",
+          syncedAt: existing.updatedAt.toISOString(),
+        };
+      }
 
-      await transaction.insert(auditEvents).values({
-        actorUserId: appUser.id,
-        targetUserId: appUser.id,
-        action: "entry.draft_saved",
-        entityType: "contest_entry",
-        entityId: entry.id,
-        metadata: {
-          contest_week_id: week.id,
-          pick_count: Object.keys(validated.picks).length,
-          required_pick_count: weekGames.length,
-        },
+      const weekGames = await transaction
+        .select({
+          id: games.id,
+          awayTeamCode: games.awayTeamCode,
+          homeTeamCode: games.homeTeamCode,
+        })
+        .from(games)
+        .where(eq(games.contestWeekId, week.id));
+      const validated = validateEntrySelections({
+        games: weekGames,
+        picks: parsed.data.picks,
+        mondayPrediction: parsed.data.mondayPrediction,
+        requireComplete: false,
       });
+      if (validated.issues.length > 0) return selectionFailure(validated.issues, false);
+
+      if (existing) {
+        await transaction
+          .update(contestEntries)
+          .set({
+            draftPicks: validated.picks,
+            draftMondayPrediction: parsed.data.mondayPrediction,
+            updatedAt: now,
+          })
+          .where(eq(contestEntries.id, existing.id));
+      } else {
+        await transaction
+          .insert(contestEntries)
+          .values({
+            contestWeekId: week.id,
+            userId: appUser.id,
+            draftPicks: validated.picks,
+            draftMondayPrediction: parsed.data.mondayPrediction,
+            updatedAt: now,
+          });
+      }
 
       return {
         ok: true,

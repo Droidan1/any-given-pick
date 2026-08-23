@@ -132,7 +132,7 @@ export default async function AdminPicksPage({
             <div className="admin-picks-ledger-heading">
               <div>
                 <h2>{board.selectedWeek?.label}</h2>
-                <p>{board.players.length} approved {board.players.length === 1 ? "player" : "players"} · {board.submittedCount} official {board.submittedCount === 1 ? "entry" : "entries"}{board.disqualifiedCount > 0 ? ` · ${board.disqualifiedCount} disqualified` : ""}</p>
+                <p>{board.players.length} approved {board.players.length === 1 ? "player" : "players"} · {board.submittedCount} official {board.submittedCount === 1 ? "entry" : "entries"} · {board.notSubmittedCount} still need to submit{board.disqualifiedCount > 0 ? ` · ${board.disqualifiedCount} disqualified` : ""}</p>
               </div>
               <span className={`admin-picks-lock-state admin-picks-lock-state--${board.revealStatus}`}>
                 {board.revealStatus === "revealed" ? "Official picks revealed" : "Official cards locked"}
@@ -142,7 +142,11 @@ export default async function AdminPicksPage({
             {board.revealStatus === "open" && board.selectedWeek ? (
               <section className="admin-picks-seal-note">
                 <Icon name="shield" />
-                <div><h2>Official cards unlock at the deadline</h2><p>The player picks page shows the same autosaved calls to every approved active player. This audit view waits until {formatDateTime(board.selectedWeek.entryDeadline)} to reveal each timestamped official version.</p></div>
+                <div>
+                  <h2>{board.notSubmittedCount > 0 ? `${board.notSubmittedCount} ${board.notSubmittedCount === 1 ? "player needs" : "players need"} an official card` : "Every active player submitted"}</h2>
+                  <p>{board.notSubmittedCount > 0 ? board.players.filter((player) => player.submissionStatus === "not_submitted").map((player) => player.displayName).join(" · ") : "The weekly submission checklist is complete."}</p>
+                  <p>Official cards unlock at {formatDateTime(board.selectedWeek.entryDeadline)}. Drafts stay separate from official submissions.</p>
+                </div>
               </section>
             ) : null}
 

@@ -12,7 +12,7 @@ import {
   profiles,
 } from "@/lib/db/schema";
 import { calculatePickOutcome, type PickOutcome } from "@/lib/entries/pick-outcome";
-import { canRevealWeeklyPicks } from "./rules";
+import { buildPickDistributions, canRevealWeeklyPicks, type PickDistribution } from "./rules";
 
 export type ResultsWeekOption = {
   id: string;
@@ -57,6 +57,7 @@ export type WeeklyResults = {
   revealStatus: "no_week" | "open" | "revealed";
   serverNow: string;
   entries: RevealedEntry[];
+  distributions: PickDistribution[];
 };
 
 export async function getWeeklyResults(input: {
@@ -114,6 +115,7 @@ export async function getWeeklyResults(input: {
       revealStatus: "no_week",
       serverNow: serverNow.toISOString(),
       entries: [],
+      distributions: [],
     };
   }
 
@@ -124,6 +126,7 @@ export async function getWeeklyResults(input: {
       revealStatus: "open",
       serverNow: serverNow.toISOString(),
       entries: [],
+      distributions: [],
     };
   }
 
@@ -236,5 +239,6 @@ export async function getWeeklyResults(input: {
     revealStatus: "revealed",
     serverNow: serverNow.toISOString(),
     entries,
+    distributions: buildPickDistributions(gameRows, pickRows),
   };
 }

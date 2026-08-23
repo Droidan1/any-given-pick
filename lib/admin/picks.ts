@@ -18,6 +18,7 @@ export type { AdminPlayerPickCard } from "./picks-rules";
 export type AdminPicksBoard = WeeklyResults & {
   players: AdminPlayerPickCard[];
   submittedCount: number;
+  notSubmittedCount: number;
   disqualifiedCount: number;
 };
 
@@ -33,6 +34,7 @@ export async function getAdminPicksBoard(input: {
       ...results,
       players: [],
       submittedCount: 0,
+      notSubmittedCount: 0,
       disqualifiedCount: 0,
     };
   }
@@ -66,6 +68,7 @@ export async function getAdminPicksBoard(input: {
     ...results,
     players,
     submittedCount: players.filter((player) => player.submissionStatus === "submitted").length,
+    notSubmittedCount: players.filter((player) => player.submissionStatus === "not_submitted").length,
     disqualifiedCount: players.filter((player) => player.submissionStatus === "disqualified").length,
   };
 }

@@ -3329,6 +3329,90 @@ button:disabled {
   margin: 1.5rem 0 0;
 }
 
+.home-live-board {
+  width: min(100%, 46rem);
+  margin-top: 1.5rem;
+  border: 1px solid var(--sage);
+  background: var(--paper-200);
+}
+
+.home-live-board > header {
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--field-950);
+  color: var(--paper-100);
+}
+
+.home-live-board > header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.home-live-board > header a {
+  margin-inline-start: auto;
+  color: var(--maize);
+  font-weight: 700;
+  text-underline-offset: 0.22em;
+}
+
+.home-live-board__pulse {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: var(--maize);
+}
+
+.home-live-board__games {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.home-live-game {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem 0.75rem;
+  padding: 0.85rem;
+  border-bottom: 1px solid var(--sage);
+}
+
+.home-live-game > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.45rem;
+}
+
+.home-live-game > span strong,
+.home-live-game > span b {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.home-live-game__picked {
+  background: var(--maize);
+  color: var(--field-950);
+}
+
+.home-live-game > small {
+  grid-column: 1 / -1;
+  color: var(--ink-soft);
+}
+
+.home-live-board__refresh {
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
 .locked-results-handoff {
   min-height: 25rem;
   display: grid;
@@ -3486,6 +3570,30 @@ button:disabled {
 .standings-row--you {
   background: var(--maize);
   color: var(--field-950);
+}
+
+.standings-rank {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.standings-rank > strong {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+}
+
+.standings-rank > small {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.standings-rank--up {
+  color: var(--field-800);
+}
+
+.standings-rank--down {
+  color: var(--clay-deep);
 }
 
 .standings-player {
@@ -5817,6 +5925,11 @@ button:disabled {
 .results-pick small {
   color: var(--ink-soft);
   font-size: 0.82rem;
+}
+
+.results-pick__distribution {
+  margin-top: 0.2rem;
+  font-weight: 700;
 }
 
 .results-pick__selection > small {

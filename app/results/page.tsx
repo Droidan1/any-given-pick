@@ -83,6 +83,7 @@ export default async function ResultsPage({
     getScoreSyncHealth(),
   ]);
   const scoreGames = results.entries.flatMap((entry) => entry.picks);
+  const distributionByGame = new Map(results.distributions.map((distribution) => [distribution.gameId, distribution]));
   const shouldPollScores = hasScoreRefreshWindow(scoreGames);
   const nextAutomaticCheckAt = nextScoreRefreshWindow(scoreGames);
 
@@ -179,13 +180,22 @@ export default async function ResultsPage({
                       <span className="results-entry__toggle" aria-hidden="true"><span>View calls</span><span>Close calls</span></span>
                     </summary>
                     <div className="results-entry__picks">
-                      {entry.picks.map((pick) => (
+                      {entry.picks.map((pick) => {
+                        const distribution = distributionByGame.get(pick.gameId);
+                        return (
                         <div className={`results-pick results-pick--${pick.outcome}`} key={pick.gameId}>
-                          <span className="results-pick__matchup"><strong>{pick.awayTeamCode} @ {pick.homeTeamCode}</strong><small>{scoreLabel(pick)}</small></span>
+                          <span className="results-pick__matchup">
+                            <strong>{pick.awayTeamCode} @ {pick.homeTeamCode}</strong>
+                            <small>{scoreLabel(pick)}</small>
+                            {distribution && distribution.totalPicks > 0 ? (
+                              <small className="results-pick__distribution">All cards: {distribution.awayTeamCode} {distribution.awayPercent}% · {distribution.homeTeamCode} {distribution.homePercent}%</small>
+                            ) : null}
+                          </span>
                           <span className="results-pick__selection"><small>Selected</small><strong>{pick.selectedTeamCode} · {pick.selectedTeamName}</strong></span>
                           <span className="results-pick__outcome">{resultLabel(pick)}</span>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </details>
                 ))}

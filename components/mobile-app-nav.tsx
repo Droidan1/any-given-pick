@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { Icon, type IconName } from "./icons";
+
+const STALE_VIEW_MS = 60_000;
 
 export type MobileAppDestination =
   | "home"
@@ -34,6 +38,26 @@ export function MobileAppNav({
   isAdmin?: boolean;
   onSelectView?: (view: LocalDestination) => void;
 }) {
+  const router = useRouter();
+  const lastRefreshAt = useRef(0);
+
+  useEffect(() => {
+    lastRefreshAt.current = Date.now();
+    const refreshIfStale = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastRefreshAt.current < STALE_VIEW_MS) return;
+      lastRefreshAt.current = now;
+      router.refresh();
+    };
+    window.addEventListener("focus", refreshIfStale);
+    document.addEventListener("visibilitychange", refreshIfStale);
+    return () => {
+      window.removeEventListener("focus", refreshIfStale);
+      document.removeEventListener("visibilitychange", refreshIfStale);
+    };
+  }, [router]);
+
   return (
     <nav className={`bottom-nav${isAdmin ? " bottom-nav--admin" : ""}`} aria-label="Primary navigation">
       {playerDestinations.map((item) => {

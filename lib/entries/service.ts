@@ -124,6 +124,8 @@ export async function getCurrentPlayerWeek(
       ...formatKickoff(game.kickoffAt),
       away: { abbreviation: game.awayTeamCode, name: game.awayTeamName },
       home: { abbreviation: game.homeTeamCode, name: game.homeTeamName },
+      awayScore: game.awayScore,
+      homeScore: game.homeScore,
       isMondayTiebreaker: game.isMondayTiebreaker,
       odds: game.oddsProvider && game.oddsUpdatedAt
         ? {
