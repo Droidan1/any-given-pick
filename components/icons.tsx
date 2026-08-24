@@ -4,6 +4,7 @@ export type IconName =
   | "home"
   | "picks"
   | "standings"
+  | "race"
   | "profile"
   | "activity"
   | "results"
@@ -30,6 +31,7 @@ export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGEle
     home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h14V9" /><path d="M9 20v-6h6v6" /></>,
     picks: <><rect x="5" y="4" width="14" height="17" rx="1.5" /><path d="M9 4V2h6v2M8.5 9h7M8.5 13h3M14 13l1.2 1.2L18 11.5M8.5 17h7" /></>,
     standings: <><path d="M4 20V12h4v8M10 20V5h4v15M16 20v-11h4v11M2 20h20" /></>,
+    race: <><path d="M5 21V4" /><path d="M5 5h12l-2.5 3L17 11H5" /><path d="M9 16h10M15 13l4 3-4 3" /></>,
     profile: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></>,
     activity: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h5M16 12v4M14 14h4" /></>,
     results: <><path d="M3 5h18v14H3z" /><path d="M8 9h8M8 13h3M15 12v4M13 14h4" /><path d="M7 2v3M17 2v3" /></>,

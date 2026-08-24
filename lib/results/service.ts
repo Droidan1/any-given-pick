@@ -33,9 +33,23 @@ export type RevealedPick = {
   awayScore: number | null;
   homeScore: number | null;
   gameStatus: "scheduled" | "in_progress" | "final" | "postponed" | "canceled";
+  isMondayTiebreaker: boolean;
   selectedTeamCode: string;
   selectedTeamName: string;
   outcome: PickOutcome;
+};
+
+export type RevealedGame = {
+  id: string;
+  kickoffAt: string;
+  awayTeamCode: string;
+  awayTeamName: string;
+  homeTeamCode: string;
+  homeTeamName: string;
+  awayScore: number | null;
+  homeScore: number | null;
+  status: "scheduled" | "in_progress" | "final" | "postponed" | "canceled";
+  isMondayTiebreaker: boolean;
 };
 
 export type RevealedEntry = {
@@ -56,6 +70,7 @@ export type WeeklyResults = {
   selectedWeek: ResultsWeekOption | null;
   revealStatus: "no_week" | "open" | "revealed";
   serverNow: string;
+  games: RevealedGame[];
   entries: RevealedEntry[];
   distributions: PickDistribution[];
 };
@@ -114,6 +129,7 @@ export async function getWeeklyResults(input: {
       selectedWeek: null,
       revealStatus: "no_week",
       serverNow: serverNow.toISOString(),
+      games: [],
       entries: [],
       distributions: [],
     };
@@ -125,6 +141,7 @@ export async function getWeeklyResults(input: {
       selectedWeek,
       revealStatus: "open",
       serverNow: serverNow.toISOString(),
+      games: [],
       entries: [],
       distributions: [],
     };
@@ -200,6 +217,7 @@ export async function getWeeklyResults(input: {
         awayScore: game.awayScore,
         homeScore: game.homeScore,
         gameStatus: game.status,
+        isMondayTiebreaker: game.isMondayTiebreaker,
         selectedTeamCode: pick.selectedTeamCode,
         selectedTeamName,
         outcome: calculatePickOutcome({
@@ -238,6 +256,18 @@ export async function getWeeklyResults(input: {
     selectedWeek,
     revealStatus: "revealed",
     serverNow: serverNow.toISOString(),
+    games: gameRows.map((game) => ({
+      id: game.id,
+      kickoffAt: game.kickoffAt.toISOString(),
+      awayTeamCode: game.awayTeamCode,
+      awayTeamName: game.awayTeamName,
+      homeTeamCode: game.homeTeamCode,
+      homeTeamName: game.homeTeamName,
+      awayScore: game.awayScore,
+      homeScore: game.homeScore,
+      status: game.status,
+      isMondayTiebreaker: game.isMondayTiebreaker,
+    })),
     entries,
     distributions: buildPickDistributions(gameRows, pickRows),
   };

@@ -11,7 +11,7 @@ import { MobileAppNav } from "./mobile-app-nav";
 import { PwaInstallHomeCard } from "./pwa-install-experience";
 import { TeamCode } from "./team-crest";
 
-type ServerShellView = "home" | "standings";
+type ServerShellView = "home" | "standings" | "race";
 
 function eligibilityActionLabel(account: AccountSummary): string {
   if (!account.profileComplete) return "Finish your player card";
@@ -98,6 +98,9 @@ function DesktopNavigation({ account, isAdmin, active }: { account: AccountSumma
         <Link className="nav-item nav-item--link" href="/picks" prefetch={false}>
           <Icon name="picks" /><span>Picks</span>
         </Link>
+        <Link className={`nav-item nav-item--link${active === "race" ? " nav-item--active" : ""}`} href="/race" prefetch={false} aria-current={active === "race" ? "page" : undefined}>
+          <Icon name="race" /><span>Live race</span>
+        </Link>
         <Link className={`nav-item nav-item--link${active === "standings" ? " nav-item--active" : ""}`} href="/standings" prefetch={false} aria-current={active === "standings" ? "page" : undefined}>
           <Icon name="standings" /><span>Standings</span>
         </Link>
@@ -142,7 +145,7 @@ export function PickemServerShell({
         </Link>
         {children}
       </section>
-      <MobileAppNav active={active === "standings" ? "results" : "home"} isAdmin={isAdmin} />
+      <MobileAppNav active={active === "standings" || active === "race" ? "results" : "home"} isAdmin={isAdmin} />
     </main>
   );
 }

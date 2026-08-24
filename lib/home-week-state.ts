@@ -1,6 +1,6 @@
 import type { PlayerGame } from "@/lib/entries/types";
 
-export type HomeWeekDestination = "picks" | "activity" | "results";
+export type HomeWeekDestination = "picks" | "activity" | "results" | "race";
 
 export type HomeWeekState = {
   actionLabel: string;
@@ -41,8 +41,8 @@ export function getHomeWeekState({
   if (isLocked && hasSubmitted) {
     return gamesHaveStarted
       ? {
-          actionLabel: "Follow live results",
-          destination: "activity",
+          actionLabel: "Follow the live week race",
+          destination: "race",
           lead: "Your official card is locked. Follow each result as games finish.",
           lockedStatusLabel: "Official card locked",
         }
@@ -56,8 +56,8 @@ export function getHomeWeekState({
 
   if (isLocked) {
     return {
-      actionLabel: "View weekly results",
-      destination: "results",
+      actionLabel: "View the live week race",
+      destination: "race",
       lead: "This call sheet is locked. Weekly results will appear as games finish.",
       lockedStatusLabel: "Deadline passed",
     };

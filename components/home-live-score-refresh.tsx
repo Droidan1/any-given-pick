@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 const LIVE_REFRESH_MS = 60_000;
 
-export function HomeLiveScoreRefresh() {
+export function HomeLiveScoreRefresh({ className = "home-live-board__refresh" }: { className?: string }) {
   const router = useRouter();
   const checking = useRef(false);
   const [status, setStatus] = useState("Scores check every minute.");
@@ -38,5 +38,5 @@ export function HomeLiveScoreRefresh() {
     };
   }, [refresh]);
 
-  return <p className="home-live-board__refresh" role="status" aria-live="polite">{status}</p>;
+  return <p className={className} role="status" aria-live="polite">{status}</p>;
 }

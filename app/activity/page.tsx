@@ -232,6 +232,7 @@ export default async function ActivityPage() {
         </Link>
         <div className="account-header__actions">
           <Link href="/" className="text-link" prefetch={false}>Current call sheet</Link>
+          <Link href="/race" className="text-link" prefetch={false}>Live race</Link>
           <Link href="/results" className="text-link" prefetch={false}>Weekly results</Link>
           <Link href="/profile" className="text-link" prefetch={false}>Player card</Link>
           {isAdmin ? <Link href="/admin" className="text-link" prefetch={false}>Admin</Link> : null}
@@ -252,6 +253,7 @@ export default async function ActivityPage() {
         </div>
 
         <nav className="results-hub-nav" aria-label="Results and activity">
+          <Link href="/race" prefetch={false}>Live race</Link>
           <Link href="/results" prefetch={false}>Weekly cards</Link>
           <Link href="/standings" prefetch={false}>Standings</Link>
           <Link className="results-hub-nav__active" href="/activity" aria-current="page">My activity</Link>

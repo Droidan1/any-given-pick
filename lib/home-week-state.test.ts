@@ -49,8 +49,8 @@ describe("getHomeWeekState", () => {
       isLocked: true,
       selectedCount: 16,
     })).toMatchObject({
-      actionLabel: "Follow live results",
-      destination: "activity",
+      actionLabel: "Follow the live week race",
+      destination: "race",
       lockedStatusLabel: "Official card locked",
     });
   });
