@@ -98,6 +98,7 @@ export default async function ResultsPage({
           <Link href="/" className="text-link" prefetch={false}>Current call sheet</Link>
           <Link href="/standings" className="text-link" prefetch={false}>Standings</Link>
           <Link href="/race" className="text-link" prefetch={false}>Live race</Link>
+          <Link href="/trends" className="text-link" prefetch={false}>Pick trends</Link>
           <Link href="/activity" className="text-link" prefetch={false}>My activity</Link>
           {isAdmin ? <Link href="/admin" className="text-link" prefetch={false}>Admin</Link> : null}
           <UserButton />
@@ -116,6 +117,7 @@ export default async function ResultsPage({
 
         <nav className="results-hub-nav" aria-label="Results and activity">
           <Link href="/race" prefetch={false}>Live race</Link>
+          <Link href="/trends" prefetch={false}>Pick trends</Link>
           <Link className="results-hub-nav__active" href="/results" aria-current="page">Weekly cards</Link>
           <Link href="/standings" prefetch={false}>Standings</Link>
           <Link href="/activity" prefetch={false}>My activity</Link>

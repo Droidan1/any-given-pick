@@ -22,6 +22,390 @@
   color-scheme: dark;
 }
 
+/* Pick trends — post-lock field split board */
+.trends-intro h1 {
+  max-width: 9ch;
+}
+
+.trends-board {
+  border-inline: 1px solid var(--sage);
+  border-bottom: 1px solid var(--sage);
+  background: var(--paper-100);
+  color: var(--ink);
+}
+
+.trends-board__header {
+  min-height: 7.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem clamp(1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--sage);
+  background: var(--field-950);
+  color: var(--paper-100);
+}
+
+.trends-board__header p,
+.trends-board__header h2 {
+  margin: 0;
+}
+
+.trends-board__header p,
+.trends-board__header > strong {
+  color: var(--maize);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.trends-board__header h2 {
+  margin-top: 0.25rem;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.trends-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--sage);
+  background: var(--maize);
+}
+
+.trends-summary > div {
+  min-height: 7rem;
+  display: grid;
+  place-content: center;
+  gap: 0.2rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.trends-summary > div + div {
+  border-left: 1px solid var(--field-800);
+}
+
+.trends-summary strong {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.trends-summary span {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.trends-list {
+  display: grid;
+}
+
+.trend-row {
+  display: grid;
+  grid-template-columns: minmax(11rem, 0.8fr) minmax(23rem, 1.6fr) minmax(15rem, 1fr);
+  grid-template-areas:
+    "status teams bar"
+    "status footer footer";
+  border-bottom: 1px solid var(--sage);
+}
+
+.trend-row:last-child {
+  border-bottom: 0;
+}
+
+.trend-row__status {
+  grid-area: status;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 0.4rem;
+  padding: 1.15rem;
+  border-right: 1px solid var(--sage);
+  background: var(--paper-200);
+}
+
+.trend-row__status span,
+.trend-row__status strong {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.trend-row__status b {
+  color: var(--clay-deep);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.trend-row--strong .trend-row__status b {
+  color: var(--field-800);
+}
+
+.trend-row__teams {
+  grid-area: teams;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1rem 1.15rem;
+  border-right: 1px solid var(--sage);
+}
+
+.trend-team {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.trend-team--home {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.trend-team > span {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.trend-team strong {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-team small {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.trend-team--leader strong {
+  color: var(--clay-deep);
+}
+
+.trend-row__at {
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.trend-bar {
+  grid-area: bar;
+  min-height: 3.5rem;
+  display: flex;
+  align-self: center;
+  margin: 1rem 1.15rem;
+  border: 1px solid var(--field-800);
+  overflow: hidden;
+}
+
+.trend-bar > span {
+  min-width: 0;
+}
+
+.trend-bar__away {
+  background: var(--field-800);
+}
+
+.trend-bar__home {
+  border-left: 1px solid var(--field-950);
+  background: var(--maize);
+}
+
+.trend-bar__empty {
+  flex: 1;
+  background: var(--paper-200);
+}
+
+.trend-row__footer {
+  grid-area: footer;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.15rem;
+  border-top: 1px solid var(--sage);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.trend-row__footer > strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.trend-row__footer b {
+  color: var(--clay-deep);
+}
+
+@media (max-width: 58rem) {
+  .trend-row {
+    grid-template-columns: minmax(10rem, 0.7fr) minmax(0, 1.7fr);
+    grid-template-areas:
+      "status teams"
+      "status bar"
+      "status footer";
+  }
+
+  .trend-row__teams {
+    border-right: 0;
+  }
+
+  .trend-bar {
+    min-height: 2.75rem;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 40rem) {
+  .trends-shell .trends-intro {
+    display: none;
+  }
+
+  .trends-intro > svg {
+    display: none;
+  }
+
+  .trends-intro h1 {
+    font-size: 2.8rem;
+  }
+
+  .trends-intro p:last-child {
+    margin-top: 0.75rem;
+    font-size: 0.92rem;
+    line-height: 1.4;
+  }
+
+  .trends-shell .results-hub-nav a {
+    min-height: 3rem;
+    padding: 0.45rem;
+  }
+
+  .trends-shell .results-week-picker {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .trends-shell .results-week-picker label {
+    grid-column: 1 / -1;
+  }
+
+  .trends-shell .results-week-picker select,
+  .trends-shell .results-week-picker button {
+    min-height: 2.75rem;
+  }
+
+  .trends-shell .results-week-picker button {
+    padding-inline: 0.75rem;
+  }
+
+  .trends-week-picker__label {
+    display: none;
+  }
+
+  .trends-board__header {
+    min-height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .trends-board__header h2 {
+    font-size: 2.1rem;
+  }
+
+  .trends-summary > div {
+    min-height: 5.75rem;
+    padding: 0.75rem 0.45rem;
+  }
+
+  .trends-summary strong {
+    font-size: 2rem;
+  }
+
+  .trends-summary span {
+    font-size: 0.82rem;
+    line-height: 1.15;
+  }
+
+  .trend-row {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "status"
+      "teams"
+      "bar"
+      "footer";
+  }
+
+  .trend-row__status {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    padding: 0.75rem 1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--sage);
+  }
+
+  .trend-row__status strong {
+    grid-column: 1;
+  }
+
+  .trend-row__status b {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    text-align: right;
+  }
+
+  .trend-row__teams {
+    padding: 1rem;
+  }
+
+  .trend-team {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .trend-team--home {
+    align-items: flex-end;
+    flex-direction: column-reverse;
+  }
+
+  .trend-team strong {
+    font-size: 1.6rem;
+  }
+
+  .trend-bar {
+    min-height: 2.25rem;
+    margin: 0 1rem 0.75rem;
+  }
+
+  .trend-row__footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
 /* Public beta information, privacy controls, and operational trust */
 .public-info-shell {
   min-height: 100vh;
@@ -5804,7 +6188,7 @@ button:disabled {
 
 .results-hub-nav {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   border-inline: 1px solid var(--sage);
   border-bottom: 1px solid var(--sage);
   background: var(--paper-100);
@@ -6176,7 +6560,7 @@ button:disabled {
 
 .live-race-related {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin: 1.5rem clamp(1rem, 5vw, 4rem) 0;
   border: 1px solid var(--sage);
 }
@@ -6751,6 +7135,10 @@ button:disabled {
     border-top: 1px solid var(--sage);
   }
 
+  .results-hub-nav a:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
   .live-race-heading {
     min-height: auto;
     grid-template-columns: 1fr;
@@ -6948,6 +7336,10 @@ button:disabled {
 
   .live-race-related a:nth-child(n + 3) {
     border-top: 1px solid var(--sage);
+  }
+
+  .live-race-related a:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   .live-race-empty {

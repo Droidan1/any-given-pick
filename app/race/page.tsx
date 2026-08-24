@@ -83,6 +83,7 @@ export default async function LiveRacePage({
 
         <nav className="live-race-related" aria-label="Live race and results">
           <Link href="/race" aria-current="page">Live race</Link>
+          <Link href="/trends" prefetch={false}>Pick trends</Link>
           <Link href="/results" prefetch={false}>Weekly cards</Link>
           <Link href="/standings" prefetch={false}>Standings</Link>
           <Link href="/activity" prefetch={false}>My activity</Link>
