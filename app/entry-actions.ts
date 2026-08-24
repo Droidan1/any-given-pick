@@ -24,6 +24,7 @@ import type {
   EntryMutationInput,
 } from "@/lib/entries/types";
 import { queueAndProcessSubmissionConfirmation } from "@/lib/email/player-notifications";
+import { queueAndProcessSubmissionPush } from "@/lib/push/player-notifications";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 
@@ -390,17 +391,21 @@ export async function submitEntry(
     if (result.ok) {
       after(async () => {
         try {
-          await queueAndProcessSubmissionConfirmation({
+          const notificationInput = {
             userId: appUser.id,
             weekId: parsed.data.weekId,
             submissionKey: parsed.data.submissionKey,
-          });
+          };
+          await Promise.all([
+            queueAndProcessSubmissionConfirmation(notificationInput),
+            queueAndProcessSubmissionPush(notificationInput),
+          ]);
         } catch (error) {
           await reportOperationalIssue({
-            kind: "player_email_queue",
+            kind: "player_notification_queue",
             identity: "picks_submitted",
             severity: "warning",
-            message: "A picks-submitted email could not be queued or processed.",
+            message: "A picks-submitted notification could not be queued or processed.",
             context: { error_type: error instanceof Error ? error.name : "unknown" },
           });
         }

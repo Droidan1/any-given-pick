@@ -127,6 +127,27 @@ export const emailNotificationPreferences = pgTable(
   },
 );
 
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: varchar("endpoint", { length: 2048 }).notNull(),
+    p256dh: varchar("p256dh", { length: 512 }).notNull(),
+    auth: varchar("auth", { length: 256 }).notNull(),
+    userAgent: varchar("user_agent", { length: 256 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("push_subscriptions_endpoint_unique").on(table.endpoint),
+    index("push_subscriptions_user_idx").on(table.userId),
+  ],
+);
+
 export const displayNameHistory = pgTable(
   "display_name_history",
   {
@@ -563,5 +584,48 @@ export const emailDeliveries = pgTable(
       sql`${table.status} in ('pending', 'processing', 'sent', 'failed', 'skipped')`,
     ),
     check("email_deliveries_attempt_count_nonnegative", sql`${table.attemptCount} >= 0`),
+  ],
+);
+
+export const pushDeliveries = pgTable(
+  "push_deliveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subscriptionId: uuid("subscription_id")
+      .notNull()
+      .references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    contestWeekId: uuid("contest_week_id")
+      .references(() => contestWeeks.id, { onDelete: "cascade" }),
+    entryVersionId: uuid("entry_version_id").references(() => entryVersions.id, {
+      onDelete: "set null",
+    }),
+    kind: varchar("kind", { length: 48 }).notNull(),
+    dedupeKey: varchar("dedupe_key", { length: 240 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    providerMessageId: varchar("provider_message_id", { length: 160 }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("push_deliveries_dedupe_key_unique").on(table.dedupeKey),
+    index("push_deliveries_status_attempt_idx").on(table.status, table.nextAttemptAt),
+    index("push_deliveries_user_kind_idx").on(table.userId, table.kind),
+    check(
+      "push_deliveries_kind_check",
+      sql`${table.kind} in ('week_published', 'deadline_approaching', 'picks_submitted', 'results_available')`,
+    ),
+    check(
+      "push_deliveries_status_check",
+      sql`${table.status} in ('pending', 'processing', 'sent', 'failed', 'skipped')`,
+    ),
+    check("push_deliveries_attempt_count_nonnegative", sql`${table.attemptCount} >= 0`),
   ],
 );

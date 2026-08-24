@@ -15,6 +15,7 @@ import { EmailPreferencesForm } from "./email-preferences-form";
 import { PlayerEligibilityPanel, PlayerIdentityForm } from "./profile-form";
 import { ProfilePhotoEditor } from "./profile-photo-editor";
 import { PwaInstallProfileAccess } from "@/components/pwa-install-experience";
+import { PushNotificationSettings } from "./push-notification-settings";
 
 export const metadata: Metadata = {
   title: "Player profile",
@@ -33,6 +34,7 @@ export default async function ProfilePage() {
   ]);
   const accessBlocked = account.accountState !== "active";
   const approvalPending = account.reason === "approval_pending";
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY ?? "";
 
   return (
     <main className="account-shell">
@@ -100,10 +102,11 @@ export default async function ProfilePage() {
               </summary>
               <div className="profile-settings-section__content">
                 <EmailPreferencesForm preferences={emailPreferences} />
+                <PushNotificationSettings vapidPublicKey={vapidPublicKey} />
               </div>
             </details>
 
-            <details className="profile-settings-section" id="email-reminders" open>
+            <details className="profile-settings-section" id="privacy-controls" open>
               <summary>
                 <span>Privacy and account controls</span>
                 <small>{privacyRequest ? "Deletion request in review" : "Review or delete your account data"}</small>
@@ -123,6 +126,7 @@ export default async function ProfilePage() {
               </summary>
               <div className="profile-settings-section__content">
                 <EmailPreferencesForm preferences={emailPreferences} />
+                <PushNotificationSettings vapidPublicKey={vapidPublicKey} />
               </div>
             </details>
             <details className="profile-settings-section">

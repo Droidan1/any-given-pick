@@ -44,7 +44,7 @@ export function EmailPreferencesForm({
   const [state, action, pending] = useActionState(saveEmailPreferencesAction, initialState);
 
   return (
-    <section className="email-preferences-card" id="email-reminders" aria-labelledby="email-reminders-title">
+    <section className="email-preferences-card" id="email-preferences" aria-labelledby="email-reminders-title">
       <div className="email-preferences-card__heading">
         <p className="card-kicker">Sideline updates</p>
         <h2 id="email-reminders-title">Email reminders</h2>

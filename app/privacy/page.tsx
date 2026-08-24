@@ -22,6 +22,7 @@ export default function PrivacyPage() {
           <li><strong>Profile photo:</strong> optional photo uploaded to and hosted by Clerk.</li>
           <li><strong>Contest activity:</strong> drafts, official entry versions, selections, tiebreakers, receipts, scores, and results.</li>
           <li><strong>Email notifications:</strong> your reminder choices and delivery receipts for contest reminders and account-approval messages. The app resolves your verified address from Clerk only when sending and does not copy the address into Postgres delivery records.</li>
+          <li><strong>Push notifications:</strong> if you opt in on a device, the app stores that browser’s encrypted push endpoint, public encryption keys, limited browser identification, and delivery receipts. The endpoint is used only to deliver the four contest alerts described in Profile.</li>
           <li><strong>Operations:</strong> account-access and eligibility audit events, rate-limit counters keyed by a one-way hash, and error records designed not to contain birth dates, photos, email addresses, or pick selections.</li>
         </ul>
       </section>
@@ -32,7 +33,7 @@ export default function PrivacyPage() {
       </section>
       <section>
         <h2>Service providers</h2>
-        <p>Vercel hosts the app, Neon hosts Postgres data, Clerk manages authentication and profile photos, ESPN supplies public schedule and score data, and Resend delivers account-status messages, player reminders, submission receipts, support messages, and operational email. Providers process data only for their service role.</p>
+        <p>Vercel hosts the app, Neon hosts Postgres data, Clerk manages authentication and profile photos, ESPN supplies public schedule and score data, Resend delivers account-status messages and email, and your browser’s push service delivers opted-in device alerts. Providers process data only for their service role.</p>
       </section>
       <section>
         <h2>Retention and deletion</h2>
@@ -42,7 +43,7 @@ export default function PrivacyPage() {
       </section>
       <section>
         <h2>Your choices and requests</h2>
-        <p>You may decline the optional profile photo. You can turn any optional contest email category on or off from <Link href="/profile#email-reminders">Profile → Email reminders</Link>. Approval-request and approval-confirmation messages are transactional account notices and are not controlled by those reminder settings. You may request access, correction, a portable summary, deletion, or an appeal by emailing <a href="mailto:brian@Droidan1.dev?subject=Any%20Given%20Pick%20privacy%20request">brian@Droidan1.dev</a>. We accept authenticated privacy requests for beta users regardless of whether a particular privacy statute applies.</p>
+        <p>You may decline the optional profile photo. You can turn optional email categories on or off and enable or disable Web Push for each device from <Link href="/profile#email-reminders">Profile → Notifications</Link>. Disabling push unsubscribes that browser; account deletion removes all remaining device endpoints. Approval-request and approval-confirmation messages are transactional account notices and are not controlled by those reminder settings. You may request access, correction, a portable summary, deletion, or an appeal by emailing <a href="mailto:brian@Droidan1.dev?subject=Any%20Given%20Pick%20privacy%20request">brian@Droidan1.dev</a>. We accept authenticated privacy requests for beta users regardless of whether a particular privacy statute applies.</p>
       </section>
       <section>
         <h2>Security and children</h2>

@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const authorization = authorizeCronRequest(request);
   if (authorization === "unconfigured") {
     return Response.json(
-      { error: "Email reminders are not configured." },
+      { error: "Scheduled notifications are not configured." },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     });
   } catch {
     return Response.json(
-      { error: "The email reminder cycle failed." },
+      { error: "The scheduled notification cycle failed." },
       { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }

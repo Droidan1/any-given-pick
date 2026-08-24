@@ -759,6 +759,99 @@
   text-transform: uppercase;
 }
 
+.push-notification-card {
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border-top: 1px solid var(--sage);
+  background: var(--paper-100);
+  color: var(--ink);
+}
+
+.push-notification-card__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.push-notification-card__heading p,
+.push-notification-card__heading h2,
+.push-notification-card__intro,
+.push-notification-help {
+  margin: 0;
+}
+
+.push-notification-card__heading h2 {
+  margin-top: 0.35rem;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.push-notification-status {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid currentColor;
+  font-family: var(--font-display);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.push-notification-status--on {
+  background: var(--field-950);
+  color: var(--maize);
+}
+
+.push-notification-status--working {
+  color: var(--clay-deep);
+}
+
+.push-notification-card__intro {
+  max-width: 64ch;
+  margin-top: 0.75rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.push-notification-device-row {
+  min-height: 6rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-block: 1rem;
+  border-block: 1px solid var(--sage);
+}
+
+.push-notification-device-row > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.push-notification-device-row strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.push-notification-device-row span,
+.push-notification-help {
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.push-notification-device-row .review-action,
+.push-notification-device-row .text-action {
+  min-height: 2.75rem;
+}
+
+.push-notification-help {
+  max-width: 64ch;
+  margin-top: 1rem;
+}
+
 .email-preference-option small {
   color: var(--ink-soft);
   font-size: 0.9rem;
@@ -4946,6 +5039,7 @@ button:disabled {
 .profile-settings-section__content > .profile-photo-card,
 .profile-settings-section__content > .profile-card,
 .profile-settings-section__content > .email-preferences-card,
+.profile-settings-section__content > .push-notification-card,
 .profile-settings-section__content > .account-privacy-card,
 .profile-settings-section__content .profile-card,
 .profile-settings-section__content .eligibility-card {
@@ -5831,6 +5925,23 @@ button:disabled {
 }
 
 @media (max-width: 40rem) {
+  .push-notification-card {
+    padding: 1.25rem;
+  }
+
+  .push-notification-card__heading {
+    align-items: center;
+  }
+
+  .push-notification-device-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .push-notification-device-row .review-action,
+  .push-notification-device-row .text-action {
+    width: 100%;
+  }
+
   .home-live-board__games {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -13,6 +13,7 @@ import {
   eligibilityChecks,
   privacyRequests,
   profiles,
+  pushSubscriptions,
   userRoles,
   users,
 } from "@/lib/db/schema";
@@ -145,6 +146,7 @@ export async function completePrivacyRequestAction(
     await transaction.delete(authIdentities).where(eq(authIdentities.userId, locked.userId));
     await transaction.delete(displayNameHistory).where(eq(displayNameHistory.userId, locked.userId));
     await transaction.delete(eligibilityChecks).where(eq(eligibilityChecks.userId, locked.userId));
+    await transaction.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, locked.userId));
     await transaction.delete(userRoles).where(eq(userRoles.userId, locked.userId));
     await transaction
       .update(profiles)

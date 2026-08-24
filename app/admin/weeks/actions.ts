@@ -18,6 +18,11 @@ import {
   queueAvailableResultsEmails,
 } from "@/lib/email/player-notifications";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
+import {
+  processQueuedPlayerPushes,
+  queueAndProcessWeekPublishedPushes,
+  queueAvailableResultsPushes,
+} from "@/lib/push/player-notifications";
 import { runEspnScoreSyncWithHealth } from "@/lib/scores/health";
 import { validatePublishableSlate } from "@/lib/admin/week-publish-policy";
 
@@ -252,13 +257,16 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
         });
       }
       try {
-        await queueAndProcessWeekPublishedEmails(result.weekId);
+        await Promise.all([
+          queueAndProcessWeekPublishedEmails(result.weekId),
+          queueAndProcessWeekPublishedPushes(result.weekId),
+        ]);
       } catch (error) {
         await reportOperationalIssue({
-          kind: "player_email_queue",
+          kind: "player_notification_queue",
           identity: "week_published",
           severity: "warning",
-          message: "A week-published email could not be queued or processed.",
+          message: "A week-published notification could not be queued or processed.",
           context: { error_type: error instanceof Error ? error.name : "unknown" },
         });
       }
@@ -313,14 +321,16 @@ export async function saveFinalScore(input: {
   if (result.ok) {
     after(async () => {
       try {
-        await queueAvailableResultsEmails();
-        await processQueuedPlayerEmails();
+        await Promise.all([
+          queueAvailableResultsEmails().then(() => processQueuedPlayerEmails()),
+          queueAvailableResultsPushes().then(() => processQueuedPlayerPushes()),
+        ]);
       } catch (error) {
         await reportOperationalIssue({
-          kind: "player_email_queue",
+          kind: "player_notification_queue",
           identity: "results_available",
           severity: "warning",
-          message: "A results-available email could not be queued or processed.",
+          message: "A results-available notification could not be queued or processed.",
           context: { error_type: error instanceof Error ? error.name : "unknown" },
         });
       }

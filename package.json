@@ -28,6 +28,7 @@
     "pg": "^8.22.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -35,6 +36,7 @@
     "@types/pg": "^8.20.4",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "@types/web-push": "^3.6.4",
     "checkly": "^8.20.0",
     "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.31.10",
