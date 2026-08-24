@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import type { AccountSummary } from "@/lib/account-types";
@@ -9,6 +10,7 @@ import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
 import { unscopedDraftStorageKeys, userDraftStorageKey } from "@/lib/entries/draft-storage";
 import type { LivePlayerPicks, PlayerGame, PlayerWeek } from "@/lib/entries/types";
 import { getHomeWeekState } from "@/lib/home-week-state";
+import { shouldRefreshUpcomingOdds } from "@/lib/scores/odds-refresh";
 import type { StandingsSnapshot } from "@/lib/standings/types";
 import { BrandLockup } from "./brand-lockup";
 import { DeadlineCountdown } from "./deadline-countdown";
@@ -119,6 +121,7 @@ export function PickemApp({
   standings: StandingsSnapshot | null;
   initialView: "home" | "picks" | "standings";
 }) {
+  const router = useRouter();
   const [view, setView] = useState<View>(initialView);
   const [picks, setPicks] = useState<Picks>(() =>
     picksForCurrentSlate(week?.games ?? [], week?.entry?.draftPicks ?? {}),
@@ -159,6 +162,7 @@ export function PickemApp({
   const games = week?.games ?? [];
   const canParticipate = hasParticipationAccess(liveAccount);
   const isLocked = (week?.isLocked ?? true) || deadlineLockedWeekId === activeWeekId;
+  const shouldCheckOdds = shouldRefreshUpcomingOdds(games);
 
   const selectView = (nextView: View) => {
     if (nextView !== view) {
@@ -210,6 +214,27 @@ export function PickemApp({
       document.removeEventListener("visibilitychange", resumeRefresh);
     };
   }, [activeWeekId, isLocked, view]);
+
+  useEffect(() => {
+    if (!activeWeekId || view !== "picks" || isLocked || !shouldCheckOdds) return;
+    let active = true;
+
+    const refreshOdds = async () => {
+      try {
+        const response = await fetch("/api/activity/scores", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json() as { updatedGames?: number };
+        if (active && (result.updatedGames ?? 0) > 0) router.refresh();
+      } catch {
+        // Keep the stored slate usable when the optional reference-line feed is unavailable.
+      }
+    };
+
+    void refreshOdds();
+    return () => {
+      active = false;
+    };
+  }, [activeWeekId, isLocked, router, shouldCheckOdds, view]);
 
   useEffect(() => {
     const retryAfterReconnect = () => {
