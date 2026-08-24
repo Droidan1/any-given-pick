@@ -5386,6 +5386,27 @@ button:disabled {
 }
 
 @media (max-width: 40rem) {
+  .home-live-board__games {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-live-game {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.5rem;
+    padding: 0.65rem 0.7rem;
+  }
+
+  .home-live-game > span {
+    min-width: 0;
+    padding: 0.3rem 0.35rem;
+  }
+
+  .home-live-game > small {
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+  }
+
   .pwa-install-dialog {
     width: calc(100% - 0.5rem);
     max-height: calc(100dvh - 0.5rem);
