@@ -9,12 +9,14 @@ import { MobileAppNav } from "@/components/mobile-app-nav";
 import { ScoreRefreshControl } from "@/components/score-refresh-control";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { TeamCode } from "@/components/team-crest";
+import { WeeklyRecapCard } from "@/components/weekly-recap-card";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
 import { getWeeklyResults, type RevealedEntry, type RevealedPick } from "@/lib/results/service";
 import { getScoreSyncHealth } from "@/lib/scores/health";
 import { hasScoreRefreshWindow, nextScoreRefreshWindow } from "@/lib/scores/refresh-window";
+import { buildWeeklyRecap } from "@/lib/recap/rules";
 
 export const metadata: Metadata = {
   title: "Weekly results",
@@ -85,6 +87,7 @@ export default async function ResultsPage({
   ]);
   const scoreGames = results.entries.flatMap((entry) => entry.picks);
   const distributionByGame = new Map(results.distributions.map((distribution) => [distribution.gameId, distribution]));
+  const weeklyRecap = buildWeeklyRecap(results);
   const shouldPollScores = hasScoreRefreshWindow(scoreGames);
   const nextAutomaticCheckAt = nextScoreRefreshWindow(scoreGames);
 
@@ -144,6 +147,8 @@ export default async function ResultsPage({
             nextAutomaticCheckAt={nextAutomaticCheckAt}
           />
         ) : null}
+
+        {weeklyRecap ? <WeeklyRecapCard recap={weeklyRecap} /> : null}
 
         {results.revealStatus === "no_week" ? (
           <section className="results-state" aria-labelledby="results-empty-title">

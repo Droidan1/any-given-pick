@@ -14,6 +14,7 @@ export type IconName =
   | "check"
   | "arrow"
   | "install"
+  | "share"
   | "whistle";
 
 export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGElement>) {
@@ -41,6 +42,7 @@ export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGEle
     check: <path d="m5 12 4 4L19 6" />,
     arrow: <path d="M5 12h14M14 7l5 5-5 5" />,
     install: <><path d="M12 3v11M8 10l4 4 4-4" /><path d="M5 16v4h14v-4" /></>,
+    share: <><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5" /></>,
     whistle: <><circle cx="9" cy="13" r="5" /><path d="M13 10h7l-2 5h-5M5 9 3 5h7l2 4" /></>,
   };
 
