@@ -1036,6 +1036,26 @@
   gap: 0.2rem;
 }
 
+.admin-pick-call__teams,
+.results-pick__teams,
+.season-import-game__teams {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.admin-pick-call__teams > b,
+.results-pick__teams > b,
+.season-import-game__teams > b {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.admin-pick-call > span:nth-child(2) .team-code {
+  margin-top: 0.2rem;
+}
+
 .admin-pick-call > span:nth-child(2) small {
   font-family: var(--font-display);
   font-weight: 700;
@@ -1644,6 +1664,13 @@
   gap: 0.4rem;
 }
 
+.activity-team__identity {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .activity-team__call {
   display: flex;
   align-items: center;
@@ -1671,6 +1698,10 @@
 .activity-team--selected {
   background: var(--maize);
   color: var(--field-950);
+}
+
+.activity-team--selected .team-crest {
+  border-color: var(--field-800);
 }
 
 .activity-outcome {
@@ -1938,6 +1969,57 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.team-crest {
+  --team-crest-size: 2.375rem;
+  width: var(--team-crest-size);
+  height: var(--team-crest-size);
+  flex: 0 0 var(--team-crest-size);
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--sage);
+  background: var(--paper-100);
+  color: var(--field-950);
+  vertical-align: middle;
+}
+
+.team-crest--xs {
+  --team-crest-size: 1.5rem;
+}
+
+.team-crest--sm {
+  --team-crest-size: 1.875rem;
+}
+
+.team-crest--lg {
+  --team-crest-size: 2.875rem;
+}
+
+.team-crest img {
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+}
+
+.team-crest__fallback {
+  font-family: var(--font-display);
+  font-size: 0.65em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.team-code {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.team-code > strong {
+  font-family: var(--font-display);
+  line-height: 1;
 }
 
 button,
@@ -2481,6 +2563,24 @@ button:disabled {
   font-size: 1rem;
 }
 
+.scoreboard-matchup-label {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.scoreboard-matchup-label > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.scoreboard-matchup-label > b {
+  color: var(--sage);
+  font-size: 0.75rem;
+}
+
 .scoreboard-entry-table thead th > span:not(.scoreboard-odds) {
   margin-top: 0.2rem;
   color: var(--sage);
@@ -2588,7 +2688,7 @@ button:disabled {
 .scoreboard-team-choice {
   position: relative;
   min-width: 0;
-  min-height: 4.25rem;
+  min-height: 5.25rem;
   display: grid;
   place-items: center;
   align-content: center;
@@ -2650,10 +2750,16 @@ button:disabled {
   color: var(--field-800);
 }
 
+.scoreboard-team-choice--selected .team-crest {
+  border-color: var(--field-800);
+}
+
 .scoreboard-saved-pick {
   min-height: 3.35rem;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   border: 1px solid var(--sage);
   color: var(--sage);
   font-family: var(--font-display);
@@ -2665,6 +2771,10 @@ button:disabled {
   border-color: var(--field-800);
   background: var(--field-800);
   color: var(--paper-100);
+}
+
+.scoreboard-saved-pick--selected .team-crest {
+  border-color: var(--paper-100);
 }
 
 .matchup-day-group > h2 {
@@ -3187,6 +3297,12 @@ button:disabled {
 
 .review-list strong {
   overflow-wrap: anywhere;
+}
+
+.review-team-call {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 .review-list button {
@@ -5493,7 +5609,7 @@ button:disabled {
   }
 
   .scoreboard-team-choice {
-    min-height: 4.1rem;
+    min-height: 5.1rem;
   }
 
   .scoreboard-team-choice > span {
@@ -5976,6 +6092,10 @@ button:disabled {
   gap: 0.2rem;
 }
 
+.results-pick__matchup.results-pick__teams {
+  display: flex;
+}
+
 .results-pick small {
   color: var(--ink-soft);
   font-size: 0.82rem;
@@ -5991,6 +6111,10 @@ button:disabled {
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+}
+
+.results-pick__selection .team-code {
+  margin-top: 0.2rem;
 }
 
 .results-pick__outcome {

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { TeamCode } from "@/components/team-crest";
 import {
   formatWeekName,
   parseScheduleText,
@@ -406,8 +407,8 @@ export function AdminWeekBuilder({ initialWeek }: { initialWeek: InitialWeek | n
             {preview.games.map((game) => (
               <div className="admin-game-row" role="row" key={`${game.kickoffAt}-${game.awayTeamCode}-${game.homeTeamCode}`}>
                 <time role="cell" dateTime={game.kickoffAt}>{formatKickoff(game.kickoffAt)}</time>
-                <span role="cell"><strong>{game.awayTeamCode}</strong><small>{game.awayTeamName}</small></span>
-                <span role="cell"><strong>{game.homeTeamCode}</strong><small>{game.homeTeamName}</small></span>
+                <span role="cell"><TeamCode code={game.awayTeamCode} size="sm" /><small>{game.awayTeamName}</small></span>
+                <span role="cell"><TeamCode code={game.homeTeamCode} size="sm" /><small>{game.homeTeamName}</small></span>
                 <span role="cell" className={game.isMondayTiebreaker ? "admin-tiebreaker" : ""}>
                   {game.isMondayTiebreaker ? (seasonPhase === "preseason" ? "Tiebreaker total" : "Monday total") : "Standard"}
                 </span>

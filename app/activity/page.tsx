@@ -7,6 +7,7 @@ import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
 import { ScoreRefreshControl } from "@/components/score-refresh-control";
+import { TeamCrest } from "@/components/team-crest";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
@@ -158,7 +159,7 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
                         </span>
                         <span className={`activity-team${awaySelected ? " activity-team--selected" : ""}`}>
                           <span className="activity-team__line">
-                            <strong>{pick.awayTeamCode}</strong>
+                            <span className="activity-team__identity"><TeamCrest code={pick.awayTeamCode} size="sm" /><strong>{pick.awayTeamCode}</strong></span>
                             <span className="activity-team__call">
                               {pick.awayScore !== null ? <b>{pick.awayScore}</b> : null}
                               {awaySelected ? <Icon name="check" /> : null}
@@ -169,7 +170,7 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
                         <span className="activity-matchup__at">@</span>
                         <span className={`activity-team${homeSelected ? " activity-team--selected" : ""}`}>
                           <span className="activity-team__line">
-                            <strong>{pick.homeTeamCode}</strong>
+                            <span className="activity-team__identity"><TeamCrest code={pick.homeTeamCode} size="sm" /><strong>{pick.homeTeamCode}</strong></span>
                             <span className="activity-team__call">
                               {pick.homeScore !== null ? <b>{pick.homeScore}</b> : null}
                               {homeSelected ? <Icon name="check" /> : null}

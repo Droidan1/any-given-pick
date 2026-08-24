@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
+import { TeamCode } from "@/components/team-crest";
 import { getAdminPicksBoard, type AdminPlayerPickCard } from "@/lib/admin/picks";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
@@ -176,8 +177,8 @@ export default async function AdminPicksPage({
                     <div className="admin-player-picks__calls">
                       {player.entry.picks.map((pick) => (
                         <div className={`admin-pick-call admin-pick-call--${pick.outcome}`} key={pick.gameId}>
-                          <span><strong>{pick.awayTeamCode} @ {pick.homeTeamCode}</strong><small>{scoreLabel(pick)}</small></span>
-                          <span><small>Selected</small><strong>{pick.selectedTeamCode} · {pick.selectedTeamName}</strong></span>
+                          <span><strong className="admin-pick-call__teams"><TeamCode code={pick.awayTeamCode} size="xs" /><b>@</b><TeamCode code={pick.homeTeamCode} size="xs" /></strong><small>{scoreLabel(pick)}</small></span>
+                          <span><small>Selected</small><TeamCode code={pick.selectedTeamCode} size="sm" /><strong>{pick.selectedTeamName}</strong></span>
                           <b>{resultLabel(pick)}</b>
                         </div>
                       ))}

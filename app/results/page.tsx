@@ -8,6 +8,7 @@ import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
 import { ScoreRefreshControl } from "@/components/score-refresh-control";
 import { PlayerAvatar } from "@/components/player-avatar";
+import { TeamCode } from "@/components/team-crest";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
@@ -185,13 +186,13 @@ export default async function ResultsPage({
                         return (
                         <div className={`results-pick results-pick--${pick.outcome}`} key={pick.gameId}>
                           <span className="results-pick__matchup">
-                            <strong>{pick.awayTeamCode} @ {pick.homeTeamCode}</strong>
+                            <strong className="results-pick__teams"><TeamCode code={pick.awayTeamCode} size="xs" /><b>@</b><TeamCode code={pick.homeTeamCode} size="xs" /></strong>
                             <small>{scoreLabel(pick)}</small>
                             {distribution && distribution.totalPicks > 0 ? (
                               <small className="results-pick__distribution">All cards: {distribution.awayTeamCode} {distribution.awayPercent}% · {distribution.homeTeamCode} {distribution.homePercent}%</small>
                             ) : null}
                           </span>
-                          <span className="results-pick__selection"><small>Selected</small><strong>{pick.selectedTeamCode} · {pick.selectedTeamName}</strong></span>
+                          <span className="results-pick__selection"><small>Selected</small><TeamCode code={pick.selectedTeamCode} size="sm" /><strong>{pick.selectedTeamName}</strong></span>
                           <span className="results-pick__outcome">{resultLabel(pick)}</span>
                         </div>
                         );

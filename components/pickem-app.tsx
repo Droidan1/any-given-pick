@@ -16,6 +16,7 @@ import { Icon, type IconName, RouteSketch } from "./icons";
 import { MobileAppNav } from "./mobile-app-nav";
 import { PwaInstallHomeCard } from "./pwa-install-experience";
 import { PlayerAvatar } from "./player-avatar";
+import { TeamCode, TeamCrest } from "./team-crest";
 
 type View = "home" | "picks" | "standings";
 type Picks = Record<string, string>;
@@ -714,7 +715,11 @@ function PicksView(props: PicksViewProps) {
                     : null;
                   return (
                     <th scope="col" key={game.id}>
-                      <strong>{game.away.abbreviation} @ {game.home.abbreviation}</strong>
+                      <strong className="scoreboard-matchup-label">
+                        <span><TeamCrest code={game.away.abbreviation} size="xs" />{game.away.abbreviation}</span>
+                        <b>@</b>
+                        <span><TeamCrest code={game.home.abbreviation} size="xs" />{game.home.abbreviation}</span>
+                      </strong>
                       <span>{game.day} · {game.time}</span>
                       {game.odds ? (
                         <span className="scoreboard-odds">
@@ -760,6 +765,7 @@ function PicksView(props: PicksViewProps) {
                               disabled={!props.canParticipate || props.isLocked || props.isPending}
                             >
                               {isSelected ? <Icon name="check" /> : null}
+                              <TeamCrest code={team.abbreviation} size="sm" />
                               <span>{team.abbreviation}</span>
                               <small>{moneyline === null ? "ML —" : `ML ${formatMoneyline(moneyline)}`}</small>
                             </button>
@@ -784,7 +790,7 @@ function PicksView(props: PicksViewProps) {
                       return (
                         <td key={game.id}>
                           <span className={`scoreboard-saved-pick${validSelection ? " scoreboard-saved-pick--selected" : ""}`}>
-                            {validSelection ? selection : "—"}
+                            {validSelection ? <><TeamCrest code={selection} size="xs" />{selection}</> : "—"}
                           </span>
                         </td>
                       );
@@ -960,7 +966,10 @@ function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, on
       <ol className="review-list">
         {games.map((game) => (
           <li key={game.id}>
-            <span><small>{game.away.abbreviation} @ {game.home.abbreviation} · {game.day} {game.time}</small><strong>{selectedTeamName(game, picks[game.id])}</strong></span>
+            <span>
+              <small>{game.away.abbreviation} @ {game.home.abbreviation} · {game.day} {game.time}</small>
+              <strong className="review-team-call">{picks[game.id] ? <TeamCode code={picks[game.id]} size="xs" /> : null}<span>{selectedTeamName(game, picks[game.id])}</span></strong>
+            </span>
             <button type="button" onClick={() => editGame(game.id)}>Edit pick</button>
           </li>
         ))}
@@ -981,7 +990,7 @@ function Receipt({ receipt, games, picks, mondayTotal, tiebreakerLabel, onEdit, 
       <p className="review-count">{games.length} official matchup {games.length === 1 ? "call" : "calls"}</p>
       <ol className="review-list review-list--receipt">
         {games.map((game) => (
-          <li key={game.id}><span><small>{game.away.abbreviation} @ {game.home.abbreviation}</small><strong>{selectedTeamName(game, picks[game.id])}</strong></span></li>
+          <li key={game.id}><span><small>{game.away.abbreviation} @ {game.home.abbreviation}</small><strong className="review-team-call">{picks[game.id] ? <TeamCode code={picks[game.id]} size="xs" /> : null}<span>{selectedTeamName(game, picks[game.id])}</span></strong></span></li>
         ))}
       </ol>
       <p>{tiebreakerLabel} Total <strong>{mondayTotal ?? "—"}</strong></p>

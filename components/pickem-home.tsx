@@ -9,6 +9,7 @@ import { Icon, RouteSketch } from "./icons";
 import { HomeLiveScoreRefresh } from "./home-live-score-refresh";
 import { MobileAppNav } from "./mobile-app-nav";
 import { PwaInstallHomeCard } from "./pwa-install-experience";
+import { TeamCode } from "./team-crest";
 
 type ServerShellView = "home" | "standings";
 
@@ -52,11 +53,11 @@ function LiveScoreBoard({ week }: { week: PlayerWeek }) {
           return (
             <div className="home-live-game" key={game.id}>
               <span className={selection === game.away.abbreviation ? "home-live-game__picked" : undefined}>
-                <strong>{game.away.abbreviation}</strong>
+                <TeamCode code={game.away.abbreviation} size="sm" />
                 <b>{game.awayScore ?? "—"}</b>
               </span>
               <span className={selection === game.home.abbreviation ? "home-live-game__picked" : undefined}>
-                <strong>{game.home.abbreviation}</strong>
+                <TeamCode code={game.home.abbreviation} size="sm" />
                 <b>{game.homeScore ?? "—"}</b>
               </span>
               <small>
