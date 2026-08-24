@@ -6,9 +6,11 @@ import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
+import { PlayerAchievements } from "@/components/player-achievements";
 import { ScoreRefreshControl } from "@/components/score-refresh-control";
 import { TeamCrest } from "@/components/team-crest";
 import { hasAdminRole } from "@/lib/auth/admin";
+import { buildPlayerAchievements } from "@/lib/achievements/rules";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
 import {
@@ -223,6 +225,7 @@ export default async function ActivityPage() {
   const scoreGames = activity.cards.flatMap((card) => card.picks);
   const shouldPollScores = hasScoreRefreshWindow(scoreGames);
   const nextAutomaticCheckAt = nextScoreRefreshWindow(scoreGames);
+  const achievements = buildPlayerAchievements(activity.cards);
 
   return (
     <main className="account-shell activity-shell">
@@ -266,6 +269,8 @@ export default async function ActivityPage() {
           <div><strong>{activity.officialCardCount}</strong><span>Official</span></div>
           <div><strong>{activity.draftCardCount}</strong><span>Draft only</span></div>
         </div>
+
+        <PlayerAchievements data={achievements} />
 
         <section className="activity-section" aria-labelledby="current-card-title">
           <div className="activity-section__header">

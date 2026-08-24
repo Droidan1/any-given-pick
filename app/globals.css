@@ -1758,6 +1758,220 @@
   text-transform: uppercase;
 }
 
+/* Player achievements — a ruled season patch ledger */
+.achievement-board {
+  margin-top: 3rem;
+  border: 1px solid var(--sage);
+  background: var(--paper-100);
+  color: var(--ink);
+}
+
+.achievement-board__header {
+  min-height: 8.5rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.4rem clamp(1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--sage);
+  background: var(--field-950);
+  color: var(--paper-100);
+}
+
+.achievement-board__mark {
+  width: 4.75rem;
+  height: 5.25rem;
+  display: grid;
+  place-items: center;
+  background: var(--maize);
+  color: var(--field-950);
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%);
+}
+
+.achievement-board__mark svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.achievement-board__header h2,
+.achievement-board__header p {
+  margin: 0;
+}
+
+.achievement-board__header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.achievement-board__header p {
+  max-width: 52ch;
+  margin-top: 0.45rem;
+  color: var(--paper-200);
+  line-height: 1.4;
+}
+
+.achievement-board__header > strong {
+  display: grid;
+  justify-items: end;
+  color: var(--maize);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.achievement-board__header > strong b {
+  font-size: 2.75rem;
+  line-height: 0.9;
+}
+
+.achievement-ledger {
+  display: grid;
+}
+
+.achievement-row {
+  min-height: 8.75rem;
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 2rem;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 1.1rem clamp(1rem, 4vw, 2.5rem);
+  background: var(--paper-200);
+}
+
+.achievement-row + .achievement-row {
+  border-top: 1px solid var(--sage);
+}
+
+.achievement-row--earned {
+  background: var(--paper-100);
+}
+
+.achievement-patch {
+  width: 5.5rem;
+  height: 6rem;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  border: 1px solid var(--sage);
+  background: color-mix(in oklch, var(--paper-100) 78%, var(--sage));
+  color: var(--ink-soft);
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%);
+}
+
+.achievement-row--earned .achievement-patch {
+  border-color: var(--maize-deep);
+  background: var(--maize);
+  color: var(--field-950);
+}
+
+.achievement-patch small,
+.achievement-patch strong {
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.achievement-patch small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.achievement-patch strong {
+  margin-top: 0.2rem;
+  font-size: 2.2rem;
+}
+
+.achievement-row__copy {
+  min-width: 0;
+}
+
+.achievement-row__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.achievement-row__title h3,
+.achievement-row__title span,
+.achievement-row__copy p,
+.achievement-row__copy > small {
+  margin: 0;
+}
+
+.achievement-row__title h3 {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.achievement-row__title span {
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.achievement-row--earned .achievement-row__title span {
+  color: var(--clay-deep);
+}
+
+.achievement-row__copy p {
+  margin-top: 0.35rem;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.achievement-progress {
+  position: relative;
+  height: 0.65rem;
+  margin-top: 0.8rem;
+  overflow: hidden;
+  border: 1px solid var(--sage);
+  background: var(--paper-100);
+}
+
+.achievement-progress::after {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(90deg, transparent 19%, var(--sage) 20%, transparent 21%, transparent 39%, var(--sage) 40%, transparent 41%, transparent 59%, var(--sage) 60%, transparent 61%, transparent 79%, var(--sage) 80%, transparent 81%);
+  content: "";
+  pointer-events: none;
+}
+
+.achievement-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--sage);
+}
+
+.achievement-row--earned .achievement-progress > span {
+  background: var(--maize);
+}
+
+.achievement-row__copy > small {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.achievement-row > svg {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--ink-soft);
+}
+
+.achievement-row--earned > svg {
+  color: var(--clay-deep);
+}
+
 .activity-section {
   margin-top: 4rem;
 }
@@ -2327,6 +2541,85 @@
 
   .activity-scoreboard span {
     font-size: 0.7rem;
+  }
+
+  .achievement-board {
+    margin-top: 1.5rem;
+  }
+
+  .achievement-board__header {
+    min-height: 0;
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    gap: 0.8rem;
+    padding: 1rem;
+  }
+
+  .achievement-board__mark {
+    width: 3.25rem;
+    height: 3.75rem;
+  }
+
+  .achievement-board__mark svg {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+
+  .achievement-board__header h2 {
+    font-size: 2rem;
+  }
+
+  .achievement-board__header p {
+    margin-top: 0.3rem;
+    font-size: 0.86rem;
+  }
+
+  .achievement-board__header > strong {
+    grid-column: 1 / -1;
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+    justify-items: start;
+    align-items: baseline;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--field-800);
+    font-size: 0.8rem;
+  }
+
+  .achievement-board__header > strong b {
+    font-size: 1.8rem;
+  }
+
+  .achievement-row {
+    min-height: 0;
+    grid-template-columns: 4rem minmax(0, 1fr);
+    gap: 0.85rem;
+    padding: 1rem;
+  }
+
+  .achievement-patch {
+    width: 4rem;
+    height: 4.6rem;
+  }
+
+  .achievement-patch strong {
+    font-size: 1.65rem;
+  }
+
+  .achievement-row__title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .achievement-row__title h3 {
+    font-size: 1.4rem;
+  }
+
+  .achievement-row__copy p {
+    font-size: 0.86rem;
+  }
+
+  .achievement-row > svg {
+    display: none;
   }
 
   .activity-section {

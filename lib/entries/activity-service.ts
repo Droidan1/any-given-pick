@@ -49,6 +49,7 @@ export type ActivityCard = {
   lossCount: number;
   tieCount: number;
   picks: ActivityPick[];
+  officialPicks: ActivityPick[];
 };
 
 export type PlayerActivity = {
@@ -266,8 +267,8 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       stateLabel = "Not submitted";
     }
 
-    const picks = weekGames.map((game): ActivityPick => {
-      const selectedTeamCode = displayedPicks[game.id] ?? null;
+    const buildPicks = (selections: Record<string, string>) => weekGames.map((game): ActivityPick => {
+      const selectedTeamCode = selections[game.id] ?? null;
       const selectedTeamName = selectedTeamCode === game.awayTeamCode
         ? game.awayTeamName
         : selectedTeamCode === game.homeTeamCode
@@ -295,6 +296,8 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
         }),
       };
     });
+    const picks = buildPicks(displayedPicks);
+    const officialSnapshotPicks = latestVersion ? buildPicks(officialPicks) : [];
 
     return {
       id: row.entryId,
@@ -317,6 +320,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       lossCount: picks.filter((pick) => pick.outcome === "lost").length,
       tieCount: picks.filter((pick) => pick.outcome === "tie").length,
       picks,
+      officialPicks: officialSnapshotPicks,
     };
   });
 
