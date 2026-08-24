@@ -106,6 +106,13 @@
       "when": 1786972708968,
       "tag": "0014_white_grey_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787577070491,
+      "tag": "0015_colossal_living_lightning",
+      "breakpoints": true
     }
   ]
 }

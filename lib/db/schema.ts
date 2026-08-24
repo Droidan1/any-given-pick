@@ -70,6 +70,11 @@ export const privacyRequestStatusEnum = pgEnum("privacy_request_status", [
   "completed",
 ]);
 
+export const commissionerAnnouncementStatusEnum = pgEnum(
+  "commissioner_announcement_status",
+  ["draft", "published", "archived"],
+);
+
 export const users = pgTable(
   "users",
   {
@@ -214,6 +219,35 @@ export const auditEvents = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("audit_events_target_created_idx").on(table.targetUserId, table.createdAt)],
+);
+
+export const commissionerAnnouncements = pgTable(
+  "commissioner_announcements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: varchar("title", { length: 80 }).notNull(),
+    body: varchar("body", { length: 500 }).notNull(),
+    status: commissionerAnnouncementStatusEnum("status").notNull().default("draft"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    updatedByUserId: uuid("updated_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("commissioner_announcements_status_starts_idx").on(table.status, table.startsAt),
+    check(
+      "commissioner_announcements_expiry_after_start_check",
+      sql`${table.expiresAt} is null or ${table.expiresAt} > ${table.startsAt}`,
+    ),
+  ],
 );
 
 export const providerSyncStates = pgTable(

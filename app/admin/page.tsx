@@ -12,6 +12,8 @@ import { requireAppUser } from "@/lib/auth/app-user";
 import { isUserApprovalRequired } from "@/lib/auth/user-approval";
 import { evaluateScoreSyncWatchdog, type ScoreSyncStatus } from "@/lib/scores/health";
 import { listActiveOperationalAlerts } from "@/lib/monitoring/operational-alerts";
+import { listCommissionerAnnouncements } from "@/lib/announcements/service";
+import { CommissionerAnnouncementManager } from "./commissioner-announcement-manager";
 import { PrivacyRequestList } from "./privacy-request-list";
 import { UserAccessList } from "./user-access-list";
 
@@ -73,11 +75,12 @@ export default async function AdminSettingsPage() {
     );
   }
 
-  const [userDirectory, scoreHealth, privacyRequests, operationalAlerts] = await Promise.all([
+  const [userDirectory, scoreHealth, privacyRequests, operationalAlerts, announcements] = await Promise.all([
     listAdminUsers(appUser.id),
     evaluateScoreSyncWatchdog().then((result) => result.health),
     listPendingPrivacyRequests(),
     listActiveOperationalAlerts(),
+    listCommissionerAnnouncements(),
   ]);
   const approvalRequired = isUserApprovalRequired();
   const alertEmailConfigured = Boolean(process.env.RESEND_API_KEY);
@@ -109,6 +112,8 @@ export default async function AdminSettingsPage() {
             Approval gate {approvalRequired ? "on" : "off"}
           </span>
         </div>
+
+        <CommissionerAnnouncementManager announcements={announcements} />
 
         <UserAccessList directory={userDirectory} />
 

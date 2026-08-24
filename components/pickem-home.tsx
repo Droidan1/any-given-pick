@@ -10,6 +10,7 @@ import { HomeLiveScoreRefresh } from "./home-live-score-refresh";
 import { MobileAppNav } from "./mobile-app-nav";
 import { PwaInstallHomeCard } from "./pwa-install-experience";
 import { TeamCode } from "./team-crest";
+import type { CommissionerAnnouncement } from "@/lib/announcements/service";
 
 type ServerShellView = "home" | "standings" | "race";
 
@@ -85,6 +86,19 @@ function AccountDock({ account, compact = false }: { account: AccountSummary; co
   );
 }
 
+function CommissionerAnnouncementNotice({ announcement }: { announcement: CommissionerAnnouncement }) {
+  return (
+    <aside className="home-announcement" aria-labelledby={`home-announcement-${announcement.id}`}>
+      <span className="home-announcement__mark"><Icon name="whistle" /></span>
+      <div>
+        <h2 id={`home-announcement-${announcement.id}`}>{announcement.title}</h2>
+        <p>{announcement.body}</p>
+      </div>
+      <strong>Commissioner note</strong>
+    </aside>
+  );
+}
+
 function DesktopNavigation({ account, isAdmin, active }: { account: AccountSummary; isAdmin: boolean; active: ServerShellView }) {
   return (
     <aside className="side-nav" aria-label="Primary navigation">
@@ -154,10 +168,12 @@ export function PickemHome({
   account,
   week,
   isAdmin,
+  announcement,
 }: {
   account: AccountSummary;
   week: PlayerWeek | null;
   isAdmin: boolean;
+  announcement: CommissionerAnnouncement | null;
 }) {
   const selectedCount = week
     ? week.games.filter((game) => Boolean(week.entry?.draftPicks[game.id])).length
@@ -173,6 +189,7 @@ export function PickemHome({
         <p className="week-label">Coach&apos;s call sheet</p>
         <h1>The next slate is being drawn up.</h1>
         <p className="lead">There is no published week yet. Once the commissioner publishes one, the official matchups will appear here automatically.</p>
+        {announcement ? <CommissionerAnnouncementNotice announcement={announcement} /> : null}
         <div className="empty-state"><Icon name="picks" /><h2>Check back soon</h2><p>Your player account is ready for kickoff.</p></div>
         <PwaInstallHomeCard />
       </section>
@@ -203,6 +220,7 @@ export function PickemHome({
         <p className="week-label">{week.label} Pick&apos;em</p>
         <h1>One sheet. {week.games.length} calls.</h1>
         <p className="lead">{homeState.lead}</p>
+        {announcement ? <CommissionerAnnouncementNotice announcement={announcement} /> : null}
         {!week.isLocked ? (
           <DeadlineCountdown
             deadline={week.entryDeadline}
