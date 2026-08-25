@@ -22,8 +22,10 @@ export type PlayerEntry = {
   id: string;
   status: "draft" | "submitted" | "locked" | "scored" | "disqualified";
   draftPicks: Record<string, string>;
+  draftRevision: number;
   officialPicks: Record<string, string>;
   mondayPrediction: number | null;
+  officialMondayPrediction: number | null;
   currentVersionNumber: number;
   submittedAt: string | null;
   updatedAt: string;
@@ -54,6 +56,7 @@ export type EntryMutationInput = {
   weekId: string;
   picks: Record<string, string>;
   mondayPrediction: number | null;
+  baseDraftRevision: number;
 };
 
 export type EntryActionResult = {
@@ -68,13 +71,24 @@ export type EntryActionResult = {
     | "ineligible"
     | "incomplete"
     | "invalid_pick"
+    | "draft_conflict"
     | "rate_limited"
     | "server_error";
   message: string;
   syncedAt?: string;
+  draftRevision?: number;
+  serverDraft?: {
+    picks: Record<string, string>;
+    mondayPrediction: number | null;
+    draftRevision: number;
+    updatedAt: string;
+  };
   receipt?: {
     versionNumber: number;
     committedAt: string;
     action: "submit" | "edit";
+    officialPicks: Record<string, string>;
+    mondayPrediction: number;
+    draftRevision: number;
   };
 };

@@ -7,9 +7,16 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import type { AccountSummary } from "@/lib/account-types";
 import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
-import { unscopedDraftStorageKeys, userDraftStorageKey } from "@/lib/entries/draft-storage";
+import {
+  submissionAttemptForSignature,
+  shouldRestoreLocalDraft,
+  unscopedDraftStorageKeys,
+  userDraftStorageKey,
+  type SubmissionAttempt,
+} from "@/lib/entries/draft-storage";
 import type { LivePlayerPicks, PlayerGame, PlayerWeek } from "@/lib/entries/types";
 import { getHomeWeekState } from "@/lib/home-week-state";
+import { hasUnsubmittedOfficialEdits } from "@/lib/entries/official-receipt";
 import { shouldRefreshUpcomingOdds } from "@/lib/scores/odds-refresh";
 import type { StandingsSnapshot } from "@/lib/standings/types";
 import { BrandLockup } from "./brand-lockup";
@@ -26,6 +33,9 @@ type ReceiptData = {
   versionNumber: number;
   committedAt: string;
   action: "submit" | "edit";
+  officialPicks: Picks;
+  mondayPrediction: number;
+  draftRevision: number;
 };
 type DraftSyncState = {
   state: "idle" | "local" | "syncing" | "synced" | "error";
@@ -36,6 +46,7 @@ type MobileAlertState = {
   message: string;
   tone: "warning" | "error";
 } | null;
+type DraftConflictState = NonNullable<Awaited<ReturnType<typeof saveEntryDraft>>["serverDraft"]>;
 
 function gameRulesForCurrentSlate(games: PlayerGame[]) {
   return games.map((game) => ({
@@ -136,8 +147,14 @@ export function PickemApp({
       versionNumber: week.entry.currentVersionNumber,
       committedAt: week.entry.submittedAt,
       action: week.entry.currentVersionNumber === 1 ? "submit" : "edit",
+      officialPicks: week.entry.officialPicks,
+      mondayPrediction: week.entry.officialMondayPrediction ?? 0,
+      draftRevision: week.entry.draftRevision,
     };
   });
+  const [draftRevision, setDraftRevision] = useState(week?.entry?.draftRevision ?? 0);
+  const [draftConflict, setDraftConflict] = useState<DraftConflictState | null>(null);
+  const [submissionAttempt, setSubmissionAttempt] = useState<SubmissionAttempt | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [draftSync, setDraftSync] = useState<DraftSyncState>({
     state: week?.entry ? "synced" : "idle",
@@ -275,7 +292,6 @@ export function PickemApp({
     } catch {
       // Server-backed drafts still work when browser storage is unavailable.
     }
-    const serverVersion = week.entry?.currentVersionNumber ?? 0;
     const frame = window.requestAnimationFrame(() => {
       try {
         if (stored) {
@@ -283,10 +299,23 @@ export function PickemApp({
             picks?: Picks;
             mondayTotal?: number | null;
             baseVersion?: number;
+            draftRevision?: number;
+            submissionAttempt?: SubmissionAttempt | null;
           };
-          if ((draft.baseVersion ?? 0) >= serverVersion) {
-            if (draft.picks) setPicks(picksForCurrentSlate(week.games, draft.picks));
-            if (draft.mondayTotal === null || Number.isInteger(draft.mondayTotal)) setMondayTotal(draft.mondayTotal ?? null);
+          const storedRevision = draft.draftRevision ?? draft.baseVersion ?? 0;
+          if (shouldRestoreLocalDraft(storedRevision, week.entry?.draftRevision ?? 0)) {
+            const restoredPicks = draft.picks
+              ? picksForCurrentSlate(week.games, draft.picks)
+              : week.entry?.draftPicks ?? {};
+            const restoredMondayTotal = draft.mondayTotal === null || Number.isInteger(draft.mondayTotal)
+              ? draft.mondayTotal ?? null
+              : week.entry?.mondayPrediction ?? null;
+            setPicks(restoredPicks);
+            setMondayTotal(restoredMondayTotal);
+            const restoredSignature = signatureForDraft(week.games, restoredPicks, restoredMondayTotal);
+            if (draft.submissionAttempt?.signature === restoredSignature) {
+              setSubmissionAttempt(draft.submissionAttempt);
+            }
           }
         }
       } catch {
@@ -298,6 +327,7 @@ export function PickemApp({
           week.entry?.mondayPrediction ?? null,
         );
         currentDraftSignatureRef.current = lastSavedSignatureRef.current;
+        setDraftRevision(week.entry?.draftRevision ?? 0);
         setDraftReady(true);
       }
     });
@@ -312,7 +342,8 @@ export function PickemApp({
         JSON.stringify({
           picks,
           mondayTotal,
-          baseVersion: week.entry?.currentVersionNumber ?? 0,
+          draftRevision,
+          submissionAttempt,
         }),
       );
     } catch {
@@ -321,7 +352,7 @@ export function PickemApp({
 
     const signature = signatureForDraft(week.games, picks, mondayTotal);
     currentDraftSignatureRef.current = signature;
-    if (!canParticipate || isLocked || signature === lastSavedSignatureRef.current) return;
+    if (!canParticipate || isLocked || draftConflict || signature === lastSavedSignatureRef.current) return;
     setDraftSync((current) => ({ ...current, state: "local" }));
 
     if (!navigator.onLine) {
@@ -346,9 +377,11 @@ export function PickemApp({
             weekId: week.id,
             picks,
             mondayPrediction: mondayTotal,
+            baseDraftRevision: draftRevision,
           });
           if (result.ok) {
             lastSavedSignatureRef.current = signature;
+            if (typeof result.draftRevision === "number") setDraftRevision(result.draftRevision);
             setMobileAlert(null);
             const newerChangesAreWaiting = currentDraftSignatureRef.current !== signature;
             setDraftSync({
@@ -358,6 +391,11 @@ export function PickemApp({
             setStatus(newerChangesAreWaiting
               ? "Earlier changes synced. Your newest changes are saved on this device and waiting to sync."
               : result.message);
+          } else if (result.code === "draft_conflict" && result.serverDraft) {
+            setDraftConflict(result.serverDraft);
+            setDraftSync((current) => ({ ...current, state: "error" }));
+            setStatus(result.message);
+            return;
           } else if (result.code === "invalid_pick") {
             const currentPicks = picksForCurrentSlate(week.games, picks);
             if (JSON.stringify(currentPicks) !== JSON.stringify(picks)) {
@@ -395,7 +433,7 @@ export function PickemApp({
       })();
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [activeWeekId, canParticipate, draftReady, draftRetryVersion, draftStorageKey, isLocked, mondayTotal, picks, week]);
+  }, [activeWeekId, canParticipate, draftConflict, draftReady, draftRetryVersion, draftRevision, draftStorageKey, isLocked, mondayTotal, picks, submissionAttempt, week]);
 
   if (!week) {
     const emptyContent = view === "standings" && standings ? (
@@ -429,6 +467,7 @@ export function PickemApp({
       return;
     }
     setPicks((current) => ({ ...current, [gameId]: abbreviation }));
+    setSubmissionAttempt(null);
     setDraftSync((current) => ({ ...current, state: "local" }));
     setMobileAlert(null);
     setStatus(`${abbreviation} selected. Syncing your draft…`);
@@ -455,6 +494,12 @@ export function PickemApp({
       setStatus(`${eligibilityStatusLabel(liveAccount)}. Complete account setup before reviewing this card.`);
       return;
     }
+    const signature = signatureForDraft(week.games, picks, mondayTotal);
+    setSubmissionAttempt((current) => submissionAttemptForSignature(
+      current,
+      signature,
+      () => crypto.randomUUID(),
+    ));
     setReviewing(true);
     setStatus("Review every selection before submitting your official entry.");
   };
@@ -479,16 +524,27 @@ export function PickemApp({
         }
 
         setStatus("Sending your official entry…");
+        const signature = signatureForDraft(week.games, picks, mondayTotal);
+        const attempt = submissionAttemptForSignature(
+          submissionAttempt,
+          signature,
+          () => crypto.randomUUID(),
+        );
+        setSubmissionAttempt(attempt);
         const result = await submitEntry({
           weekId: week.id,
           picks,
           mondayPrediction: mondayTotal,
-          submissionKey: crypto.randomUUID(),
+          baseDraftRevision: draftRevision,
+          submissionKey: attempt.key,
         });
         setStatus(result.message);
         if (result.ok && result.receipt) {
           setMobileAlert(null);
           setReceipt(result.receipt);
+          setSubmissionAttempt(null);
+          setDraftConflict(null);
+          setDraftRevision(result.receipt.draftRevision);
           setReviewing(false);
           lastSavedSignatureRef.current = signatureForDraft(week.games, picks, mondayTotal);
           setDraftSync({ state: "synced", syncedAt: result.receipt.committedAt });
@@ -526,6 +582,46 @@ export function PickemApp({
     );
   };
 
+  const loadNewerServerDraft = () => {
+    if (!draftConflict) return;
+    const serverPicks = picksForCurrentSlate(week.games, draftConflict.picks);
+    const serverSignature = signatureForDraft(
+      week.games,
+      serverPicks,
+      draftConflict.mondayPrediction,
+    );
+    setPicks(serverPicks);
+    setMondayTotal(draftConflict.mondayPrediction);
+    setDraftRevision(draftConflict.draftRevision);
+    setSubmissionAttempt(null);
+    setDraftConflict(null);
+    lastSavedSignatureRef.current = serverSignature;
+    currentDraftSignatureRef.current = serverSignature;
+    setDraftSync({ state: "synced", syncedAt: draftConflict.updatedAt });
+    setMobileAlert(null);
+    setStatus("The newer server draft is now loaded on this device.");
+  };
+
+  const keepThisDeviceDraft = () => {
+    if (!draftConflict) return;
+    setDraftRevision(draftConflict.draftRevision);
+    setDraftConflict(null);
+    setDraftSync((current) => ({ ...current, state: "local" }));
+    setMobileAlert(null);
+    setStatus("Keeping this device's draft. Syncing it over the server copy…");
+    setDraftRetryVersion((version) => version + 1);
+  };
+
+  const hasPendingOfficialEdits = (week.entry?.currentVersionNumber ?? 0) > 0
+    ? hasUnsubmittedOfficialEdits({
+        games: gameRulesForCurrentSlate(week.games),
+        draftPicks: picks,
+        draftMondayPrediction: mondayTotal,
+        officialPicks: receipt?.officialPicks ?? week.entry?.officialPicks ?? {},
+        officialMondayPrediction: receipt?.mondayPrediction ?? week.entry?.officialMondayPrediction ?? null,
+      })
+    : false;
+
   return (
     <AppFrame view={view} setView={selectView} account={liveAccount} isAdmin={isAdmin}>
       {view === "picks" && (
@@ -538,13 +634,16 @@ export function PickemApp({
           status={status}
           mobileAlert={mobileAlert}
           draftSync={draftSync}
+          draftConflict={draftConflict}
           reviewing={reviewing}
           receipt={receipt}
+          hasPendingOfficialEdits={hasPendingOfficialEdits}
           firstMissingId={firstMissingId}
           firstMissingRef={firstMissingRef}
           onChoose={chooseTeam}
           onMondayTotal={(value) => {
             setMondayTotal(value);
+            setSubmissionAttempt(null);
             setDraftSync((current) => ({ ...current, state: "local" }));
           }}
           onReview={beginReview}
@@ -562,6 +661,8 @@ export function PickemApp({
             setDraftRetryVersion((version) => version + 1);
           }}
           onDismissMobileAlert={() => setMobileAlert(null)}
+          onLoadServerDraft={loadNewerServerDraft}
+          onKeepDeviceDraft={keepThisDeviceDraft}
           onEdit={() => { setReviewing(false); setReceipt(null); setStatus("Edit mode restored. Submit again to make changes official."); }}
           currentUserId={draftOwnerId}
           livePlayerPicks={livePlayerPicks}
@@ -647,8 +748,10 @@ type PicksViewProps = {
   status: string;
   mobileAlert: MobileAlertState;
   draftSync: DraftSyncState;
+  draftConflict: DraftConflictState | null;
   reviewing: boolean;
   receipt: ReceiptData | null;
+  hasPendingOfficialEdits: boolean;
   firstMissingId?: string;
   firstMissingRef: React.RefObject<HTMLFieldSetElement | null>;
   onChoose: (gameId: string, abbreviation: string) => void;
@@ -664,6 +767,8 @@ type PicksViewProps = {
   hasSubmitted: boolean;
   onRetryDraft: () => void;
   onDismissMobileAlert: () => void;
+  onLoadServerDraft: () => void;
+  onKeepDeviceDraft: () => void;
   currentUserId: string;
   livePlayerPicks: LivePlayerPicks[];
   livePicksFeedState: LivePicksFeedState;
@@ -847,7 +952,7 @@ function PicksView(props: PicksViewProps) {
             </div>
 
             {props.receipt ? (
-              <Receipt receipt={props.receipt} games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={false} />
+              <Receipt receipt={props.receipt} games={props.games} hasPendingEdits={props.hasPendingOfficialEdits} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={false} />
             ) : props.reviewing ? (
               <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} canParticipate={props.canParticipate} isPending={props.isPending} isLocked={false} hasSubmitted={props.hasSubmitted} />
             ) : (
@@ -856,6 +961,21 @@ function PicksView(props: PicksViewProps) {
               </button>
             )}
             <p className="status-message" aria-live="polite">{props.status || "Draft changes sync automatically."}</p>
+            {props.hasPendingOfficialEdits && !props.receipt ? (
+              <p className="official-edit-warning" role="status">
+                Your earlier official card is still safe. These edits do not count until you submit again.
+              </p>
+            ) : null}
+            {props.draftConflict ? (
+              <section className="draft-conflict" role="alert" aria-labelledby="draft-conflict-title">
+                <h2 id="draft-conflict-title">Newer draft found</h2>
+                <p>Another device saved changes after this screen loaded. Nothing will be overwritten until you choose.</p>
+                <div>
+                  <button type="button" onClick={props.onLoadServerDraft}>Load newer draft</button>
+                  <button type="button" onClick={props.onKeepDeviceDraft}>Keep this device</button>
+                </div>
+              </section>
+            ) : null}
             <div className={`draft-sync-status draft-sync-status--${props.draftSync.state}`}>
               <span aria-hidden="true" />
               <p>
@@ -869,7 +989,7 @@ function PicksView(props: PicksViewProps) {
                         ? "Saved on this device · Waiting to sync"
                         : "Ready for your first pick"}
               </p>
-              {props.draftSync.state === "error" ? (
+              {props.draftSync.state === "error" && !props.draftConflict ? (
                 <button type="button" onClick={props.onRetryDraft} disabled={!props.canParticipate}>Retry draft</button>
               ) : null}
             </div>
@@ -880,6 +1000,14 @@ function PicksView(props: PicksViewProps) {
         <div className="mobile-pick-dock mobile-pick-dock--locked" role="status" aria-live="polite">
           <span><strong>Locked</strong>{props.hasSubmitted ? "Card official" : "Entry closed"}</span>
           <Link href="/results" prefetch={false}>See results <Icon name="arrow" /></Link>
+        </div>
+      ) : props.draftConflict ? (
+        <div className="mobile-pick-dock mobile-pick-dock--conflict" role="alert">
+          <p>A newer draft exists on another device.</p>
+          <div>
+            <button type="button" onClick={props.onLoadServerDraft}>Load newer</button>
+            <button type="button" onClick={props.onKeepDeviceDraft}>Keep mine</button>
+          </div>
         </div>
       ) : props.mobileAlert ? (
         <div
@@ -1007,18 +1135,19 @@ function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, on
   );
 }
 
-function Receipt({ receipt, games, picks, mondayTotal, tiebreakerLabel, onEdit, locked }: { receipt: ReceiptData; games: PlayerGame[]; picks: Picks; mondayTotal: number | null; tiebreakerLabel: string; onEdit: () => void; locked: boolean }) {
+function Receipt({ receipt, games, hasPendingEdits, tiebreakerLabel, onEdit, locked }: { receipt: ReceiptData; games: PlayerGame[]; hasPendingEdits: boolean; tiebreakerLabel: string; onEdit: () => void; locked: boolean }) {
   const time = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Indiana/Indianapolis" }).format(new Date(receipt.committedAt));
   return (
     <section className="receipt" aria-labelledby="receipt-title">
       <Icon name="check" /><h2 id="receipt-title" tabIndex={-1}>Entry {receipt.action === "edit" ? "updated" : "submitted"}</h2>
       <p className="review-count">{games.length} official matchup {games.length === 1 ? "call" : "calls"}</p>
+      {hasPendingEdits ? <p className="receipt-pending-edits">Unsubmitted changes are saved separately and have not changed this receipt.</p> : null}
       <ol className="review-list review-list--receipt">
         {games.map((game) => (
-          <li key={game.id}><span><small>{game.away.abbreviation} @ {game.home.abbreviation}</small><strong className="review-team-call">{picks[game.id] ? <TeamCode code={picks[game.id]} size="xs" /> : null}<span>{selectedTeamName(game, picks[game.id])}</span></strong></span></li>
+          <li key={game.id}><span><small>{game.away.abbreviation} @ {game.home.abbreviation}</small><strong className="review-team-call">{receipt.officialPicks[game.id] ? <TeamCode code={receipt.officialPicks[game.id]} size="xs" /> : null}<span>{selectedTeamName(game, receipt.officialPicks[game.id])}</span></strong></span></li>
         ))}
       </ol>
-      <p>{tiebreakerLabel} Total <strong>{mondayTotal ?? "—"}</strong></p>
+      <p>{tiebreakerLabel} Total <strong>{receipt.mondayPrediction}</strong></p>
       <time dateTime={receipt.committedAt}>{time} ET</time><small>Official version {receipt.versionNumber} · Keep this timestamp as your receipt.</small>
       <Link className="receipt-reminders-link" href="/profile#email-reminders" prefetch={false}>Manage deadline and results reminders</Link>
       {!locked && <button className="text-action" type="button" onClick={onEdit}>Edit and resubmit</button>}

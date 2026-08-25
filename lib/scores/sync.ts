@@ -1,12 +1,11 @@
 import "server-only";
 
-import { and, eq, gte, inArray, like, lte, notInArray } from "drizzle-orm";
+import { and, eq, inArray, like, lte, notInArray } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { contestWeeks, games } from "@/lib/db/schema";
 import { fetchEspnWeekScores } from "./espn";
 
 const SCORE_SYNC_THROTTLE_MS = 50_000;
-const SCORE_SYNC_LOOKBACK_MS = 8 * 24 * 60 * 60 * 1_000;
 const ODDS_SYNC_LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1_000;
 
 type PendingGame = {
@@ -63,7 +62,6 @@ export async function syncRecentEspnScores(now = new Date()): Promise<ScoreSyncS
       like(games.providerGameKey, "espn:%"),
       notInArray(games.status, ["final", "canceled"]),
       lte(games.kickoffAt, new Date(now.getTime() + ODDS_SYNC_LOOKAHEAD_MS)),
-      gte(games.kickoffAt, new Date(now.getTime() - SCORE_SYNC_LOOKBACK_MS)),
     ));
 
   const groupedGames = new Map<string, PendingGame[]>();

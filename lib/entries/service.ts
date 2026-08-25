@@ -89,7 +89,7 @@ export async function getCurrentPlayerWeek(
   const now = new Date();
   const isLocked = now >= week.entryDeadline;
 
-  const [gameRows, entryRows, officialPickRows, livePlayerPicks] = await Promise.all([
+  const [gameRows, entryRows, officialVersionRows, officialPickRows, livePlayerPicks] = await Promise.all([
     db
       .select()
       .from(games)
@@ -105,7 +105,27 @@ export async function getCurrentPlayerWeek(
         ),
       )
       .limit(1),
-    isLocked ? db
+    db
+      .select({
+        mondayPrediction: entryVersions.mondayPrediction,
+        committedAt: entryVersions.committedAt,
+      })
+      .from(contestEntries)
+      .innerJoin(
+        entryVersions,
+        and(
+          eq(entryVersions.contestEntryId, contestEntries.id),
+          eq(entryVersions.versionNumber, contestEntries.currentVersionNumber),
+        ),
+      )
+      .where(
+        and(
+          eq(contestEntries.contestWeekId, week.id),
+          eq(contestEntries.userId, userId),
+        ),
+      )
+      .limit(1),
+    db
       .select({
         gameId: entryVersionPicks.gameId,
         selectedTeamCode: entryVersionPicks.selectedTeamCode,
@@ -124,11 +144,12 @@ export async function getCurrentPlayerWeek(
           eq(contestEntries.contestWeekId, week.id),
           eq(contestEntries.userId, userId),
         ),
-      ) : Promise.resolve([]),
+      ),
     input.includeLivePicks ? loadLivePlayerPicks(week.id) : Promise.resolve([]),
   ]);
 
   const entry = entryRows[0] ?? null;
+  const officialVersion = officialVersionRows[0] ?? null;
   return {
     id: week.id,
     season: week.season,
@@ -163,12 +184,14 @@ export async function getCurrentPlayerWeek(
           id: entry.id,
           status: entry.status,
           draftPicks: entry.draftPicks,
+          draftRevision: entry.draftRevision,
           officialPicks: Object.fromEntries(
             officialPickRows.map((pick) => [pick.gameId, pick.selectedTeamCode]),
           ),
           mondayPrediction: entry.draftMondayPrediction,
+          officialMondayPrediction: officialVersion?.mondayPrediction ?? null,
           currentVersionNumber: entry.currentVersionNumber,
-          submittedAt: entry.submittedAt?.toISOString() ?? null,
+          submittedAt: officialVersion?.committedAt.toISOString() ?? entry.submittedAt?.toISOString() ?? null,
           updatedAt: entry.updatedAt.toISOString(),
         }
       : null,

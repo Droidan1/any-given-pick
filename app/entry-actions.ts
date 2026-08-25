@@ -19,6 +19,7 @@ import {
   games,
 } from "@/lib/db/schema";
 import { validateEntrySelections } from "@/lib/entries/rules";
+import { draftWriteDecision } from "@/lib/entries/draft-conflict";
 import type {
   EntryActionResult,
   EntryMutationInput,
@@ -32,6 +33,7 @@ const entryInputSchema = z.object({
   weekId: z.uuid(),
   picks: z.record(z.string(), z.string()),
   mondayPrediction: z.number().int().min(0).max(200).nullable(),
+  baseDraftRevision: z.number().int().min(0),
 });
 
 const submissionInputSchema = entryInputSchema.extend({ submissionKey: z.uuid() });
@@ -135,17 +137,38 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
         return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
       }
 
-      if (existing && draftsMatch(
-        existing.draftPicks,
-        parsed.data.picks,
-        existing.draftMondayPrediction,
-        parsed.data.mondayPrediction,
-      )) {
+      const writeDecision = existing ? draftWriteDecision({
+        baseRevision: parsed.data.baseDraftRevision,
+        currentRevision: existing.draftRevision,
+        payloadMatches: draftsMatch(
+          existing.draftPicks,
+          parsed.data.picks,
+          existing.draftMondayPrediction,
+          parsed.data.mondayPrediction,
+        ),
+      }) : null;
+
+      if (existing && writeDecision?.kind === "already_synced") {
         return {
           ok: true,
           code: "saved",
           message: "Draft already synced.",
           syncedAt: existing.updatedAt.toISOString(),
+          draftRevision: existing.draftRevision,
+        };
+      }
+
+      if (existing && writeDecision?.kind === "conflict") {
+        return {
+          ok: false,
+          code: "draft_conflict",
+          message: "A newer draft was saved on another device. Choose which version to keep.",
+          serverDraft: {
+            picks: existing.draftPicks,
+            mondayPrediction: existing.draftMondayPrediction,
+            draftRevision: existing.draftRevision,
+            updatedAt: existing.updatedAt.toISOString(),
+          },
         };
       }
 
@@ -166,14 +189,24 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
       if (validated.issues.length > 0) return selectionFailure(validated.issues, false);
 
       if (existing) {
+        const draftRevision = writeDecision?.revision ?? existing.draftRevision + 1;
         await transaction
           .update(contestEntries)
           .set({
             draftPicks: validated.picks,
             draftMondayPrediction: parsed.data.mondayPrediction,
+            draftRevision,
             updatedAt: now,
           })
           .where(eq(contestEntries.id, existing.id));
+
+        return {
+          ok: true,
+          code: "saved",
+          message: "Draft synced securely.",
+          syncedAt: now.toISOString(),
+          draftRevision,
+        };
       } else {
         await transaction
           .insert(contestEntries)
@@ -182,6 +215,7 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
             userId: appUser.id,
             draftPicks: validated.picks,
             draftMondayPrediction: parsed.data.mondayPrediction,
+            draftRevision: 1,
             updatedAt: now,
           });
       }
@@ -191,6 +225,7 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
         code: "saved",
         message: "Draft synced securely.",
         syncedAt: now.toISOString(),
+        draftRevision: 1,
       };
     });
 
@@ -232,9 +267,12 @@ export async function submitEntry(
     const result = await db.transaction(async (transaction): Promise<EntryActionResult> => {
       const [duplicate] = await transaction
         .select({
+          id: entryVersions.id,
           versionNumber: entryVersions.versionNumber,
           committedAt: entryVersions.committedAt,
           action: entryVersions.action,
+          mondayPrediction: entryVersions.mondayPrediction,
+          draftRevision: contestEntries.draftRevision,
         })
         .from(entryVersions)
         .innerJoin(contestEntries, eq(contestEntries.id, entryVersions.contestEntryId))
@@ -247,6 +285,13 @@ export async function submitEntry(
         )
         .limit(1);
       if (duplicate) {
+        const duplicatePicks = await transaction
+          .select({
+            gameId: entryVersionPicks.gameId,
+            selectedTeamCode: entryVersionPicks.selectedTeamCode,
+          })
+          .from(entryVersionPicks)
+          .where(eq(entryVersionPicks.entryVersionId, duplicate.id));
         return {
           ok: true,
           code: "submitted",
@@ -255,6 +300,11 @@ export async function submitEntry(
             versionNumber: duplicate.versionNumber,
             committedAt: duplicate.committedAt.toISOString(),
             action: duplicate.action as "submit" | "edit",
+            officialPicks: Object.fromEntries(
+              duplicatePicks.map((pick) => [pick.gameId, pick.selectedTeamCode]),
+            ),
+            mondayPrediction: duplicate.mondayPrediction,
+            draftRevision: duplicate.draftRevision,
           },
         };
       }
@@ -319,6 +369,7 @@ export async function submitEntry(
               userId: appUser.id,
               draftPicks: validated.picks,
               draftMondayPrediction: parsed.data.mondayPrediction,
+              draftRevision: 1,
               updatedAt: now,
             })
             .returning();
@@ -356,6 +407,12 @@ export async function submitEntry(
           status: "submitted",
           draftPicks: validated.picks,
           draftMondayPrediction: parsed.data.mondayPrediction,
+          draftRevision: draftsMatch(
+            entry.draftPicks,
+            validated.picks,
+            entry.draftMondayPrediction,
+            parsed.data.mondayPrediction,
+          ) ? entry.draftRevision : entry.draftRevision + 1,
           currentVersionNumber: versionNumber,
           submittedAt: now,
           updatedAt: now,
@@ -384,6 +441,14 @@ export async function submitEntry(
           versionNumber,
           committedAt: version.committedAt.toISOString(),
           action,
+          officialPicks: validated.picks,
+          mondayPrediction: parsed.data.mondayPrediction,
+          draftRevision: draftsMatch(
+            entry.draftPicks,
+            validated.picks,
+            entry.draftMondayPrediction,
+            parsed.data.mondayPrediction,
+          ) ? entry.draftRevision : entry.draftRevision + 1,
         },
       };
     });

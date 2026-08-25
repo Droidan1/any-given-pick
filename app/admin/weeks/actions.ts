@@ -3,6 +3,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { z } from "zod";
 import {
   formatWeekName,
   parseScheduleText,
@@ -25,6 +26,10 @@ import {
 } from "@/lib/push/player-notifications";
 import { runEspnScoreSyncWithHealth } from "@/lib/scores/health";
 import { validatePublishableSlate } from "@/lib/admin/week-publish-policy";
+import {
+  gameRecoveryDecision,
+  type GameRecoveryCommand,
+} from "@/lib/admin/game-recovery-policy";
 
 export type AdminActionResult = {
   ok: boolean;
@@ -41,6 +46,41 @@ export type SaveWeekDraftInput = {
   entryDeadline: string;
   scheduleText: string;
 };
+
+export type RecoverGameInput = { gameId: string } & GameRecoveryCommand;
+
+const recoverGameInputSchema = z.discriminatedUnion("action", [
+  z.object({ gameId: z.uuid(), action: z.literal("postpone") }),
+  z.object({ gameId: z.uuid(), action: z.literal("cancel") }),
+  z.object({ gameId: z.uuid(), action: z.literal("reschedule"), kickoffAt: z.string().min(1) }),
+]);
+
+function revalidateGameSurfaces() {
+  revalidatePath("/");
+  revalidatePath("/activity");
+  revalidatePath("/admin/weeks");
+  revalidatePath("/results");
+  revalidatePath("/standings");
+}
+
+function queueResultsNotifications() {
+  after(async () => {
+    try {
+      await Promise.all([
+        queueAvailableResultsEmails().then(() => processQueuedPlayerEmails()),
+        queueAvailableResultsPushes().then(() => processQueuedPlayerPushes()),
+      ]);
+    } catch (error) {
+      await reportOperationalIssue({
+        kind: "player_notification_queue",
+        identity: "results_available",
+        severity: "warning",
+        message: "A results-available notification could not be queued or processed.",
+        context: { error_type: error instanceof Error ? error.name : "unknown" },
+      });
+    }
+  });
+}
 
 export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminActionResult> {
   const admin = await requireAdminUser();
@@ -319,23 +359,74 @@ export async function saveFinalScore(input: {
   });
 
   if (result.ok) {
-    after(async () => {
-      try {
-        await Promise.all([
-          queueAvailableResultsEmails().then(() => processQueuedPlayerEmails()),
-          queueAvailableResultsPushes().then(() => processQueuedPlayerPushes()),
-        ]);
-      } catch (error) {
-        await reportOperationalIssue({
-          kind: "player_notification_queue",
-          identity: "results_available",
-          severity: "warning",
-          message: "A results-available notification could not be queued or processed.",
-          context: { error_type: error instanceof Error ? error.name : "unknown" },
-        });
-      }
+    queueResultsNotifications();
+    revalidateGameSurfaces();
+  }
+  return result;
+}
+
+export async function recoverGame(input: RecoverGameInput): Promise<AdminActionResult> {
+  const parsed = recoverGameInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "The game recovery request was not valid." };
+
+  const admin = await requireAdminUser();
+  const now = new Date();
+  const decision = gameRecoveryDecision(parsed.data as GameRecoveryCommand, now);
+  if (!decision.ok) return decision;
+
+  const db = getDb();
+  const result = await db.transaction(async (transaction) => {
+    const [existing] = await transaction
+      .select({
+        id: games.id,
+        contestWeekId: games.contestWeekId,
+        status: games.status,
+        kickoffAt: games.kickoffAt,
+      })
+      .from(games)
+      .where(eq(games.id, parsed.data.gameId))
+      .for("update")
+      .limit(1);
+    if (!existing) return { ok: false as const, message: "Game not found." };
+
+    const [updated] = await transaction
+      .update(games)
+      .set({
+        status: decision.status,
+        kickoffAt: decision.kickoffAt ?? existing.kickoffAt,
+        awayScore: null,
+        homeScore: null,
+        updatedAt: now,
+      })
+      .where(eq(games.id, existing.id))
+      .returning({ id: games.id });
+    if (!updated) return { ok: false as const, message: "The game changed before it could be updated." };
+
+    await transaction.insert(auditEvents).values({
+      actorUserId: admin.id,
+      action: `game.${parsed.data.action}`,
+      entityType: "game",
+      entityId: existing.id,
+      metadata: {
+        contest_week_id: existing.contestWeekId,
+        previous_status: existing.status,
+        previous_kickoff_at: existing.kickoffAt.toISOString(),
+        next_status: decision.status,
+        next_kickoff_at: (decision.kickoffAt ?? existing.kickoffAt).toISOString(),
+      },
     });
-    revalidatePath("/admin/weeks");
+
+    const message = parsed.data.action === "postpone"
+      ? "Game marked postponed. It will remain on the board and continue syncing."
+      : parsed.data.action === "cancel"
+        ? "Game canceled. Its picks are void and the week can complete without a score."
+        : "New kickoff saved. The game is scheduled again and automatic syncing will continue.";
+    return { ok: true as const, weekId: existing.contestWeekId, message };
+  });
+
+  if (result.ok) {
+    if (parsed.data.action === "cancel") queueResultsNotifications();
+    revalidateGameSurfaces();
   }
   return result;
 }

@@ -478,6 +478,7 @@ export const contestEntries = pgTable(
     status: entryStatusEnum("status").notNull().default("draft"),
     draftPicks: jsonb("draft_picks").$type<Record<string, string>>().notNull().default({}),
     draftMondayPrediction: integer("draft_monday_prediction"),
+    draftRevision: integer("draft_revision").notNull().default(0),
     currentVersionNumber: integer("current_version_number").notNull().default(0),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     lockedAt: timestamp("locked_at", { withTimezone: true }),
@@ -494,6 +495,10 @@ export const contestEntries = pgTable(
     check(
       "contest_entries_version_nonnegative_check",
       sql`${table.currentVersionNumber} >= 0`,
+    ),
+    check(
+      "contest_entries_draft_revision_nonnegative_check",
+      sql`${table.draftRevision} >= 0`,
     ),
   ],
 );
