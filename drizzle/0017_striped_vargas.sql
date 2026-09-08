@@ -1,0 +1,2 @@
+ALTER TABLE "contest_entries" ADD COLUMN "draft_revision" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "contest_entries" ADD CONSTRAINT "contest_entries_draft_revision_nonnegative_check" CHECK ("contest_entries"."draft_revision" >= 0);

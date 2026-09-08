@@ -28,6 +28,17 @@ export function rankStandings(rows: UnrankedStanding[]): StandingRow[] {
       rank = index + 1;
     }
     previous = row;
-    return { ...row, rank };
+    return { ...row, rank, rankChange: null };
+  });
+}
+
+export function addRankChanges(current: StandingRow[], previous: StandingRow[]): StandingRow[] {
+  const previousRankByUser = new Map(previous.map((row) => [row.userId, row.rank]));
+  return current.map((row) => {
+    const previousRank = previousRankByUser.get(row.userId);
+    return {
+      ...row,
+      rankChange: previousRank === undefined ? null : previousRank - row.rank,
+    };
   });
 }

@@ -6,10 +6,17 @@ import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
+import { ScoreRefreshControl } from "@/components/score-refresh-control";
+import { PlayerAvatar } from "@/components/player-avatar";
+import { TeamCode } from "@/components/team-crest";
+import { WeeklyRecapCard } from "@/components/weekly-recap-card";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
-import { getWeeklyResults, type RevealedPick } from "@/lib/results/service";
+import { getWeeklyResults, type RevealedEntry, type RevealedPick } from "@/lib/results/service";
+import { getScoreSyncHealth } from "@/lib/scores/health";
+import { hasScoreRefreshWindow, nextScoreRefreshWindow } from "@/lib/scores/refresh-window";
+import { buildWeeklyRecap } from "@/lib/recap/rules";
 
 export const metadata: Metadata = {
   title: "Weekly results",
@@ -44,6 +51,19 @@ function scoreLabel(pick: RevealedPick): string {
   return `${pick.awayTeamCode} ${pick.awayScore} · ${pick.homeTeamCode} ${pick.homeScore}`;
 }
 
+function compactResultSummary(entry: RevealedEntry): string {
+  const lost = entry.picks.filter((pick) => pick.outcome === "lost").length;
+  const tied = entry.picks.filter((pick) => pick.outcome === "tie").length;
+  const pending = Math.max(0, entry.picks.length - entry.gradedPicks);
+  return [
+    `${entry.correctPicks} correct`,
+    `${lost} incorrect`,
+    tied > 0 ? `${tied} tied` : null,
+    `${pending} pending`,
+    `Tiebreaker ${entry.mondayPrediction}`,
+  ].filter(Boolean).join(" · ");
+}
+
 export default async function ResultsPage({
   searchParams,
 }: {
@@ -58,22 +78,32 @@ export default async function ResultsPage({
   ]);
   if (account.accountState !== "active" && !isAdmin) redirect("/profile");
 
-  const results = await getWeeklyResults({
-    weekId: week,
-    currentUserId: appUser.id,
-  });
+  const [results, scoreHealth] = await Promise.all([
+    getWeeklyResults({
+      weekId: week,
+      currentUserId: appUser.id,
+    }),
+    getScoreSyncHealth(),
+  ]);
+  const scoreGames = results.entries.flatMap((entry) => entry.picks);
+  const distributionByGame = new Map(results.distributions.map((distribution) => [distribution.gameId, distribution]));
+  const weeklyRecap = buildWeeklyRecap(results);
+  const shouldPollScores = hasScoreRefreshWindow(scoreGames);
+  const nextAutomaticCheckAt = nextScoreRefreshWindow(scoreGames);
 
   return (
     <main className="account-shell results-shell">
       <header className="account-header">
-        <Link href="/" className="account-brand" aria-label="Any Given Pick home">
+        <Link href="/" className="account-brand" aria-label="Any Given Pick home" prefetch={false}>
           <BrandLockup />
         </Link>
         <div className="account-header__actions">
-          <Link href="/" className="text-link">Current call sheet</Link>
-          <Link href="/?view=standings" className="text-link">Standings</Link>
-          <Link href="/activity" className="text-link">My activity</Link>
-          {isAdmin ? <Link href="/admin" className="text-link">Admin</Link> : null}
+          <Link href="/" className="text-link" prefetch={false}>Current call sheet</Link>
+          <Link href="/standings" className="text-link" prefetch={false}>Standings</Link>
+          <Link href="/race" className="text-link" prefetch={false}>Live race</Link>
+          <Link href="/trends" className="text-link" prefetch={false}>Pick trends</Link>
+          <Link href="/activity" className="text-link" prefetch={false}>My activity</Link>
+          {isAdmin ? <Link href="/admin" className="text-link" prefetch={false}>Admin</Link> : null}
           <UserButton />
         </div>
       </header>
@@ -88,6 +118,14 @@ export default async function ResultsPage({
           <Icon name="results" />
         </div>
 
+        <nav className="results-hub-nav" aria-label="Results and activity">
+          <Link href="/race" prefetch={false}>Live race</Link>
+          <Link href="/trends" prefetch={false}>Pick trends</Link>
+          <Link className="results-hub-nav__active" href="/results" aria-current="page">Weekly cards</Link>
+          <Link href="/standings" prefetch={false}>Standings</Link>
+          <Link href="/activity" prefetch={false}>My activity</Link>
+        </nav>
+
         {results.weeks.length > 0 ? (
           <form className="results-week-picker" method="get">
             <label htmlFor="results-week">Call sheet</label>
@@ -101,6 +139,16 @@ export default async function ResultsPage({
             <button type="submit">Open results <Icon name="arrow" /></button>
           </form>
         ) : null}
+
+        {results.revealStatus === "revealed" ? (
+          <ScoreRefreshControl
+            initialLastSuccessAt={scoreHealth.lastSuccessAt}
+            shouldPoll={shouldPollScores}
+            nextAutomaticCheckAt={nextAutomaticCheckAt}
+          />
+        ) : null}
+
+        {weeklyRecap ? <WeeklyRecapCard recap={weeklyRecap} /> : null}
 
         {results.revealStatus === "no_week" ? (
           <section className="results-state" aria-labelledby="results-empty-title">
@@ -128,31 +176,36 @@ export default async function ResultsPage({
             {results.entries.length > 0 ? (
               <div className="results-entries">
                 {results.entries.map((entry) => (
-                  <details className="results-entry" open={entry.isCurrentUser} key={entry.userId}>
+                  <details className={`results-entry${entry.isCurrentUser ? " results-entry--current" : ""}`} key={entry.entryId}>
                     <summary>
                       <span className="results-entry__player">
+                        <PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} />
+                        <span>
                         <strong>{entry.displayName}</strong>
-                        <small>Official version {entry.versionNumber} · {formatDateTime(entry.committedAt)}</small>
+                        <small>{entry.boardName} · {entry.isBestBoard ? "Best board · " : ""}Official version {entry.versionNumber} · {formatDateTime(entry.committedAt)}</small>
+                        </span>
                       </span>
                       {entry.isCurrentUser ? <span className="results-entry__you">Your card</span> : null}
-                      <span className="results-entry__record">
-                        <strong>{entry.correctPicks}/{entry.gradedPicks}</strong>
-                        <small>correct</small>
-                      </span>
-                      <span className="results-entry__tiebreaker">
-                        <strong>{entry.mondayPrediction}</strong>
-                        <small>tiebreaker</small>
-                      </span>
-                      <span className="results-entry__toggle" aria-hidden="true">View calls</span>
+                      <span className="results-entry__summary">{compactResultSummary(entry)}</span>
+                      <span className="results-entry__toggle" aria-hidden="true"><span>View calls</span><span>Close calls</span></span>
                     </summary>
                     <div className="results-entry__picks">
-                      {entry.picks.map((pick) => (
+                      {entry.picks.map((pick) => {
+                        const distribution = distributionByGame.get(pick.gameId);
+                        return (
                         <div className={`results-pick results-pick--${pick.outcome}`} key={pick.gameId}>
-                          <span className="results-pick__matchup"><strong>{pick.awayTeamCode} @ {pick.homeTeamCode}</strong><small>{scoreLabel(pick)}</small></span>
-                          <span className="results-pick__selection"><small>Selected</small><strong>{pick.selectedTeamCode} · {pick.selectedTeamName}</strong></span>
+                          <span className="results-pick__matchup">
+                            <strong className="results-pick__teams"><TeamCode code={pick.awayTeamCode} size="xs" /><b>@</b><TeamCode code={pick.homeTeamCode} size="xs" /></strong>
+                            <small>{scoreLabel(pick)}</small>
+                            {distribution && distribution.totalPicks > 0 ? (
+                              <small className="results-pick__distribution">All cards: {distribution.awayTeamCode} {distribution.awayPercent}% · {distribution.homeTeamCode} {distribution.homePercent}%</small>
+                            ) : null}
+                          </span>
+                          <span className="results-pick__selection"><small>Selected</small><TeamCode code={pick.selectedTeamCode} size="sm" /><strong>{pick.selectedTeamName}</strong></span>
                           <span className="results-pick__outcome">{resultLabel(pick)}</span>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </details>
                 ))}
@@ -163,7 +216,7 @@ export default async function ResultsPage({
           </section>
         )}
       </section>
-      <MobileAppNav active="standings" isAdmin={isAdmin} />
+      <MobileAppNav active="results" isAdmin={isAdmin} />
     </main>
   );
 }

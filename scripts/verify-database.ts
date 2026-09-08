@@ -3,16 +3,24 @@ import { Pool } from "pg";
 const expectedTables = [
   "audit_events",
   "auth_identities",
+  "commissioner_announcements",
   "contest_weeks",
   "contest_entries",
   "display_name_history",
+  "email_deliveries",
+  "email_notification_preferences",
   "eligibility_checks",
   "profiles",
   "roles",
   "games",
+  "operational_alerts",
   "entry_versions",
   "entry_version_picks",
+  "privacy_requests",
   "provider_sync_states",
+  "push_deliveries",
+  "push_subscriptions",
+  "rate_limit_buckets",
   "user_roles",
   "users",
 ];
@@ -140,7 +148,7 @@ async function main() {
     await verifyDatabaseGuards(pool);
 
     console.log(
-      "Database verified: 14 tables, 3 roles, contest-week guards, unique display names, and append-only audit events.",
+      "Database verified: 22 tables, 3 roles, contest-week guards, unique display names, email and push delivery records, commissioner announcements, privacy operations, rate limiting, and append-only audit events.",
     );
   } finally {
     await pool.end();

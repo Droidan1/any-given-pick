@@ -11,7 +11,6 @@ import {
   games,
 } from "@/lib/db/schema";
 import { draftPayloadSignature, sanitizeDraftPicks } from "./rules";
-import { getCurrentPlayerWeek } from "./service";
 import { calculatePickOutcome, type PickOutcome } from "./pick-outcome";
 
 export type ActivityPick = {
@@ -37,8 +36,12 @@ export type ActivityCard = {
   weekNumber: number;
   weekLabel: string;
   isCurrent: boolean;
-  state: "draft" | "pending_edits" | "official" | "not_submitted";
+  state: "draft" | "pending_edits" | "official" | "not_submitted" | "archived" | "disqualified";
+  boardName: string;
+  boardNumber: number;
   stateLabel: string;
+  lastResetAt: string | null;
+  submissionHistory: { versionNumber: number; committedAt: string; mondayPrediction: number; isCurrent: boolean; voidedByReset: boolean; picks: ActivityPick[] }[];
   versionNumber: number;
   pickCount: number;
   gameCount: number;
@@ -50,6 +53,7 @@ export type ActivityCard = {
   lossCount: number;
   tieCount: number;
   picks: ActivityPick[];
+  officialPicks: ActivityPick[];
 };
 
 export type PlayerActivity = {
@@ -62,6 +66,12 @@ export type PlayerActivity = {
 
 type EntryRow = {
   entryId: string;
+  boardName: string;
+  boardNumber: number;
+  archivedAt: Date | null;
+  lastResetAt: Date | null;
+  resetVersionNumber: number;
+  entryStatus: string;
   weekId: string;
   season: number;
   seasonPhase: "preseason" | "regular";
@@ -107,11 +117,28 @@ function picksMatch(
 
 export async function getPlayerActivity(userId: string): Promise<PlayerActivity> {
   const db = getDb();
-  const [currentWeek, entryRows] = await Promise.all([
-    getCurrentPlayerWeek(userId),
+  const [currentWeekRows, entryRows] = await Promise.all([
+    db
+      .select({
+        id: contestWeeks.id,
+        season: contestWeeks.season,
+        seasonPhase: contestWeeks.seasonPhase,
+        weekNumber: contestWeeks.weekNumber,
+        label: contestWeeks.label,
+      })
+      .from(contestWeeks)
+      .where(eq(contestWeeks.status, "published"))
+      .orderBy(desc(contestWeeks.publishedAt), desc(contestWeeks.updatedAt))
+      .limit(1),
     db
       .select({
         entryId: contestEntries.id,
+        boardName: contestEntries.boardName,
+        boardNumber: contestEntries.boardNumber,
+        archivedAt: contestEntries.archivedAt,
+        lastResetAt: contestEntries.lastResetAt,
+        resetVersionNumber: contestEntries.resetVersionNumber,
+        entryStatus: contestEntries.status,
         weekId: contestWeeks.id,
         season: contestWeeks.season,
         seasonPhase: contestWeeks.seasonPhase,
@@ -131,11 +158,13 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
         desc(contestWeeks.weekNumber),
       ),
   ]);
+  const currentWeek = currentWeekRows[0] ?? null;
 
   const rows: EntryRow[] = [...entryRows];
   if (currentWeek && !rows.some((row) => row.weekId === currentWeek.id)) {
     rows.unshift({
       entryId: `current-${currentWeek.id}`,
+      boardName: "Board 1", boardNumber: 1, archivedAt: null, lastResetAt: null, resetVersionNumber: 0, entryStatus: "draft",
       weekId: currentWeek.id,
       season: currentWeek.season,
       seasonPhase: currentWeek.seasonPhase,
@@ -181,15 +210,13 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       : Promise.resolve([]),
   ]);
 
-  const latestVersionByEntry = new Map<string, (typeof versionRows)[number]>();
+  const currentVersionByEntry = new Map<string, (typeof versionRows)[number]>();
+  const entryById = new Map(entryRows.map(entry => [entry.entryId, entry]));
   for (const version of versionRows) {
-    if (!latestVersionByEntry.has(version.entryId)) {
-      latestVersionByEntry.set(version.entryId, version);
-    }
+    if (entryById.get(version.entryId)?.currentVersionNumber === version.versionNumber) currentVersionByEntry.set(version.entryId, version);
   }
-
-  const latestVersionIds = [...latestVersionByEntry.values()].map((version) => version.id);
-  const versionPickRows = latestVersionIds.length > 0
+  const historyVersionIds = versionRows.map(version => version.id);
+  const versionPickRows = historyVersionIds.length > 0
     ? await db
         .select({
           entryVersionId: entryVersionPicks.entryVersionId,
@@ -197,7 +224,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
           selectedTeamCode: entryVersionPicks.selectedTeamCode,
         })
         .from(entryVersionPicks)
-        .where(inArray(entryVersionPicks.entryVersionId, latestVersionIds))
+        .where(inArray(entryVersionPicks.entryVersionId, historyVersionIds))
     : [];
 
   const gamesByWeek = new Map<string, GameRow[]>();
@@ -218,7 +245,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
     const weekGames = gamesByWeek.get(row.weekId) ?? [];
     const gameRules = rulesForGames(weekGames);
     const isCurrent = currentWeek?.id === row.weekId;
-    const latestVersion = latestVersionByEntry.get(row.entryId) ?? null;
+    const latestVersion = currentVersionByEntry.get(row.entryId) ?? null;
     const officialPicks = latestVersion
       ? officialPicksByVersion.get(latestVersion.id) ?? {}
       : {};
@@ -241,7 +268,13 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
 
     let state: ActivityCard["state"];
     let stateLabel: string;
-    if (hasPendingEdits) {
+    if (row.archivedAt) {
+      state = "archived";
+      stateLabel = "Archived · Excluded from scoring";
+    } else if (row.entryStatus === "disqualified") {
+      state = "disqualified";
+      stateLabel = "Disqualified";
+    } else if (hasPendingEdits) {
       state = "pending_edits";
       stateLabel = "Edits not submitted";
     } else if (latestVersion) {
@@ -249,14 +282,14 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       stateLabel = `Official version ${latestVersion.versionNumber}`;
     } else if (isCurrent) {
       state = "draft";
-      stateLabel = "Current draft";
+      stateLabel = row.lastResetAt ? "Reset by admin · Not submitted" : "Current draft";
     } else {
       state = "not_submitted";
       stateLabel = "Not submitted";
     }
 
-    const picks = weekGames.map((game): ActivityPick => {
-      const selectedTeamCode = displayedPicks[game.id] ?? null;
+    const buildPicks = (selections: Record<string, string>) => weekGames.map((game): ActivityPick => {
+      const selectedTeamCode = selections[game.id] ?? null;
       const selectedTeamName = selectedTeamCode === game.awayTeamCode
         ? game.awayTeamName
         : selectedTeamCode === game.homeTeamCode
@@ -284,9 +317,12 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
         }),
       };
     });
+    const picks = buildPicks(displayedPicks);
+    const officialSnapshotPicks = latestVersion ? buildPicks(officialPicks) : [];
 
     return {
       id: row.entryId,
+      boardName: row.boardName, boardNumber: row.boardNumber,
       weekId: row.weekId,
       season: row.season,
       seasonPhase: row.seasonPhase,
@@ -295,6 +331,13 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       isCurrent,
       state,
       stateLabel,
+      lastResetAt: row.lastResetAt?.toISOString() ?? null,
+      submissionHistory: versionRows.filter(version => version.entryId === row.entryId).map(version => ({
+        versionNumber: version.versionNumber, committedAt: version.committedAt.toISOString(), mondayPrediction: version.mondayPrediction,
+        isCurrent: version.versionNumber === row.currentVersionNumber,
+        voidedByReset: version.versionNumber <= row.resetVersionNumber,
+        picks: buildPicks(officialPicksByVersion.get(version.id) ?? {}),
+      })),
       versionNumber: latestVersion?.versionNumber ?? 0,
       pickCount: Object.keys(displayedPicks).length,
       gameCount: weekGames.length,
@@ -306,6 +349,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       lossCount: picks.filter((pick) => pick.outcome === "lost").length,
       tieCount: picks.filter((pick) => pick.outcome === "tie").length,
       picks,
+      officialPicks: officialSnapshotPicks,
     };
   });
 
@@ -316,7 +360,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
     cards,
     currentCard,
     pastCards,
-    officialCardCount: cards.filter((card) => card.versionNumber > 0).length,
-    draftCardCount: cards.filter((card) => card.versionNumber === 0).length,
+    officialCardCount: cards.filter((card) => card.versionNumber > 0 && card.state !== "archived" && card.state !== "disqualified").length,
+    draftCardCount: cards.filter((card) => card.versionNumber === 0 && card.state !== "archived").length,
   };
 }

@@ -50,6 +50,97 @@
       "when": 1786479609637,
       "tag": "0006_eager_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786486749602,
+      "tag": "0007_third_stryfe",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786487179608,
+      "tag": "0008_breezy_carmella_unuscione",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786487452208,
+      "tag": "0009_vengeful_vindicator",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786494268322,
+      "tag": "0010_player_email_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786495305446,
+      "tag": "0011_account_approval_emails",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786662630722,
+      "tag": "0012_game_reference_odds",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786972342819,
+      "tag": "0013_left_betty_brant",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786972708968,
+      "tag": "0014_white_grey_gargoyle",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787577070491,
+      "tag": "0015_colossal_living_lightning",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787578728687,
+      "tag": "0016_talented_ezekiel",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787619274128,
+      "tag": "0017_striped_vargas",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788886133598,
+      "tag": "0018_multiple_boards",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788888778606,
+      "tag": "0019_admin_board_reset",
+      "breakpoints": true
     }
   ]
 }

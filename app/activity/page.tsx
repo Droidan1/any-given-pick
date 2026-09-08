@@ -6,7 +6,11 @@ import { auth } from "@clerk/nextjs/server";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Icon } from "@/components/icons";
 import { MobileAppNav } from "@/components/mobile-app-nav";
+import { PlayerAchievements } from "@/components/player-achievements";
+import { ScoreRefreshControl } from "@/components/score-refresh-control";
+import { TeamCrest } from "@/components/team-crest";
 import { hasAdminRole } from "@/lib/auth/admin";
+import { buildPlayerAchievements } from "@/lib/achievements/rules";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { getAccountSummary } from "@/lib/eligibility/service";
 import {
@@ -14,7 +18,8 @@ import {
   type ActivityCard,
   type ActivityPick,
 } from "@/lib/entries/activity-service";
-import { ActivityScoreRefresh } from "./activity-score-refresh";
+import { getScoreSyncHealth } from "@/lib/scores/health";
+import { hasScoreRefreshWindow, nextScoreRefreshWindow } from "@/lib/scores/refresh-window";
 
 export const metadata: Metadata = {
   title: "My activity",
@@ -60,9 +65,32 @@ function outcomeLabel(pick: ActivityPick): string {
   return gameStateLabel(pick);
 }
 
+function activityResultSummary(card: ActivityCard): string {
+  const liveCount = card.picks.filter((pick) => pick.gameStatus === "in_progress").length;
+  const upcomingCount = Math.max(0, card.gameCount - card.completedGameCount - liveCount);
+  const graded = card.completedGameCount > 0
+    ? `${card.winCount} won · ${card.lossCount} lost${card.tieCount > 0 ? ` · ${card.tieCount} tied` : ""}`
+    : "No final results";
+  const remaining = [
+    liveCount > 0 ? `${liveCount} live` : null,
+    upcomingCount > 0 ? `${upcomingCount} upcoming` : null,
+  ].filter(Boolean).join(" · ");
+  return remaining ? `${graded} · ${remaining}` : graded;
+}
+
+function groupPicksByDay(picks: ActivityPick[]): Array<{ label: string; picks: ActivityPick[] }> {
+  const groups = new Map<string, ActivityPick[]>();
+  for (const pick of picks) {
+    const label = formatKickoff(pick.kickoffAt);
+    groups.set(label, [...(groups.get(label) ?? []), pick]);
+  }
+  return Array.from(groups, ([label, groupedPicks]) => ({ label, picks: groupedPicks }));
+}
+
 function ActivityCardView({ card }: { card: ActivityCard }) {
+  const pickGroups = groupPicksByDay(card.picks);
   return (
-    <details className={`activity-card activity-card--${card.state}`} open={card.isCurrent}>
+    <details className={`activity-card activity-card--${card.state}`}>
       <summary className="activity-card__summary">
         <span className="activity-card__marker" aria-hidden="true">
           {card.isCurrent ? "Now" : String(card.weekNumber).padStart(2, "0")}
@@ -71,7 +99,8 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
           <span className="activity-card__eyebrow">
             {card.season} · {card.seasonPhase === "preseason" ? "Preseason" : "Regular season"}
           </span>
-          <strong>{card.weekLabel}</strong>
+          <strong>{card.weekLabel} · {card.boardName}</strong>
+          <span className="activity-card__results">{activityResultSummary(card)}</span>
         </span>
         <span className={`activity-state activity-state--${card.state}`}>{card.stateLabel}</span>
         <span className="activity-card__count">
@@ -79,8 +108,8 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
           <span>of {card.gameCount} picks</span>
         </span>
         <span className="activity-card__toggle" aria-hidden="true">
-          <span>View card</span>
-          <span>Close card</span>
+          <span>View {card.gameCount} picks</span>
+          <span>Close picks</span>
         </span>
       </summary>
 
@@ -114,46 +143,52 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
 
         {card.picks.length > 0 ? (
           <div className="activity-matchups" aria-label={`${card.weekLabel} selections`}>
-            {card.picks.map((pick) => {
-              const awaySelected = pick.selectedTeamCode === pick.awayTeamCode;
-              const homeSelected = pick.selectedTeamCode === pick.homeTeamCode;
-              return (
-                <div
-                  className={`activity-matchup activity-matchup--${pick.gameStatus} activity-matchup--${pick.outcome}`}
-                  key={pick.gameId}
-                  aria-label={`${pick.awayTeamName} at ${pick.homeTeamName}. ${pick.selectedTeamName ? `${pick.selectedTeamName} selected.` : "No selection."} ${outcomeLabel(pick)}.`}
-                >
-                  <span className="activity-matchup__date">
-                    <span>{formatKickoff(pick.kickoffAt)}</span>
-                    <strong>{gameStateLabel(pick)}</strong>
-                  </span>
-                  <span className={`activity-team${awaySelected ? " activity-team--selected" : ""}`}>
-                    <span className="activity-team__line">
-                      <strong>{pick.awayTeamCode}</strong>
-                      <span className="activity-team__call">
-                        {pick.awayScore !== null ? <b>{pick.awayScore}</b> : null}
-                        {awaySelected ? <Icon name="check" /> : null}
-                      </span>
-                    </span>
-                    <small>{pick.awayTeamName}</small>
-                  </span>
-                  <span className="activity-matchup__at">@</span>
-                  <span className={`activity-team${homeSelected ? " activity-team--selected" : ""}`}>
-                    <span className="activity-team__line">
-                      <strong>{pick.homeTeamCode}</strong>
-                      <span className="activity-team__call">
-                        {pick.homeScore !== null ? <b>{pick.homeScore}</b> : null}
-                        {homeSelected ? <Icon name="check" /> : null}
-                      </span>
-                    </span>
-                    <small>{pick.homeTeamName}</small>
-                  </span>
-                  <span className={`activity-outcome activity-outcome--${pick.outcome}`}>
-                    {outcomeLabel(pick)}
-                  </span>
+            {pickGroups.map((group) => (
+              <section className="activity-day-group" key={group.label}>
+                <h4>{group.label}</h4>
+                <div className="activity-day-group__games">
+                  {group.picks.map((pick) => {
+                    const awaySelected = pick.selectedTeamCode === pick.awayTeamCode;
+                    const homeSelected = pick.selectedTeamCode === pick.homeTeamCode;
+                    return (
+                      <div
+                        className={`activity-matchup activity-matchup--${pick.gameStatus} activity-matchup--${pick.outcome}`}
+                        key={pick.gameId}
+                        aria-label={`${pick.awayTeamName} at ${pick.homeTeamName}. ${pick.selectedTeamName ? `${pick.selectedTeamName} selected.` : "No selection."} ${outcomeLabel(pick)}.`}
+                      >
+                        <span className="activity-matchup__date">
+                          <strong>{gameStateLabel(pick)}</strong>
+                        </span>
+                        <span className={`activity-team${awaySelected ? " activity-team--selected" : ""}`}>
+                          <span className="activity-team__line">
+                            <span className="activity-team__identity"><TeamCrest code={pick.awayTeamCode} size="sm" /><strong>{pick.awayTeamCode}</strong></span>
+                            <span className="activity-team__call">
+                              {pick.awayScore !== null ? <b>{pick.awayScore}</b> : null}
+                              {awaySelected ? <Icon name="check" /> : null}
+                            </span>
+                          </span>
+                          <small>{pick.awayTeamName}</small>
+                        </span>
+                        <span className="activity-matchup__at">@</span>
+                        <span className={`activity-team${homeSelected ? " activity-team--selected" : ""}`}>
+                          <span className="activity-team__line">
+                            <span className="activity-team__identity"><TeamCrest code={pick.homeTeamCode} size="sm" /><strong>{pick.homeTeamCode}</strong></span>
+                            <span className="activity-team__call">
+                              {pick.homeScore !== null ? <b>{pick.homeScore}</b> : null}
+                              {homeSelected ? <Icon name="check" /> : null}
+                            </span>
+                          </span>
+                          <small>{pick.homeTeamName}</small>
+                        </span>
+                        <span className={`activity-outcome activity-outcome--${pick.outcome}`}>
+                          {outcomeLabel(pick)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </section>
+            ))}
           </div>
         ) : (
           <div className="activity-card__empty">
@@ -165,8 +200,16 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
           </div>
         )}
 
+        {card.lastResetAt && <p className="board-notice">Reset by an administrator on {formatDateTime(card.lastResetAt)}. Submissions made before the reset no longer count toward scoring.</p>}
+        {card.submissionHistory.length > 0 && <details className="board-archive"><summary>Submission history ({card.submissionHistory.length})</summary>
+          {card.submissionHistory.map(version => <details className="board-archive" key={version.versionNumber}>
+            <summary>Version {version.versionNumber} · {version.isCurrent ? "Current official submission" : version.voidedByReset ? "Removed by reset · Not scoring" : "Superseded · Not scoring"} · {formatDateTime(version.committedAt)}</summary>
+            <p>Tiebreaker: {version.mondayPrediction}</p>
+            {version.picks.map(pick => <div className="board-archived-pick" key={pick.gameId}><span>{pick.awayTeamCode} @ {pick.homeTeamCode}</span><strong>{pick.selectedTeamCode ?? "—"}</strong></div>)}
+          </details>)}
+        </details>}
         {card.isCurrent ? (
-          <Link className="activity-card__action" href="/">
+          <Link className="activity-card__action" href={`/picks?board=${encodeURIComponent(card.id)}`} prefetch={false}>
             <span>{card.pickCount > 0 ? "Open current card" : "Make current picks"}</span>
             <Icon name="arrow" />
           </Link>
@@ -179,25 +222,32 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
 export default async function ActivityPage() {
   await auth.protect();
   const appUser = await requireAppUser();
-  const [account, activity, isAdmin] = await Promise.all([
+  const [account, activity, isAdmin, scoreHealth] = await Promise.all([
     getAccountSummary(appUser.id),
     getPlayerActivity(appUser.id),
     hasAdminRole(appUser.id),
+    getScoreSyncHealth(),
   ]);
 
   if (account.accountState !== "active" && !isAdmin) redirect("/profile");
+  const scoreGames = activity.cards.flatMap((card) => card.picks);
+  const shouldPollScores = hasScoreRefreshWindow(scoreGames);
+  const nextAutomaticCheckAt = nextScoreRefreshWindow(scoreGames);
+  const achievements = buildPlayerAchievements(activity.cards.filter(card => card.state !== "archived" && card.state !== "disqualified"));
 
   return (
     <main className="account-shell activity-shell">
       <header className="account-header">
-        <Link href="/" className="account-brand" aria-label="Any Given Pick home">
+        <Link href="/" className="account-brand" aria-label="Any Given Pick home" prefetch={false}>
           <BrandLockup />
         </Link>
         <div className="account-header__actions">
-          <Link href="/" className="text-link">Current call sheet</Link>
-          <Link href="/results" className="text-link">Weekly results</Link>
-          <Link href="/profile" className="text-link">Player card</Link>
-          {isAdmin ? <Link href="/admin" className="text-link">Admin</Link> : null}
+          <Link href="/" className="text-link" prefetch={false}>Current call sheet</Link>
+          <Link href="/race" className="text-link" prefetch={false}>Live race</Link>
+          <Link href="/trends" className="text-link" prefetch={false}>Pick trends</Link>
+          <Link href="/results" className="text-link" prefetch={false}>Weekly results</Link>
+          <Link href="/profile" className="text-link" prefetch={false}>Player card</Link>
+          {isAdmin ? <Link href="/admin" className="text-link" prefetch={false}>Admin</Link> : null}
           <UserButton />
         </div>
       </header>
@@ -214,23 +264,37 @@ export default async function ActivityPage() {
           <Icon name="activity" />
         </div>
 
+        <nav className="results-hub-nav" aria-label="Results and activity">
+          <Link href="/race" prefetch={false}>Live race</Link>
+          <Link href="/trends" prefetch={false}>Pick trends</Link>
+          <Link href="/results" prefetch={false}>Weekly cards</Link>
+          <Link href="/standings" prefetch={false}>Standings</Link>
+          <Link className="results-hub-nav__active" href="/activity" aria-current="page">My activity</Link>
+        </nav>
+
         <div className="activity-scoreboard" aria-label="Activity summary">
           <div><strong>{activity.cards.length}</strong><span>Total cards</span></div>
           <div><strong>{activity.officialCardCount}</strong><span>Official</span></div>
           <div><strong>{activity.draftCardCount}</strong><span>Draft only</span></div>
         </div>
 
+        <PlayerAchievements data={achievements} />
+
         <section className="activity-section" aria-labelledby="current-card-title">
           <div className="activity-section__header">
             <div>
               <p>On the board</p>
-              <h2 id="current-card-title">Current card</h2>
+              <h2 id="current-card-title">Current boards</h2>
             </div>
             <span>Working picks update here after a secure draft save.</span>
           </div>
-          <ActivityScoreRefresh />
+          <ScoreRefreshControl
+            initialLastSuccessAt={scoreHealth.lastSuccessAt}
+            shouldPoll={shouldPollScores}
+            nextAutomaticCheckAt={nextAutomaticCheckAt}
+          />
           {activity.currentCard ? (
-            <ActivityCardView card={activity.currentCard} />
+            <div className="activity-history">{activity.cards.filter(card => card.isCurrent).map(card => <ActivityCardView card={card} key={card.id} />)}</div>
           ) : (
             <div className="activity-empty">
               <Icon name="clock" />
@@ -265,7 +329,7 @@ export default async function ActivityPage() {
           )}
         </section>
       </section>
-      <MobileAppNav active="activity" isAdmin={isAdmin} />
+      <MobileAppNav active="results" isAdmin={isAdmin} />
     </main>
   );
 }

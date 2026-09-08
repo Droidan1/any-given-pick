@@ -10,6 +10,7 @@ import { getAdminWeek, listAdminWeeks } from "@/lib/admin/weeks";
 import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { AdminWeekBuilder } from "./week-builder";
+import { GameRecoveryPanel } from "./game-recovery-panel";
 
 export const metadata: Metadata = {
   title: "Week operations",
@@ -146,23 +147,28 @@ export default async function AdminWeeksPage({
           )}
         </aside>
 
-        <AdminWeekBuilder
-          key={selectedWeek?.id ?? "new-week"}
-          initialWeek={
-            selectedWeek
-              ? {
-                  id: selectedWeek.id,
-                  season: selectedWeek.season,
-                  seasonPhase: selectedWeek.seasonPhase,
-                  weekNumber: selectedWeek.weekNumber,
-                  label: selectedWeek.label ?? "",
-                  entryDeadline: selectedWeek.entryDeadline,
-                  scheduleText: scheduleTextForWeek(selectedWeek),
-                  status: selectedWeek.status,
-                }
-              : null
-          }
-        />
+        <div className="admin-sheet-stack">
+          <AdminWeekBuilder
+            key={selectedWeek?.id ?? "new-week"}
+            initialWeek={
+              selectedWeek
+                ? {
+                    id: selectedWeek.id,
+                    season: selectedWeek.season,
+                    seasonPhase: selectedWeek.seasonPhase,
+                    weekNumber: selectedWeek.weekNumber,
+                    label: selectedWeek.label ?? "",
+                    entryDeadline: selectedWeek.entryDeadline,
+                    scheduleText: scheduleTextForWeek(selectedWeek),
+                    status: selectedWeek.status,
+                  }
+                : null
+            }
+          />
+          {selectedWeek && selectedWeek.status !== "draft" ? (
+            <GameRecoveryPanel games={selectedWeek.games} />
+          ) : null}
+        </div>
       </div>
       <MobileAppNav active="admin" isAdmin />
     </main>

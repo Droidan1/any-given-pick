@@ -4,14 +4,16 @@ import { buildAdminPlayerPickCards, type AdminPicksRosterRow } from "./picks-rul
 import type { RevealedEntry } from "@/lib/results/service";
 
 const roster: AdminPicksRosterRow[] = [
-  { userId: "submitted", displayName: "Submitted Player", currentVersionNumber: 2, entryStatus: "submitted" },
+  { userId: "submitted", entryId: "entry-one", displayName: "Submitted Player", currentVersionNumber: 2, entryStatus: "submitted" },
   { userId: "waiting", displayName: "Waiting Player", currentVersionNumber: 0, entryStatus: "draft" },
   { userId: "removed", displayName: "Removed Player", currentVersionNumber: 1, entryStatus: "disqualified" },
 ];
 
 const revealedEntry: RevealedEntry = {
+  entryId: "entry-one", boardNumber: 1, boardName: "Board 1", tiebreakerDiff: null, isBestBoard: true,
   userId: "submitted",
   displayName: "Submitted Player",
+  profilePhotoUrl: null,
   isCurrentUser: false,
   versionNumber: 2,
   committedAt: "2026-09-10T21:50:00.000Z",
@@ -30,8 +32,8 @@ describe("buildAdminPlayerPickCards", () => {
     });
 
     expect(players.map(({ submissionStatus, entry }) => ({ submissionStatus, entry }))).toEqual([
-      { submissionStatus: "submitted", entry: null },
       { submissionStatus: "not_submitted", entry: null },
+      { submissionStatus: "submitted", entry: null },
       { submissionStatus: "disqualified", entry: null },
     ]);
   });
@@ -43,8 +45,8 @@ describe("buildAdminPlayerPickCards", () => {
       revealStatus: "revealed",
     });
 
-    expect(players[0]?.entry).toBe(revealedEntry);
-    expect(players[1]?.entry).toBeNull();
+    expect(players[0]?.entry).toBeNull();
+    expect(players[1]?.entry).toBe(revealedEntry);
     expect(players[2]?.entry).toBeNull();
   });
 });

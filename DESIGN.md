@@ -157,7 +157,7 @@ The palette feels like stadium field paint meeting a warm paper play sheet: dark
 
 **The Clay Clock Rule.** Clay belongs to time pressure and operational emphasis, not selections or generic promotion.
 
-**The No Sportsbook Rule.** Do not introduce neon odds colors, financial red/green semantics, dark trading-card chrome, or wagering cues.
+**The Reference-Line Rule.** Provider-attributed moneylines and Monday over/under may appear as quiet ink-on-paper measurement data. Never introduce neon odds colors, financial red/green semantics, sportsbook links, dark trading-card chrome, or wagering calls to action.
 
 ## Typography
 
@@ -260,6 +260,10 @@ Each team option is an unrounded paper cell with a large condensed abbreviation 
 
 Progress combines a numeric fraction with a yard-scale rail, visible tick marks, and a maize fill that grows from the left. The count must remain readable without interpreting the graphic. Animate only the fill transform over `220ms ease-out`, and collapse the transition under reduced-motion preferences.
 
+### PWA Installation
+
+Mobile installation uses the existing call-sheet vocabulary instead of browser-utility chrome. The first-login checkpoint is a single skippable paper screen; Home uses one ruled install callout; Profile carries a compact access row; and a maize action band may dock directly above mobile navigation. Instructions must change with the browser, preserve the user’s dismissal, disappear in standalone mode, and never obscure the primary navigation or submission action.
+
 ### Deadline Marker
 
 Deadlines use a clay banner with a clock icon, concise uppercase copy, and a clipped directional end. Keep the wording explicit about lock status and timezone; visual urgency never substitutes for plain language.
@@ -277,9 +281,18 @@ Deadlines use a clay banner with a clock icon, concise uppercase copy, and a cli
 
 ### Don't:
 
-- **Don't** resemble a sportsbook: no odds, betting slips, monetary balances, casino glow, or red/green win-loss trading semantics.
+- **Don't** resemble a sportsbook: no spreads, betting slips, monetary balances, casino glow, promotional odds links, or red/green win-loss trading semantics.
 - **Don't** depend on NFL logos, team crests, jerseys, or protected team artwork.
 - **Don't** scatter the core workflow across rounded floating cards.
 - **Don't** use clipped tabs or clay accents as decoration without semantic purpose.
 - **Don't** place paragraphs in condensed uppercase type.
 - **Don't** shrink essential labels or touch targets to preserve desktop detail on mobile.
+
+
+## Multiple Boards — Approved Board List
+
+The player selected Option 2: a ruled weekly board list. Each row shows the board number, name, submission state, pick count, and tiebreaker. Create, rename, copy, and draft deletion use inline forms; selecting a row opens the existing full call sheet with a persistent board identity and an All boards action. Archived boards live beneath a disclosure and open read-only.
+
+The admin control uses two explicit modes, One board and Multiple boards, followed by the maximum total boards per player. Reducing access requires an inline confirmation that identifies immediate archiving and its effect on historical standings. This is a product confirmation for a consequential setting change.
+
+Verification: the implemented React screens were checked at 320, 390, 1024, and 1440 pixels. Rename, copying into an independent draft, draft deletion, immediate shutoff, and archive viewing were exercised. The existing field, paper, maize, clay, condensed typography, hard edges, and mobile navigation are retained.

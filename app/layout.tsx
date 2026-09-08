@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
-import "@fontsource/barlow-condensed/500.css";
 import "@fontsource/barlow-condensed/600.css";
 import "@fontsource/barlow-condensed/700.css";
 import "./globals.css";
+import { PwaInstallGlobal, PwaInstallProvider } from "@/components/pwa-install-experience";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://anygivenpick.app"),
@@ -14,17 +15,21 @@ export const metadata: Metadata = {
     template: "%s | Any Given Pick",
   },
   description:
-    "Make every call in a free-entry weekly professional-football pick'em experience built for eligible Indiana adults.",
+    "Make every call in a free-entry weekly professional-football pick'em experience built for approved adults.",
   applicationName: "Any Given Pick",
   alternates: { canonical: "/" },
   category: "sports",
   icons: {
-    icon: [{ url: "/pwa-icon-192", sizes: "192x192", type: "image/png" }],
-    apple: [{ url: "/pwa-icon-192", sizes: "192x192", type: "image/png" }],
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/pwa-icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    shortcut: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "black",
     title: "Any Given Pick",
   },
   openGraph: {
@@ -81,7 +86,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             },
           }}
         >
-          {children}
+          <PwaInstallProvider>
+            {children}
+            <PwaInstallGlobal />
+            <SpeedInsights />
+          </PwaInstallProvider>
         </ClerkProvider>
       </body>
     </html>

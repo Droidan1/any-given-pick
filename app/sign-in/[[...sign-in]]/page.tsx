@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SignIn } from "@clerk/nextjs";
 import { BrandLockup } from "@/components/brand-lockup";
+import { PublicSiteFooter } from "@/components/public-site-footer";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -24,6 +25,13 @@ export default function SignInPage() {
         path="/sign-in"
         signUpUrl="/sign-up"
         fallbackRedirectUrl="/"
+        appearance={{
+          elements: {
+            logoBox: { display: "none" },
+            headerTitle: { display: "none" },
+            headerSubtitle: { display: "none" },
+          },
+        }}
       />
       <section className="auth-game-plan" aria-labelledby="game-plan-title">
         <h2 id="game-plan-title">How the game works</h2>
@@ -39,7 +47,7 @@ export default function SignInPage() {
             </li>
             <li>
               <strong>Review before lock</strong>
-              <span>Finish every pick and eligibility check before the weekly deadline.</span>
+              <span>Finish every pick and submit your card before the weekly deadline.</span>
             </li>
           </ol>
           <p className="auth-game-plan__note">
@@ -48,6 +56,7 @@ export default function SignInPage() {
           </p>
         </div>
       </section>
+      <PublicSiteFooter />
     </main>
   );
 }

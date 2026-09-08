@@ -3,6 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { syncProfilePhotoAction } from "./actions";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -41,7 +42,11 @@ export function ProfilePhotoEditor() {
     try {
       await user.setProfileImage({ file });
       await user.reload();
-      setUploadState({ status: "success", message: "Profile photo updated." });
+      const result = await syncProfilePhotoAction();
+      setUploadState({
+        status: result.ok ? "success" : "error",
+        message: result.message,
+      });
       router.refresh();
     } catch {
       setUploadState({

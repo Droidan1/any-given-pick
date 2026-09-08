@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne } from "drizzle-orm";
 import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getDb } from "@/lib/db";
-import { contestEntries, contestWeeks, games } from "@/lib/db/schema";
-import type { PlayerWeek } from "./types";
+import { contestEntries, contestWeeks, entryVersionPicks, entryVersions, games, profiles, users } from "@/lib/db/schema";
+import { getBoardSettings } from "./board-settings";
+import type { LivePlayerPicks, PlayerEntry, PlayerWeek } from "./types";
 
 const BUSINESS_TIME_ZONE = "America/Indiana/Indianapolis";
 
@@ -34,22 +35,68 @@ function formatDeadline(deadline: Date): string {
   }).format(deadline);
 }
 
-export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek | null> {
+async function loadLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[]> {
+  const rows = await getDb()
+    .select({
+      userId: users.id,
+      entryId: contestEntries.id,
+      boardName: contestEntries.boardName,
+      displayName: profiles.displayName,
+      picks: contestEntries.draftPicks,
+      updatedAt: contestEntries.updatedAt,
+    })
+    .from(users)
+    .innerJoin(profiles, eq(profiles.userId, users.id))
+    .leftJoin(
+      contestEntries,
+      and(
+        eq(contestEntries.userId, users.id),
+        eq(contestEntries.contestWeekId, weekId),
+        isNull(contestEntries.archivedAt),
+        ne(contestEntries.status, "disqualified"),
+      ),
+    )
+    .where(eq(users.accountState, "active"))
+    .orderBy(asc(profiles.normalizedDisplayName));
+
+  return rows.map((row) => ({
+    userId: row.userId,
+    entryId: row.entryId ?? row.userId,
+    boardName: row.boardName ?? "Board 1",
+    displayName: row.displayName,
+    picks: row.picks ?? {},
+    updatedAt: row.updatedAt?.toISOString() ?? null,
+  }));
+}
+
+export async function getLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[] | null> {
+  const [week] = await getDb()
+    .select({ id: contestWeeks.id })
+    .from(contestWeeks)
+    .where(and(eq(contestWeeks.id, weekId), eq(contestWeeks.status, "published")))
+    .limit(1);
+  if (!week) return null;
+  return loadLivePlayerPicks(week.id);
+}
+
+export async function getCurrentPlayerWeek(
+  userId: string,
+  input: { includeLivePicks?: boolean } = {},
+): Promise<PlayerWeek | null> {
   const db = getDb();
   const [week] = await db
     .select()
     .from(contestWeeks)
     .where(eq(contestWeeks.status, "published"))
-    .orderBy(
-      desc(contestWeeks.season),
-      desc(sql<number>`case when ${contestWeeks.seasonPhase} = 'regular' then 1 else 0 end`),
-      desc(contestWeeks.weekNumber),
-    )
+    .orderBy(desc(contestWeeks.publishedAt), desc(contestWeeks.updatedAt))
     .limit(1);
 
   if (!week) return null;
 
-  const [gameRows, entryRows] = await Promise.all([
+  const now = new Date();
+  const isLocked = now >= week.entryDeadline;
+
+  const [gameRows, entryRows, officialVersionRows, officialPickRows, livePlayerPicks, boardSettings] = await Promise.all([
     db
       .select()
       .from(games)
@@ -64,12 +111,70 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
           eq(contestEntries.userId, userId),
         ),
       )
-      .limit(1),
+      .orderBy(asc(contestEntries.boardNumber)),
+    db
+      .select({
+        entryId: contestEntries.id,
+        action: entryVersions.action,
+        mondayPrediction: entryVersions.mondayPrediction,
+        committedAt: entryVersions.committedAt,
+      })
+      .from(contestEntries)
+      .innerJoin(
+        entryVersions,
+        and(
+          eq(entryVersions.contestEntryId, contestEntries.id),
+          eq(entryVersions.versionNumber, contestEntries.currentVersionNumber),
+        ),
+      )
+      .where(
+        and(
+          eq(contestEntries.contestWeekId, week.id),
+          eq(contestEntries.userId, userId),
+        ),
+      )
+      .orderBy(asc(contestEntries.boardNumber)),
+    db
+      .select({
+        entryId: contestEntries.id,
+        gameId: entryVersionPicks.gameId,
+        selectedTeamCode: entryVersionPicks.selectedTeamCode,
+      })
+      .from(contestEntries)
+      .innerJoin(
+        entryVersions,
+        and(
+          eq(entryVersions.contestEntryId, contestEntries.id),
+          eq(entryVersions.versionNumber, contestEntries.currentVersionNumber),
+        ),
+      )
+      .innerJoin(entryVersionPicks, eq(entryVersionPicks.entryVersionId, entryVersions.id))
+      .where(
+        and(
+          eq(contestEntries.contestWeekId, week.id),
+          eq(contestEntries.userId, userId),
+        ),
+      ),
+    input.includeLivePicks ? loadLivePlayerPicks(week.id) : Promise.resolve([]),
+    getBoardSettings(),
   ]);
 
-  const entry = entryRows[0] ?? null;
-  const now = new Date();
-
+  const entries: PlayerEntry[] = entryRows.map(entry => {
+    const officialVersion = officialVersionRows.find(version => version.entryId === entry.id);
+    return {
+      id: entry.id, boardNumber: entry.boardNumber, boardName: entry.boardName,
+      archivedAt: entry.archivedAt?.toISOString() ?? null,
+      lastResetAt: entry.lastResetAt?.toISOString() ?? null, resetRevision: entry.resetRevision,
+      status: entry.status, draftPicks: entry.draftPicks, draftRevision: entry.draftRevision,
+      officialPicks: Object.fromEntries(officialPickRows.filter(pick => pick.entryId === entry.id).map(pick => [pick.gameId, pick.selectedTeamCode])),
+      mondayPrediction: entry.draftMondayPrediction,
+      officialMondayPrediction: officialVersion?.mondayPrediction ?? null,
+      officialAction: officialVersion ? officialVersion.action as "submit" | "edit" : null,
+      currentVersionNumber: entry.currentVersionNumber,
+      submittedAt: officialVersion?.committedAt.toISOString() ?? entry.submittedAt?.toISOString() ?? null,
+      updatedAt: entry.updatedAt.toISOString(),
+    };
+  });
   return {
     id: week.id,
     season: week.season,
@@ -78,25 +183,30 @@ export async function getCurrentPlayerWeek(userId: string): Promise<PlayerWeek |
     label: week.label || formatWeekName(week.seasonPhase, week.weekNumber),
     entryDeadline: week.entryDeadline.toISOString(),
     deadlineLabel: formatDeadline(week.entryDeadline),
-    isLocked: now >= week.entryDeadline,
+    isLocked,
     games: gameRows.map((game) => ({
       id: game.id,
       kickoffAt: game.kickoffAt.toISOString(),
+      status: game.status,
       ...formatKickoff(game.kickoffAt),
       away: { abbreviation: game.awayTeamCode, name: game.awayTeamName },
       home: { abbreviation: game.homeTeamCode, name: game.homeTeamName },
+      awayScore: game.awayScore,
+      homeScore: game.homeScore,
       isMondayTiebreaker: game.isMondayTiebreaker,
+      odds: game.oddsProvider && game.oddsUpdatedAt
+        ? {
+            awayMoneyline: game.awayMoneyline,
+            homeMoneyline: game.homeMoneyline,
+            overUnder: game.overUnder,
+            provider: game.oddsProvider,
+            updatedAt: game.oddsUpdatedAt.toISOString(),
+          }
+        : null,
     })),
-    entry: entry
-      ? {
-          id: entry.id,
-          status: entry.status,
-          draftPicks: entry.draftPicks,
-          mondayPrediction: entry.draftMondayPrediction,
-          currentVersionNumber: entry.currentVersionNumber,
-          submittedAt: entry.submittedAt?.toISOString() ?? null,
-          updatedAt: entry.updatedAt.toISOString(),
-        }
-      : null,
+    entry: entries.find(entry => entry.boardNumber === 1) ?? null,
+    entries,
+    boardSettings,
+    livePlayerPicks,
   };
 }

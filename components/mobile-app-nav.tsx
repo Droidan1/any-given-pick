@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { Icon, type IconName } from "./icons";
+
+const STALE_VIEW_MS = 60_000;
 
 export type MobileAppDestination =
   | "home"
   | "picks"
-  | "standings"
-  | "activity"
+  | "results"
   | "profile"
   | "admin";
 
-type LocalDestination = "home" | "picks" | "standings" | "profile";
+type LocalDestination = "home" | "picks" | "standings";
 
 const playerDestinations: Array<{
   destination: Exclude<MobileAppDestination, "admin">;
@@ -20,11 +23,10 @@ const playerDestinations: Array<{
   href: string;
   localView?: LocalDestination;
 }> = [
-  { destination: "home", label: "Home", icon: "home", href: "/?view=home", localView: "home" },
-  { destination: "picks", label: "Picks", icon: "picks", href: "/?view=picks", localView: "picks" },
-  { destination: "standings", label: "Standings", icon: "standings", href: "/?view=standings", localView: "standings" },
-  { destination: "activity", label: "Activity", icon: "activity", href: "/activity" },
-  { destination: "profile", label: "Profile", icon: "profile", href: "/profile", localView: "profile" },
+  { destination: "home", label: "Home", icon: "home", href: "/", localView: "home" },
+  { destination: "picks", label: "Picks", icon: "picks", href: "/picks", localView: "picks" },
+  { destination: "results", label: "Results", icon: "results", href: "/results" },
+  { destination: "profile", label: "Profile", icon: "profile", href: "/profile" },
 ];
 
 export function MobileAppNav({
@@ -36,6 +38,26 @@ export function MobileAppNav({
   isAdmin?: boolean;
   onSelectView?: (view: LocalDestination) => void;
 }) {
+  const router = useRouter();
+  const lastRefreshAt = useRef(0);
+
+  useEffect(() => {
+    lastRefreshAt.current = Date.now();
+    const refreshIfStale = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastRefreshAt.current < STALE_VIEW_MS) return;
+      lastRefreshAt.current = now;
+      router.refresh();
+    };
+    window.addEventListener("focus", refreshIfStale);
+    document.addEventListener("visibilitychange", refreshIfStale);
+    return () => {
+      window.removeEventListener("focus", refreshIfStale);
+      document.removeEventListener("visibilitychange", refreshIfStale);
+    };
+  }, [router]);
+
   return (
     <nav className={`bottom-nav${isAdmin ? " bottom-nav--admin" : ""}`} aria-label="Primary navigation">
       {playerDestinations.map((item) => {
@@ -60,6 +82,7 @@ export function MobileAppNav({
             className={`${className} bottom-nav__item--link`}
             href={item.href}
             key={item.destination}
+            prefetch={false}
             aria-current={active === item.destination ? "page" : undefined}
           >
             {content}
@@ -70,6 +93,7 @@ export function MobileAppNav({
         <Link
           className={`bottom-nav__item bottom-nav__item--link${active === "admin" ? " bottom-nav__item--active" : ""}`}
           href="/admin"
+          prefetch={false}
           aria-current={active === "admin" ? "page" : undefined}
         >
           <Icon name="settings" /><span>Admin</span>

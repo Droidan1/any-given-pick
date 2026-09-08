@@ -1,7 +1,8 @@
 "use server";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { requireAppUser } from "@/lib/auth/app-user";
 import {
@@ -18,15 +19,24 @@ import {
   games,
 } from "@/lib/db/schema";
 import { validateEntrySelections } from "@/lib/entries/rules";
+import { draftWriteDecision } from "@/lib/entries/draft-conflict";
 import type {
   EntryActionResult,
   EntryMutationInput,
 } from "@/lib/entries/types";
+import { queueAndProcessSubmissionConfirmation } from "@/lib/email/player-notifications";
+import { queueAndProcessSubmissionPush } from "@/lib/push/player-notifications";
+import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
+
+import { lockBoardSettings, lockPlayerBoards } from "@/lib/entries/board-settings";
 
 const entryInputSchema = z.object({
   weekId: z.uuid(),
+  boardId: z.uuid().optional(),
   picks: z.record(z.string(), z.string()),
   mondayPrediction: z.number().int().min(0).max(200).nullable(),
+  baseDraftRevision: z.number().int().min(0),
 });
 
 const submissionInputSchema = entryInputSchema.extend({ submissionKey: z.uuid() });
@@ -67,23 +77,48 @@ function failureFromError(error: unknown): EntryActionResult {
   };
 }
 
+function draftsMatch(
+  currentPicks: Record<string, string>,
+  nextPicks: Record<string, string>,
+  currentMondayPrediction: number | null,
+  nextMondayPrediction: number | null,
+): boolean {
+  const nextEntries = Object.entries(nextPicks);
+  return currentMondayPrediction === nextMondayPrediction
+    && Object.keys(currentPicks).length === nextEntries.length
+    && nextEntries.every(([gameId, teamCode]) => currentPicks[gameId] === teamCode);
+}
+
 export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryActionResult> {
   const parsed = entryInputSchema.safeParse(input);
   if (!parsed.success || Object.keys(parsed.data.picks).length > 32) return invalidInput();
 
   try {
     const appUser = await requireAppUser();
+    const rateLimit = await consumeRateLimit({
+      scope: "entry_draft",
+      identifier: appUser.id,
+      limit: 120,
+      windowMs: 10 * 60 * 1_000,
+    });
+    if (!rateLimit.allowed) {
+      return { ok: false, code: "rate_limited", message: "Draft syncing paused briefly. Wait a moment and try again." };
+    }
     await requireParticipationEligibility(appUser.id);
     const db = getDb();
 
     const result = await db.transaction(async (transaction): Promise<EntryActionResult> => {
-      const clock = await transaction.execute<{ now: Date }>(sql`select now() as now`);
-      const now = new Date(clock.rows[0].now);
+      await lockBoardSettings(transaction);
+      await lockPlayerBoards(transaction, appUser.id, parsed.data.weekId);
       const [week] = await transaction
         .select()
         .from(contestWeeks)
         .where(eq(contestWeeks.id, parsed.data.weekId))
+        .for("share")
         .limit(1);
+
+      const clock = await transaction.execute<{ now: Date }>(sql`select clock_timestamp() as now`);
+      const now = new Date(clock.rows[0].now);
 
       if (!week) return { ok: false, code: "not_found", message: "This week was not found." };
       if (week.status !== "published") {
@@ -91,6 +126,61 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
       }
       if (now >= week.entryDeadline) {
         return { ok: false, code: "deadline_passed", message: "The entry deadline has passed." };
+      }
+
+      const [existing] = await transaction
+        .select()
+        .from(contestEntries)
+        .where(
+          and(
+            eq(contestEntries.contestWeekId, week.id),
+            eq(contestEntries.userId, appUser.id),
+            parsed.data.boardId ? eq(contestEntries.id, parsed.data.boardId) : eq(contestEntries.boardNumber, 1),
+          ),
+        )
+        .for("update")
+        .limit(1);
+
+      if (parsed.data.boardId && !existing) return { ok: false, code: "not_found", message: "This board was not found." };
+      if (existing && parsed.data.baseDraftRevision < existing.resetRevision) return { ok: false, code: "board_reset", message: "An administrator reset this board. Refresh to load the empty board before making new picks." };
+      if (existing?.archivedAt) return { ok: false, code: "not_open", message: "This board was archived by an administrator and is excluded from scoring." };
+      if (existing && ["locked", "scored", "disqualified"].includes(existing.status)) {
+        return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
+      }
+
+      const writeDecision = existing ? draftWriteDecision({
+        baseRevision: parsed.data.baseDraftRevision,
+        currentRevision: existing.draftRevision,
+        payloadMatches: draftsMatch(
+          existing.draftPicks,
+          parsed.data.picks,
+          existing.draftMondayPrediction,
+          parsed.data.mondayPrediction,
+        ),
+      }) : null;
+
+      if (existing && writeDecision?.kind === "already_synced") {
+        return {
+          ok: true,
+          code: "saved",
+          message: "Draft already synced.",
+          syncedAt: existing.updatedAt.toISOString(),
+          draftRevision: existing.draftRevision,
+        };
+      }
+
+      if (existing && writeDecision?.kind === "conflict") {
+        return {
+          ok: false,
+          code: "draft_conflict",
+          message: "A newer draft was saved on another device. Choose which version to keep.",
+          serverDraft: {
+            picks: existing.draftPicks,
+            mondayPrediction: existing.draftMondayPrediction,
+            draftRevision: existing.draftRevision,
+            updatedAt: existing.updatedAt.toISOString(),
+          },
+        };
       }
 
       const weekGames = await transaction
@@ -109,66 +199,58 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
       });
       if (validated.issues.length > 0) return selectionFailure(validated.issues, false);
 
-      const [existing] = await transaction
-        .select()
-        .from(contestEntries)
-        .where(
-          and(
-            eq(contestEntries.contestWeekId, week.id),
-            eq(contestEntries.userId, appUser.id),
-          ),
-        )
-        .for("update")
-        .limit(1);
+      if (existing) {
+        const draftRevision = writeDecision?.revision ?? existing.draftRevision + 1;
+        await transaction
+          .update(contestEntries)
+          .set({
+            draftPicks: validated.picks,
+            draftMondayPrediction: parsed.data.mondayPrediction,
+            draftRevision,
+            updatedAt: now,
+          })
+          .where(eq(contestEntries.id, existing.id));
 
-      if (existing && ["locked", "scored", "disqualified"].includes(existing.status)) {
-        return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
+        return {
+          ok: true,
+          code: "saved",
+          message: "Draft synced securely.",
+          syncedAt: now.toISOString(),
+          draftRevision,
+        };
+      } else {
+        await transaction
+          .insert(contestEntries)
+          .values({
+            contestWeekId: week.id,
+            userId: appUser.id,
+            draftPicks: validated.picks,
+            draftMondayPrediction: parsed.data.mondayPrediction,
+            draftRevision: 1,
+            updatedAt: now,
+          });
       }
-
-      const [entry] = existing
-        ? await transaction
-            .update(contestEntries)
-            .set({
-              draftPicks: validated.picks,
-              draftMondayPrediction: parsed.data.mondayPrediction,
-              updatedAt: now,
-            })
-            .where(eq(contestEntries.id, existing.id))
-            .returning({ id: contestEntries.id })
-        : await transaction
-            .insert(contestEntries)
-            .values({
-              contestWeekId: week.id,
-              userId: appUser.id,
-              draftPicks: validated.picks,
-              draftMondayPrediction: parsed.data.mondayPrediction,
-              updatedAt: now,
-            })
-            .returning({ id: contestEntries.id });
-
-      await transaction.insert(auditEvents).values({
-        actorUserId: appUser.id,
-        targetUserId: appUser.id,
-        action: "entry.draft_saved",
-        entityType: "contest_entry",
-        entityId: entry.id,
-        metadata: {
-          contest_week_id: week.id,
-          pick_count: Object.keys(validated.picks).length,
-          required_pick_count: weekGames.length,
-        },
-      });
 
       return {
         ok: true,
         code: "saved",
         message: "Draft synced securely.",
         syncedAt: now.toISOString(),
+        draftRevision: 1,
       };
     });
 
     return result;
   } catch (error) {
+    if (!(error instanceof ParticipationForbiddenError)) {
+      await reportOperationalIssue({
+        kind: "entry_draft",
+        identity: error instanceof Error ? error.name : "unknown",
+        severity: "error",
+        message: "A player draft could not be saved.",
+        context: { action: "save_draft" },
+      });
+    }
     return failureFromError(error);
   }
 }
@@ -181,27 +263,51 @@ export async function submitEntry(
 
   try {
     const appUser = await requireAppUser();
+    const rateLimit = await consumeRateLimit({
+      scope: "entry_submission",
+      identifier: appUser.id,
+      limit: 20,
+      windowMs: 60 * 60 * 1_000,
+    });
+    if (!rateLimit.allowed) {
+      return { ok: false, code: "rate_limited", message: "Too many submission attempts. Wait before trying again." };
+    }
     const account = await requireParticipationEligibility(appUser.id);
     const db = getDb();
 
     const result = await db.transaction(async (transaction): Promise<EntryActionResult> => {
+      await lockBoardSettings(transaction);
+      await lockPlayerBoards(transaction, appUser.id, parsed.data.weekId);
       const [duplicate] = await transaction
         .select({
+          id: entryVersions.id,
           versionNumber: entryVersions.versionNumber,
           committedAt: entryVersions.committedAt,
           action: entryVersions.action,
+          mondayPrediction: entryVersions.mondayPrediction,
+          draftRevision: contestEntries.draftRevision,
         })
         .from(entryVersions)
         .innerJoin(contestEntries, eq(contestEntries.id, entryVersions.contestEntryId))
         .where(
           and(
             eq(entryVersions.submissionKey, parsed.data.submissionKey),
+            isNull(contestEntries.archivedAt),
+            gt(entryVersions.versionNumber, contestEntries.resetVersionNumber),
             eq(contestEntries.userId, appUser.id),
+            parsed.data.boardId ? eq(contestEntries.id, parsed.data.boardId) : eq(contestEntries.boardNumber, 1),
             eq(contestEntries.contestWeekId, parsed.data.weekId),
           ),
         )
         .limit(1);
       if (duplicate) {
+        const duplicatePicks = await transaction
+          .select({
+            gameId: entryVersionPicks.gameId,
+            selectedTeamCode: entryVersionPicks.selectedTeamCode,
+          })
+          .from(entryVersionPicks)
+          .where(eq(entryVersionPicks.entryVersionId, duplicate.id));
         return {
           ok: true,
           code: "submitted",
@@ -210,17 +316,24 @@ export async function submitEntry(
             versionNumber: duplicate.versionNumber,
             committedAt: duplicate.committedAt.toISOString(),
             action: duplicate.action as "submit" | "edit",
+            officialPicks: Object.fromEntries(
+              duplicatePicks.map((pick) => [pick.gameId, pick.selectedTeamCode]),
+            ),
+            mondayPrediction: duplicate.mondayPrediction,
+            draftRevision: duplicate.draftRevision,
           },
         };
       }
 
-      const clock = await transaction.execute<{ now: Date }>(sql`select now() as now`);
-      const now = new Date(clock.rows[0].now);
       const [week] = await transaction
         .select()
         .from(contestWeeks)
         .where(eq(contestWeeks.id, parsed.data.weekId))
+        .for("share")
         .limit(1);
+
+      const clock = await transaction.execute<{ now: Date }>(sql`select clock_timestamp() as now`);
+      const now = new Date(clock.rows[0].now);
 
       if (!week) return { ok: false, code: "not_found", message: "This week was not found." };
       if (week.status !== "published") {
@@ -257,10 +370,14 @@ export async function submitEntry(
           and(
             eq(contestEntries.contestWeekId, week.id),
             eq(contestEntries.userId, appUser.id),
+            parsed.data.boardId ? eq(contestEntries.id, parsed.data.boardId) : eq(contestEntries.boardNumber, 1),
           ),
         )
         .for("update")
         .limit(1);
+      if (parsed.data.boardId && !existing) return { ok: false, code: "not_found", message: "This board was not found." };
+      if (existing && parsed.data.baseDraftRevision < existing.resetRevision) return { ok: false, code: "board_reset", message: "An administrator reset this board. Refresh to load the empty board before making new picks." };
+      if (existing?.archivedAt) return { ok: false, code: "not_open", message: "This board was archived by an administrator and is excluded from scoring." };
       if (existing && ["locked", "scored", "disqualified"].includes(existing.status)) {
         return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
       }
@@ -274,10 +391,13 @@ export async function submitEntry(
               userId: appUser.id,
               draftPicks: validated.picks,
               draftMondayPrediction: parsed.data.mondayPrediction,
+              draftRevision: 1,
               updatedAt: now,
             })
             .returning();
-      const versionNumber = entry.currentVersionNumber + 1;
+      const [versionHistory] = await transaction.select({ lastVersion: sql<number>`coalesce(max(${entryVersions.versionNumber}), 0)` })
+        .from(entryVersions).where(eq(entryVersions.contestEntryId, entry.id));
+      const versionNumber = versionHistory.lastVersion + 1;
       const action = entry.currentVersionNumber === 0 ? "submit" : "edit";
 
       const [version] = await transaction
@@ -290,8 +410,8 @@ export async function submitEntry(
           mondayPrediction: parsed.data.mondayPrediction,
           eligibilitySnapshot: {
             reason: account.reason,
-            locationResult: account.locationResult,
-            locationCheckedAt: account.locationCheckedAt,
+            locationResult: null,
+            locationCheckedAt: null,
           },
           committedAt: now,
         })
@@ -311,6 +431,12 @@ export async function submitEntry(
           status: "submitted",
           draftPicks: validated.picks,
           draftMondayPrediction: parsed.data.mondayPrediction,
+          draftRevision: draftsMatch(
+            entry.draftPicks,
+            validated.picks,
+            entry.draftMondayPrediction,
+            parsed.data.mondayPrediction,
+          ) ? entry.draftRevision : entry.draftRevision + 1,
           currentVersionNumber: versionNumber,
           submittedAt: now,
           updatedAt: now,
@@ -339,13 +465,53 @@ export async function submitEntry(
           versionNumber,
           committedAt: version.committedAt.toISOString(),
           action,
+          officialPicks: validated.picks,
+          mondayPrediction: parsed.data.mondayPrediction,
+          draftRevision: draftsMatch(
+            entry.draftPicks,
+            validated.picks,
+            entry.draftMondayPrediction,
+            parsed.data.mondayPrediction,
+          ) ? entry.draftRevision : entry.draftRevision + 1,
         },
       };
     });
 
-    if (result.ok) revalidatePath("/");
+    if (result.ok) {
+      after(async () => {
+        try {
+          const notificationInput = {
+            userId: appUser.id,
+            weekId: parsed.data.weekId,
+            submissionKey: parsed.data.submissionKey,
+          };
+          await Promise.all([
+            queueAndProcessSubmissionConfirmation(notificationInput),
+            queueAndProcessSubmissionPush(notificationInput),
+          ]);
+        } catch (error) {
+          await reportOperationalIssue({
+            kind: "player_notification_queue",
+            identity: "picks_submitted",
+            severity: "warning",
+            message: "A picks-submitted notification could not be queued or processed.",
+            context: { error_type: error instanceof Error ? error.name : "unknown" },
+          });
+        }
+      });
+      revalidatePath("/");
+    }
     return result;
   } catch (error) {
+    if (!(error instanceof ParticipationForbiddenError)) {
+      await reportOperationalIssue({
+        kind: "entry_submission",
+        identity: error instanceof Error ? error.name : "unknown",
+        severity: "error",
+        message: "An official player entry could not be submitted.",
+        context: { action: "submit_entry" },
+      });
+    }
     return failureFromError(error);
   }
 }

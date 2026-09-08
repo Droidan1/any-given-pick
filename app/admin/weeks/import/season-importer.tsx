@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { TeamCode } from "@/components/team-crest";
 import { formatWeekName, type ScheduleIssue } from "@/lib/admin/schedule-import";
 import type { ProviderSchedule } from "@/lib/admin/schedule-providers/types";
 import { parseSeasonScheduleText } from "@/lib/admin/season-import";
@@ -342,7 +343,7 @@ export function SeasonImporter() {
                     {week.games.map((game) => (
                       <li key={`${game.kickoffAt}-${game.awayTeamCode}-${game.homeTeamCode}`}>
                         <time dateTime={game.kickoffAt}>{formatDateTime(game.kickoffAt)}</time>
-                        <strong>{game.awayTeamCode} at {game.homeTeamCode}</strong>
+                        <strong className="season-import-game__teams"><TeamCode code={game.awayTeamCode} size="xs" /><b>at</b><TeamCode code={game.homeTeamCode} size="xs" /></strong>
                         <span>{game.isMondayTiebreaker ? "Tiebreaker" : "Standard"}</span>
                       </li>
                     ))}

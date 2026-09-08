@@ -4,6 +4,7 @@ export type IconName =
   | "home"
   | "picks"
   | "standings"
+  | "race"
   | "profile"
   | "activity"
   | "results"
@@ -13,6 +14,8 @@ export type IconName =
   | "check"
   | "arrow"
   | "install"
+  | "share"
+  | "award"
   | "whistle";
 
 export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGElement>) {
@@ -30,6 +33,7 @@ export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGEle
     home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h14V9" /><path d="M9 20v-6h6v6" /></>,
     picks: <><rect x="5" y="4" width="14" height="17" rx="1.5" /><path d="M9 4V2h6v2M8.5 9h7M8.5 13h3M14 13l1.2 1.2L18 11.5M8.5 17h7" /></>,
     standings: <><path d="M4 20V12h4v8M10 20V5h4v15M16 20v-11h4v11M2 20h20" /></>,
+    race: <><path d="M5 21V4" /><path d="M5 5h12l-2.5 3L17 11H5" /><path d="M9 16h10M15 13l4 3-4 3" /></>,
     profile: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></>,
     activity: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h5M16 12v4M14 14h4" /></>,
     results: <><path d="M3 5h18v14H3z" /><path d="M8 9h8M8 13h3M15 12v4M13 14h4" /><path d="M7 2v3M17 2v3" /></>,
@@ -39,6 +43,8 @@ export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGEle
     check: <path d="m5 12 4 4L19 6" />,
     arrow: <path d="M5 12h14M14 7l5 5-5 5" />,
     install: <><path d="M12 3v11M8 10l4 4 4-4" /><path d="M5 16v4h14v-4" /></>,
+    share: <><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5" /></>,
+    award: <><circle cx="12" cy="9" r="6" /><path d="m8 14-1 8 5-3 5 3-1-8" /><path d="m9.5 9 1.6 1.6L14.8 7" /></>,
     whistle: <><circle cx="9" cy="13" r="5" /><path d="M13 10h7l-2 5h-5M5 9 3 5h7l2 4" /></>,
   };
 

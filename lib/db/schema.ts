@@ -5,6 +5,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -63,6 +64,17 @@ export const entryStatusEnum = pgEnum("entry_status", [
   "disqualified",
 ]);
 
+export const privacyRequestStatusEnum = pgEnum("privacy_request_status", [
+  "pending",
+  "canceled",
+  "completed",
+]);
+
+export const commissionerAnnouncementStatusEnum = pgEnum(
+  "commissioner_announcement_status",
+  ["draft", "published", "archived"],
+);
+
 export const users = pgTable(
   "users",
   {
@@ -91,11 +103,48 @@ export const profiles = pgTable(
     ageEligible: boolean("age_eligible").notNull(),
     ageCheckedAt: timestamp("age_checked_at", { withTimezone: true }).notNull(),
     displayNameChangedAt: timestamp("display_name_changed_at", { withTimezone: true }).notNull(),
+    profilePhotoUrl: varchar("profile_photo_url", { length: 2048 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("profiles_normalized_display_name_unique").on(table.normalizedDisplayName),
+  ],
+);
+
+export const emailNotificationPreferences = pgTable(
+  "email_notification_preferences",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    weekPublished: boolean("week_published").notNull().default(true),
+    deadlineApproaching: boolean("deadline_approaching").notNull().default(true),
+    picksSubmitted: boolean("picks_submitted").notNull().default(true),
+    resultsAvailable: boolean("results_available").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: varchar("endpoint", { length: 2048 }).notNull(),
+    p256dh: varchar("p256dh", { length: 512 }).notNull(),
+    auth: varchar("auth", { length: 256 }).notNull(),
+    userAgent: varchar("user_agent", { length: 256 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("push_subscriptions_endpoint_unique").on(table.endpoint),
+    index("push_subscriptions_user_idx").on(table.userId),
   ],
 );
 
@@ -193,6 +242,35 @@ export const auditEvents = pgTable(
   (table) => [index("audit_events_target_created_idx").on(table.targetUserId, table.createdAt)],
 );
 
+export const commissionerAnnouncements = pgTable(
+  "commissioner_announcements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: varchar("title", { length: 80 }).notNull(),
+    body: varchar("body", { length: 500 }).notNull(),
+    status: commissionerAnnouncementStatusEnum("status").notNull().default("draft"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    updatedByUserId: uuid("updated_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("commissioner_announcements_status_starts_idx").on(table.status, table.startsAt),
+    check(
+      "commissioner_announcements_expiry_after_start_check",
+      sql`${table.expiresAt} is null or ${table.expiresAt} > ${table.startsAt}`,
+    ),
+  ],
+);
+
 export const providerSyncStates = pgTable(
   "provider_sync_states",
   {
@@ -221,6 +299,74 @@ export const providerSyncStates = pgTable(
   ],
 );
 
+export const privacyRequests = pgTable(
+  "privacy_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    status: privacyRequestStatusEnum("status").notNull().default("pending"),
+    previousAccountState: accountStateEnum("previous_account_state").notNull(),
+    previousStateReason: text("previous_state_reason"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    canceledAt: timestamp("canceled_at", { withTimezone: true }),
+    processingAt: timestamp("processing_at", { withTimezone: true }),
+    processingByUserId: uuid("processing_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedByUserId: uuid("completed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("privacy_requests_status_requested_idx").on(table.status, table.requestedAt),
+    uniqueIndex("privacy_requests_one_pending_per_user")
+      .on(table.userId)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
+
+export const rateLimitBuckets = pgTable(
+  "rate_limit_buckets",
+  {
+    key: varchar("key", { length: 64 }).primaryKey(),
+    scope: varchar("scope", { length: 64 }).notNull(),
+    requestCount: integer("request_count").notNull().default(1),
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("rate_limit_buckets_expires_idx").on(table.expiresAt),
+    check("rate_limit_buckets_count_positive", sql`${table.requestCount} > 0`),
+  ],
+);
+
+export const operationalAlerts = pgTable(
+  "operational_alerts",
+  {
+    fingerprint: varchar("fingerprint", { length: 64 }).primaryKey(),
+    kind: varchar("kind", { length: 64 }).notNull(),
+    severity: varchar("severity", { length: 16 }).notNull(),
+    message: text("message").notNull(),
+    context: jsonb("context").$type<Record<string, unknown>>().notNull().default({}),
+    occurrenceCount: integer("occurrence_count").notNull().default(1),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("operational_alerts_active_idx").on(table.resolvedAt, table.lastSeenAt),
+    check("operational_alerts_severity_check", sql`${table.severity} in ('warning', 'error')`),
+    check("operational_alerts_count_positive", sql`${table.occurrenceCount} > 0`),
+  ],
+);
+
 export const contestWeeks = pgTable(
   "contest_weeks",
   {
@@ -245,6 +391,9 @@ export const contestWeeks = pgTable(
       table.weekNumber,
     ),
     index("contest_weeks_status_deadline_idx").on(table.status, table.entryDeadline),
+    uniqueIndex("contest_weeks_one_published_unique")
+      .on(table.status)
+      .where(sql`${table.status} = 'published'`),
     check(
       "contest_weeks_week_number_check",
       sql`(${table.seasonPhase} = 'preseason' and ${table.weekNumber} between 1 and 4) or (${table.seasonPhase} = 'regular' and ${table.weekNumber} between 1 and 22)`,
@@ -270,6 +419,11 @@ export const games = pgTable(
     status: gameStatusEnum("status").notNull().default("scheduled"),
     awayScore: integer("away_score"),
     homeScore: integer("home_score"),
+    awayMoneyline: integer("away_moneyline"),
+    homeMoneyline: integer("home_moneyline"),
+    overUnder: numeric("over_under", { precision: 5, scale: 1, mode: "number" }),
+    oddsProvider: varchar("odds_provider", { length: 48 }),
+    oddsUpdatedAt: timestamp("odds_updated_at", { withTimezone: true }),
     isMondayTiebreaker: boolean("is_monday_tiebreaker").notNull().default(false),
     sortOrder: integer("sort_order").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -295,9 +449,32 @@ export const games = pgTable(
       "games_scores_nonnegative_check",
       sql`(${table.awayScore} is null or ${table.awayScore} >= 0) and (${table.homeScore} is null or ${table.homeScore} >= 0)`,
     ),
+    check(
+      "games_away_moneyline_check",
+      sql`${table.awayMoneyline} is null or ${table.awayMoneyline} between -100000 and -100 or ${table.awayMoneyline} between 100 and 100000`,
+    ),
+    check(
+      "games_home_moneyline_check",
+      sql`${table.homeMoneyline} is null or ${table.homeMoneyline} between -100000 and -100 or ${table.homeMoneyline} between 100 and 100000`,
+    ),
+    check(
+      "games_over_under_check",
+      sql`${table.overUnder} is null or ${table.overUnder} between 0 and 200`,
+    ),
     check("games_distinct_teams_check", sql`${table.awayTeamCode} <> ${table.homeTeamCode}`),
   ],
 );
+
+export const boardSettings = pgTable("board_settings", {
+  id: integer("id").primaryKey().default(1),
+  multipleBoardsEnabled: boolean("multiple_boards_enabled").notNull().default(false),
+  maxBoards: integer("max_boards").notNull().default(4),
+  revision: integer("revision").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("board_settings_singleton", sql`${table.id} = 1`),
+  check("board_settings_limit", sql`${table.maxBoards} >= 2`),
+]);
 
 export const contestEntries = pgTable(
   "contest_entries",
@@ -310,8 +487,15 @@ export const contestEntries = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     status: entryStatusEnum("status").notNull().default("draft"),
+    boardNumber: integer("board_number").notNull().default(1),
+    boardName: varchar("board_name", { length: 40 }).notNull().default("Board 1"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    lastResetAt: timestamp("last_reset_at", { withTimezone: true }),
+    resetRevision: integer("reset_revision").notNull().default(0),
+    resetVersionNumber: integer("reset_version_number").notNull().default(0),
     draftPicks: jsonb("draft_picks").$type<Record<string, string>>().notNull().default({}),
     draftMondayPrediction: integer("draft_monday_prediction"),
+    draftRevision: integer("draft_revision").notNull().default(0),
     currentVersionNumber: integer("current_version_number").notNull().default(0),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     lockedAt: timestamp("locked_at", { withTimezone: true }),
@@ -319,7 +503,10 @@ export const contestEntries = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("contest_entries_week_user_unique").on(table.contestWeekId, table.userId),
+    uniqueIndex("contest_entries_week_user_board_unique").on(table.contestWeekId, table.userId, table.boardNumber),
+    check("contest_entries_reset_version_check", sql`${table.resetVersionNumber} >= 0`),
+    check("contest_entries_reset_revision_check", sql`${table.resetRevision} >= 0 and ${table.resetRevision} <= ${table.draftRevision}`),
+    check("contest_entries_board_number_positive", sql`${table.boardNumber} > 0`),
     index("contest_entries_week_status_idx").on(table.contestWeekId, table.status),
     check(
       "contest_entries_monday_prediction_nonnegative_check",
@@ -328,6 +515,10 @@ export const contestEntries = pgTable(
     check(
       "contest_entries_version_nonnegative_check",
       sql`${table.currentVersionNumber} >= 0`,
+    ),
+    check(
+      "contest_entries_draft_revision_nonnegative_check",
+      sql`${table.draftRevision} >= 0`,
     ),
   ],
 );
@@ -378,5 +569,88 @@ export const entryVersionPicks = pgTable(
   (table) => [
     primaryKey({ columns: [table.entryVersionId, table.gameId] }),
     index("entry_version_picks_game_idx").on(table.gameId),
+  ],
+);
+
+export const emailDeliveries = pgTable(
+  "email_deliveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    contestWeekId: uuid("contest_week_id")
+      .references(() => contestWeeks.id, { onDelete: "cascade" }),
+    entryVersionId: uuid("entry_version_id").references(() => entryVersions.id, {
+      onDelete: "set null",
+    }),
+    kind: varchar("kind", { length: 48 }).notNull(),
+    dedupeKey: varchar("dedupe_key", { length: 200 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    providerMessageId: varchar("provider_message_id", { length: 160 }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("email_deliveries_dedupe_key_unique").on(table.dedupeKey),
+    index("email_deliveries_status_attempt_idx").on(table.status, table.nextAttemptAt),
+    index("email_deliveries_user_kind_idx").on(table.userId, table.kind),
+    check(
+      "email_deliveries_kind_check",
+      sql`${table.kind} in ('week_published', 'deadline_approaching', 'picks_submitted', 'results_available', 'admin_approval_needed', 'account_approved')`,
+    ),
+    check(
+      "email_deliveries_status_check",
+      sql`${table.status} in ('pending', 'processing', 'sent', 'failed', 'skipped')`,
+    ),
+    check("email_deliveries_attempt_count_nonnegative", sql`${table.attemptCount} >= 0`),
+  ],
+);
+
+export const pushDeliveries = pgTable(
+  "push_deliveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subscriptionId: uuid("subscription_id")
+      .notNull()
+      .references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    contestWeekId: uuid("contest_week_id")
+      .references(() => contestWeeks.id, { onDelete: "cascade" }),
+    entryVersionId: uuid("entry_version_id").references(() => entryVersions.id, {
+      onDelete: "set null",
+    }),
+    kind: varchar("kind", { length: 48 }).notNull(),
+    dedupeKey: varchar("dedupe_key", { length: 240 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    providerMessageId: varchar("provider_message_id", { length: 160 }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("push_deliveries_dedupe_key_unique").on(table.dedupeKey),
+    index("push_deliveries_status_attempt_idx").on(table.status, table.nextAttemptAt),
+    index("push_deliveries_user_kind_idx").on(table.userId, table.kind),
+    check(
+      "push_deliveries_kind_check",
+      sql`${table.kind} in ('week_published', 'deadline_approaching', 'picks_submitted', 'results_available')`,
+    ),
+    check(
+      "push_deliveries_status_check",
+      sql`${table.status} in ('pending', 'processing', 'sent', 'failed', 'skipped')`,
+    ),
+    check("push_deliveries_attempt_count_nonnegative", sql`${table.attemptCount} >= 0`),
   ],
 );

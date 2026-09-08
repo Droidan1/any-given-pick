@@ -1,0 +1,49 @@
+import type { Metadata } from "next";
+import { PublicInfoShell } from "@/components/public-info-shell";
+
+export const metadata: Metadata = {
+  title: "Beta rules",
+  description: "Rules for the free Any Given Pick public beta.",
+};
+
+export default function RulesPage() {
+  return (
+    <PublicInfoShell
+      eyebrow="Public beta · Rules version 1.4 · September 8, 2026"
+      title="Call it fair. Keep it fun."
+      summary="Any Given Pick is a free weekly football pick’em beta for approved adults. There is no purchase, wager, entry fee, or cash prize."
+    >
+      <section>
+        <h2>1. Who can participate</h2>
+        <p>You must be at least 21 years old, use a verified sign-in, complete a unique player card, and receive administrator approval during the beta. Accounts that do not clear these requirements remain in read-only mode.</p>
+      </section>
+      <section>
+        <h2>2. Making an official entry</h2>
+        <p>Pick one team in every published matchup and enter the requested combined-score tiebreaker. Autosaved team selections appear on the live player board while entry is open, but drafts are not official. Your latest complete submission accepted by the server before the displayed deadline is your official entry. Server time controls the deadline.</p>
+        <p>The administrator sets the number of boards allowed per player each week. Each board has its own picks, tiebreaker, and official submission. Copying a board creates a draft that must be submitted separately.</p>
+        <p>Before the deadline, an administrator may reset an individual board. Reset clears its picks and tiebreaker and removes its current submission from scoring. Past submissions stay in the player’s private history, and the player must submit again before the deadline. Resets do not reopen closed weeks.</p>
+      </section>
+      <section>
+        <h2>3. Scoring and standings</h2>
+        <p>Each correct game winner earns one point. Ties, canceled games, postponed games, and provider corrections are handled according to the final status recorded on the call sheet. Equal records are ordered by the published tiebreaker method. Preseason entries do not count toward regular-season standings.</p>
+        <p>Your best eligible board counts each week, chosen by correct picks, then tiebreaker difference, then board number. Season standings combine those weekly best boards. Turning multiple boards off keeps Board 1 eligible and archives all extras immediately. Reducing the limit keeps the earliest active boards. Archived boards remain available for private review and are excluded from current and historical standings; raising the limit does not restore them.</p>
+      </section>
+      <section>
+        <h2>4. Schedules and corrections</h2>
+        <p>The commissioner publishes each week’s slate and may correct team, kickoff, provider, or score data when a reliable source changes. Informational moneylines and Monday over/under may be shown before picks; they can change, do not affect scoring, and are not an offer to place a bet. All approved active players, including administrators who participate, see the same live saved-picks board. Material corrections will be reflected in the app as soon as reasonably possible.</p>
+      </section>
+      <section>
+        <h2>5. Fair play</h2>
+        <p>One person may use one approved account. Do not automate submissions, impersonate another player, interfere with the service, scrape the live board, or exploit errors. The commissioner may restrict or disqualify accounts to protect the beta and its participants, with an audit record of account actions.</p>
+      </section>
+      <section>
+        <h2>6. Beta availability</h2>
+        <p>This is pre-release software. Features, schedules, and rules may change; interruptions and provider delays may occur. We will use reasonable efforts to preserve accepted entries and restore service, but uninterrupted availability is not guaranteed.</p>
+      </section>
+      <section>
+        <h2>7. Questions</h2>
+        <p>Contact <a href="mailto:brian@Droidan1.dev?subject=Any%20Given%20Pick%20rules">brian@Droidan1.dev</a> before participating if any rule is unclear.</p>
+      </section>
+    </PublicInfoShell>
+  );
+}

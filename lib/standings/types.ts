@@ -1,7 +1,9 @@
 export type StandingRow = {
   rank: number;
+  rankChange: number | null;
   userId: string;
   displayName: string;
+  profilePhotoUrl: string | null;
   correctPicks: number;
   gradedPicks: number;
   tiebreakerDiff: number | null;
@@ -16,4 +18,4 @@ export type StandingsSnapshot = {
   rows: StandingRow[];
 };
 
-export type UnrankedStanding = Omit<StandingRow, "rank">;
+export type UnrankedStanding = Omit<StandingRow, "rank" | "rankChange">;

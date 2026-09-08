@@ -8,6 +8,10 @@ function event(input: {
   completed: boolean;
   awayScore?: string;
   homeScore?: string;
+  awayMoneyline?: string;
+  homeMoneyline?: string;
+  overUnder?: number;
+  oddsProvider?: string;
 }): EspnScoreEvent {
   const status = {
     type: {
@@ -25,6 +29,16 @@ function event(input: {
         { homeAway: "home", score: input.homeScore },
         { homeAway: "away", score: input.awayScore },
       ],
+      odds: input.awayMoneyline || input.homeMoneyline || input.overUnder
+        ? [{
+            provider: { displayName: input.oddsProvider },
+            overUnder: input.overUnder,
+            moneyline: {
+              away: { close: { odds: input.awayMoneyline } },
+              home: { close: { odds: input.homeMoneyline } },
+            },
+          }]
+        : [],
     }],
   };
 }
@@ -43,7 +57,30 @@ describe("ESPN score normalization", () => {
       status: "final",
       awayScore: 20,
       homeScore: 24,
+      awayMoneyline: null,
+      homeMoneyline: null,
+      overUnder: null,
+      oddsProvider: null,
     }]);
+  });
+
+  it("reads only the current moneylines, total, and provider attribution", () => {
+    expect(normalizeEspnScores([event({
+      id: "401772511",
+      state: "pre",
+      name: "STATUS_SCHEDULED",
+      completed: false,
+      awayMoneyline: "+145",
+      homeMoneyline: "-170",
+      overUnder: 44.5,
+      oddsProvider: "DraftKings",
+    })])).toEqual([expect.objectContaining({
+      providerGameKey: "espn:401772511",
+      awayMoneyline: 145,
+      homeMoneyline: -170,
+      overUnder: 44.5,
+      oddsProvider: "DraftKings",
+    })]);
   });
 
   it("maps live, postponed, and canceled states without inventing scores", () => {

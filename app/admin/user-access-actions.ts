@@ -3,10 +3,13 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { requireAdminUser } from "@/lib/auth/admin";
 import { getDb } from "@/lib/db";
 import { auditEvents, roles, userRoles, users } from "@/lib/db/schema";
+import { queueAndProcessAccountApprovedEmail } from "@/lib/email/account-lifecycle-notifications";
+import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 
 export type UserAccessActionState = {
   status: "idle" | "success" | "error";
@@ -75,7 +78,7 @@ export async function manageUserAccessAction(
       .where(eq(users.id, parsed.data.targetUserId))
       .for("update")
       .limit(1);
-    if (!target) return "missing" as const;
+    if (!target) return { status: "missing" as const, approvalEventId: null };
 
     const [adminRole] = await transaction
       .select({ role: roles.key })
@@ -88,7 +91,7 @@ export async function manageUserAccessAction(
         ),
       )
       .limit(1);
-    if (adminRole) return "protected" as const;
+    if (adminRole) return { status: "protected" as const, approvalEventId: null };
 
     await transaction
       .update(users)
@@ -100,7 +103,7 @@ export async function manageUserAccessAction(
       })
       .where(eq(users.id, target.id));
 
-    await transaction.insert(auditEvents).values({
+    const [auditEvent] = await transaction.insert(auditEvents).values({
       actorUserId: actor.id,
       targetUserId: target.id,
       action:
@@ -114,16 +117,39 @@ export async function manageUserAccessAction(
         next_account_state: nextState,
         reversible: true,
       },
-    });
+    }).returning({ id: auditEvents.id });
 
-    return "updated" as const;
+    return {
+      status: "updated" as const,
+      approvalEventId: parsed.data.intent === "approve" ? auditEvent.id : null,
+    };
   });
 
-  if (result === "missing") {
+  if (result.status === "missing") {
     return { status: "error", message: "That user could not be found." };
   }
-  if (result === "protected") {
+  if (result.status === "protected") {
     return { status: "error", message: "Administrator accounts are protected." };
+  }
+
+  const approvalEventId = result.approvalEventId;
+  if (approvalEventId) {
+    after(async () => {
+      try {
+        await queueAndProcessAccountApprovedEmail({
+          userId: parsed.data.targetUserId,
+          approvalEventId,
+        });
+      } catch {
+        await reportOperationalIssue({
+          kind: "account_email_queue",
+          identity: `approved:${approvalEventId}`,
+          severity: "warning",
+          message: "An account approval email could not be queued immediately.",
+          context: { stage: "admin_approval" },
+        });
+      }
+    });
   }
 
   revalidatePath("/");

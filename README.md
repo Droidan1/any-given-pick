@@ -32,17 +32,18 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Variable-size weekly picks flow using imported matchup data
 - Monday combined-score tiebreaker
 - Local recovery plus authenticated server-side draft sync
+- Authenticated live scoreboard showing every active player's autosaved team selections
 - Explicit submit/edit flow with immutable version history and timestamped receipts
 - Database-time deadline enforcement for drafts and submissions
 - Home, picks, standings, weekly results, activity archive, and profile surfaces
 - Web app manifest, generated PWA icons, and a static-asset-only offline service worker shell
+- Device-aware mobile installation with first-login, Home, Profile, and persistent fallback entry points
 - Any Given Pick wordmark, route-mark icon, social-sharing image, and install identity
 - Original visual system with no NFL or team marks
 - Clerk passwordless email-code authentication surfaces
 - Internal Postgres user IDs mapped to verified Clerk identities
 - Unique case-normalized player names with 30-day history enforcement
-- Server-calculated age eligibility and session-time Indiana verification
-- Read-only fallbacks for denied, unavailable, stale, outside-state, or indeterminate location
+- Server-calculated age eligibility and administrator-controlled participation access
 - Postgres roles, eligibility history, and append-only application audit events
 - Provider-neutral CSV/JSON schedule importer and admin week operations
 - Admin-only settings hub with direct links to week management and full-season import
@@ -51,10 +52,19 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Post-lock weekly card reveal using only each player's latest official submitted version
 - Full-season CSV/TSV import that groups preseason and regular-season games into private week drafts
 - Drizzle schema, committed migrations, seed task, and eligibility/entry rule tests
+- Public beta rules, privacy disclosure, and direct support pages
+- Authenticated account deletion/anonymization requests with administrator completion
+- Database-backed rate limits for sensitive and write-heavy actions
+- Structured server-error and score-sync alerts with an administrator operations panel
+- Player email reminders for published weeks, approaching deadlines, submitted picks, and completed results
+- Transactional approval-queue alerts for administrators and approval confirmations for players
+- Per-player email preferences and idempotent delivery receipts without storing recipient addresses
+- Opt-in per-device Web Push for published cards, approaching deadlines, submitted picks, and completed results
+- Provider-attributed informational moneylines on matchups and over/under only on Monday games
 
 ## Not connected yet
 
-A licensed long-term sports-data provider, notifications, prizes, private groups, and moderation remain future milestones. Schedule importing stays provider-neutral so an approved source can replace the current provider without rebuilding the contest engine.
+A licensed long-term sports-data provider, prizes, private groups, and moderation remain future milestones. Schedule importing stays provider-neutral so an approved source can replace the current provider without rebuilding the contest engine. The beta reads moneylines and totals already present in the ESPN scoreboard response, stores no sportsbook links or promotional payloads, and treats those lines as replaceable informational data.
 
 Product truth is recorded in [PRODUCT.md](./PRODUCT.md). Design references are stored under `design/`.
 
@@ -65,10 +75,38 @@ The score updater runs behind `GET /api/cron/scores` and requires `Authorization
 - Vercel Production as `CRON_SECRET`
 - GitHub Actions as the repository secret `SCORE_SYNC_CRON_SECRET`
 
-The committed GitHub Actions workflow requests a sync every ten minutes during typical Thursday-through-Monday game windows, runs one daily catch-up, and can also be run manually. This bounded schedule avoids spending private-repository Actions minutes around the clock. Scheduled GitHub workflows can be delayed during periods of high load, so the Admin settings health panel records the latest attempt, success, provider warning, and update count. Commissioners can always enter a final score manually under **Admin settings → Manage contest weeks**.
+The committed score workflow requests a sync every ten minutes during typical Thursday-through-Monday game windows, checks upcoming reference lines three times daily, and can also be run manually. Opening an unlocked picks page requests a non-blocking check when stored odds are missing or older than two hours. A separate hourly GitHub workflow calls `/api/cron/emails` so email and Web Push reminders stay timely; publishing and submitting also trigger immediate delivery attempts. Two once-daily Vercel Crons in `vercel.json` independently backstop score and notification processing if GitHub scheduling is interrupted. Both protected routes use the same `CRON_SECRET`, and the notification workflow reuses the existing `SCORE_SYNC_CRON_SECRET` repository secret. The health watchdog treats a sync older than 40 minutes as stale during live windows and 30 hours outside them. This bounded schedule stays within the intended beta operations budget while deterministic delivery keys keep overlapping runs safe. Scheduled jobs can be delayed, so the Admin settings health panel records the latest score attempt, success, provider warning, and update count. Commissioners can always enter a final score manually under **Admin settings → Manage contest weeks**.
+
+## Web Push configuration
+
+Generate one stable VAPID key pair and set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in Vercel Preview and Production before deploying. Do not rotate the pair casually: existing browser subscriptions are tied to the public key and would need to be re-enabled. The push controls appear under **Profile → Notifications** only when the public key is configured. On iPhone and iPad, the player must install the PWA to the Home Screen before Safari can request notification permission; every device requires a direct player opt-in.
 
 ## Temporary player approval gate
 
-New Clerk accounts start in a pending state by default. An administrator must approve the verified identity from **Admin settings → Player access** before that person can create a player card, verify location, make picks, or submit an entry. Removing access is reversible and preserves the player’s account and historical records.
+New Clerk accounts start in a pending state by default. An administrator must approve the verified identity from **Admin settings → Player access** before that person can create a player card, make picks, or submit an entry. The configured support administrator receives a deduplicated approval-queue email for each new pending account, and the player receives a transactional confirmation after approval. Removing access is reversible and preserves the player’s account and historical records.
 
 Set `USER_APPROVAL_REQUIRED=false` and redeploy when manual approval is no longer needed. Existing pending accounts still require an administrator to approve them.
+
+## Beta operations and privacy
+
+Public trust pages are available at `/rules`, `/privacy`, and `/support`. Direct support links email `brian@Droidan1.dev`. Player reminders, account-status messages, privacy-request alerts, and operations alerts use Resend only when `RESEND_API_KEY` and `EMAIL_FROM` are configured. Delivery attempts are recorded without copying Clerk email addresses into Postgres. Web Push stores only the browser-issued endpoint, encryption keys, limited browser metadata, and delivery status; players opt in or remove each device from Profile. Users can manage each optional email-reminder category from Profile; account approval messages are transactional and cannot be disabled there.
+
+Set a separate high-entropy `RATE_LIMIT_SECRET` in Preview and Production. Rate limits are stored in Postgres so they apply across serverless instances. Vercel Firewall rules remain the recommended outer layer for broad IP- and bot-level abuse controls.
+
+The administrator operations panel shows active server and score-sync alerts. The public `/api/health` endpoint returns a minimal health result without credentials, user data, provider payloads, or database details.
+
+Checkly polls the production health endpoint every ten minutes from `us-east-2` and emails failure/recovery alerts to `brian@Droidan1.dev`. The endpoint itself switches to the stricter score-sync freshness threshold during game windows, so the external poll can run continuously without maintaining a second schedule. Preview monitoring changes with `npm run monitor:preview` before deploying them with `npm run monitor:deploy`.
+
+Before a database migration or beta release, review and rehearse [the database recovery procedure](./docs/DATABASE_RECOVERY.md).
+
+## Multiple-board controls
+
+Apply `drizzle/0018_multiple_boards.sql` with `npm run db:migrate` before running this code against an existing database. It preserves existing entries as Board 1 and initializes the global setting to one board (extra-board limit defaults to 4 when enabled). Do not deploy the new application code before the migration has run.
+
+Admins configure **Boards per player** under Admin settings. Limit reductions and disabling take effect immediately for all weeks: extra boards are archived and removed from scoring, including historical standings. Raising the limit allows new drafts; it does not restore archived boards. Players manage boards from Picks and can review archived boards and prior submissions in Activity.
+
+`npm ci` installs the added development-only PostgreSQL runtime. `npm test` runs the existing suite plus board rules and real SQL migration/action tests using isolated, in-memory PGlite databases. The tests never read `DATABASE_URL` or connect to the live app database; only authentication, eligibility, and Next.js revalidation are mocked. The production build can be checked with `npm run build -- --webpack`.
+
+## Administrator board reset
+
+Apply `0019_admin_board_reset` before deploying this release. Admin → Player picks exposes Reset board for active boards while the week is open. A confirmed reset clears draft selections and the tiebreaker, removes the current official submission from scoring, and preserves every prior submission and an audit event. The server checks the deadline after acquiring locks and rejects stale confirmations. Reset revisions invalidate old device drafts, old requests, and pre-reset receipt retries. Players can review submission history in My activity and submit a new version before the original deadline. Archived/disqualified boards and closed weeks cannot be reset.

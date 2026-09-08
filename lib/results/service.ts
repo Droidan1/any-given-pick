@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getDb } from "@/lib/db";
 import {
@@ -12,7 +12,8 @@ import {
   profiles,
 } from "@/lib/db/schema";
 import { calculatePickOutcome, type PickOutcome } from "@/lib/entries/pick-outcome";
-import { canRevealWeeklyPicks } from "./rules";
+import { buildPickDistributions, canRevealWeeklyPicks, type PickDistribution } from "./rules";
+import { bestBoardsPerWeek } from "@/lib/entries/board-rules";
 
 export type ResultsWeekOption = {
   id: string;
@@ -33,14 +34,34 @@ export type RevealedPick = {
   awayScore: number | null;
   homeScore: number | null;
   gameStatus: "scheduled" | "in_progress" | "final" | "postponed" | "canceled";
+  isMondayTiebreaker: boolean;
   selectedTeamCode: string;
   selectedTeamName: string;
   outcome: PickOutcome;
 };
 
+export type RevealedGame = {
+  id: string;
+  kickoffAt: string;
+  awayTeamCode: string;
+  awayTeamName: string;
+  homeTeamCode: string;
+  homeTeamName: string;
+  awayScore: number | null;
+  homeScore: number | null;
+  status: "scheduled" | "in_progress" | "final" | "postponed" | "canceled";
+  isMondayTiebreaker: boolean;
+};
+
 export type RevealedEntry = {
+  entryId: string;
+  boardNumber: number;
+  boardName: string;
+  tiebreakerDiff: number | null;
+  isBestBoard: boolean;
   userId: string;
   displayName: string;
+  profilePhotoUrl: string | null;
   isCurrentUser: boolean;
   versionNumber: number;
   committedAt: string;
@@ -55,7 +76,9 @@ export type WeeklyResults = {
   selectedWeek: ResultsWeekOption | null;
   revealStatus: "no_week" | "open" | "revealed";
   serverNow: string;
+  games: RevealedGame[];
   entries: RevealedEntry[];
+  distributions: PickDistribution[];
 };
 
 export async function getWeeklyResults(input: {
@@ -112,7 +135,9 @@ export async function getWeeklyResults(input: {
       selectedWeek: null,
       revealStatus: "no_week",
       serverNow: serverNow.toISOString(),
+      games: [],
       entries: [],
+      distributions: [],
     };
   }
 
@@ -122,7 +147,9 @@ export async function getWeeklyResults(input: {
       selectedWeek,
       revealStatus: "open",
       serverNow: serverNow.toISOString(),
+      games: [],
       entries: [],
+      distributions: [],
     };
   }
 
@@ -135,8 +162,12 @@ export async function getWeeklyResults(input: {
     db
       .select({
         versionId: entryVersions.id,
+        entryId: contestEntries.id,
+        boardNumber: contestEntries.boardNumber,
+        boardName: contestEntries.boardName,
         userId: contestEntries.userId,
         displayName: profiles.displayName,
+        profilePhotoUrl: profiles.profilePhotoUrl,
         versionNumber: entryVersions.versionNumber,
         mondayPrediction: entryVersions.mondayPrediction,
         committedAt: entryVersions.committedAt,
@@ -154,6 +185,7 @@ export async function getWeeklyResults(input: {
         eq(contestEntries.contestWeekId, selectedWeek.id),
         gt(contestEntries.currentVersionNumber, 0),
         ne(contestEntries.status, "disqualified"),
+        isNull(contestEntries.archivedAt),
       ))
       .orderBy(asc(profiles.normalizedDisplayName)),
   ]);
@@ -195,6 +227,7 @@ export async function getWeeklyResults(input: {
         awayScore: game.awayScore,
         homeScore: game.homeScore,
         gameStatus: game.status,
+        isMondayTiebreaker: game.isMondayTiebreaker,
         selectedTeamCode: pick.selectedTeamCode,
         selectedTeamName,
         outcome: calculatePickOutcome({
@@ -211,9 +244,15 @@ export async function getWeeklyResults(input: {
       const secondGame = gamesById.get(second.gameId);
       return (firstGame?.sortOrder ?? 0) - (secondGame?.sortOrder ?? 0);
     });
+    const tiebreaker = gameRows.find(game => game.isMondayTiebreaker && game.status === "final");
     return {
+      entryId: entry.entryId, boardNumber: entry.boardNumber, boardName: entry.boardName,
+      isBestBoard: false,
+      tiebreakerDiff: tiebreaker && tiebreaker.awayScore !== null && tiebreaker.homeScore !== null
+        ? Math.abs(entry.mondayPrediction - tiebreaker.awayScore - tiebreaker.homeScore) : null,
       userId: entry.userId,
       displayName: entry.displayName,
+      profilePhotoUrl: entry.profilePhotoUrl,
       isCurrentUser: entry.userId === input.currentUserId,
       versionNumber: entry.versionNumber,
       committedAt: entry.committedAt.toISOString(),
@@ -222,13 +261,32 @@ export async function getWeeklyResults(input: {
       gradedPicks: picks.filter((pick) => ["won", "lost", "tie"].includes(pick.outcome)).length,
       picks,
     };
+  }).sort((first, second) => {
+    if (first.isCurrentUser !== second.isCurrentUser) return first.isCurrentUser ? -1 : 1;
+    return first.displayName.localeCompare(second.displayName);
   });
+
+  const bestIds = new Set(bestBoardsPerWeek(entries.map(entry => ({ ...entry, weekId: selectedWeek.id }))).map(entry => entry.entryId));
+  for (const entry of entries) entry.isBestBoard = bestIds.has(entry.entryId);
 
   return {
     weeks,
     selectedWeek,
     revealStatus: "revealed",
     serverNow: serverNow.toISOString(),
+    games: gameRows.map((game) => ({
+      id: game.id,
+      kickoffAt: game.kickoffAt.toISOString(),
+      awayTeamCode: game.awayTeamCode,
+      awayTeamName: game.awayTeamName,
+      homeTeamCode: game.homeTeamCode,
+      homeTeamName: game.homeTeamName,
+      awayScore: game.awayScore,
+      homeScore: game.homeScore,
+      status: game.status,
+      isMondayTiebreaker: game.isMondayTiebreaker,
+    })),
     entries,
+    distributions: buildPickDistributions(gameRows, pickRows),
   };
 }

@@ -13,6 +13,10 @@ const displayFont = readFile(
   ),
 );
 
+const brandMark = readFile(join(process.cwd(), "public/pwa-icon-192.png")).then(
+  (data) => `data:image/png;base64,${data.toString("base64")}`,
+);
+
 export default async function OpenGraphImage() {
   return new ImageResponse(
     <div
@@ -38,48 +42,7 @@ export default async function OpenGraphImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              display: "flex",
-              position: "relative",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <div
-              style={{
-                width: 64,
-                height: 10,
-                borderRadius: 5,
-                background: "#f2c928",
-                transform: "rotate(-45deg)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: 4,
-                right: 2,
-                width: 32,
-                height: 10,
-                borderRadius: 5,
-                background: "#f2c928",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: 4,
-                right: 4,
-                width: 10,
-                height: 32,
-                borderRadius: 5,
-                background: "#f2c928",
-              }}
-            />
-          </div>
+          <img src={await brandMark} width={88} height={88} alt="" />
           <div style={{ display: "flex", fontSize: 46, letterSpacing: 7, textTransform: "uppercase" }}>
             Any Given
           </div>

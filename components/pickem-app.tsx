@@ -2,24 +2,52 @@
 
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import type { AccountSummary } from "@/lib/account-types";
 import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
-import { unscopedDraftStorageKeys, userDraftStorageKey } from "@/lib/entries/draft-storage";
-import type { PlayerGame, PlayerWeek } from "@/lib/entries/types";
+import {
+  submissionAttemptForSignature,
+  shouldRestoreLocalDraft,
+  unscopedDraftStorageKeys,
+  userDraftStorageKey,
+  type SubmissionAttempt,
+} from "@/lib/entries/draft-storage";
+import type { LivePlayerPicks, PlayerGame, PlayerWeek } from "@/lib/entries/types";
+import { getHomeWeekState } from "@/lib/home-week-state";
+import { hasUnsubmittedOfficialEdits } from "@/lib/entries/official-receipt";
+import { shouldRefreshUpcomingOdds } from "@/lib/scores/odds-refresh";
 import type { StandingsSnapshot } from "@/lib/standings/types";
+import { BoardList } from "./board-list";
 import { BrandLockup } from "./brand-lockup";
+import { DeadlineCountdown } from "./deadline-countdown";
 import { Icon, type IconName, RouteSketch } from "./icons";
 import { MobileAppNav } from "./mobile-app-nav";
+import { PwaInstallHomeCard } from "./pwa-install-experience";
+import { PlayerAvatar } from "./player-avatar";
+import { TeamCode, TeamCrest } from "./team-crest";
 
-type View = "home" | "picks" | "standings" | "profile";
+type View = "home" | "picks" | "standings";
 type Picks = Record<string, string>;
 type ReceiptData = {
   versionNumber: number;
   committedAt: string;
   action: "submit" | "edit";
+  officialPicks: Picks;
+  mondayPrediction: number;
+  draftRevision: number;
 };
+type DraftSyncState = {
+  state: "idle" | "local" | "syncing" | "synced" | "error";
+  syncedAt: string | null;
+};
+type LivePicksFeedState = "live" | "refreshing" | "stale";
+type MobileAlertState = {
+  message: string;
+  tone: "warning" | "error";
+} | null;
+type DraftConflictState = NonNullable<Awaited<ReturnType<typeof saveEntryDraft>>["serverDraft"]>;
 
 function gameRulesForCurrentSlate(games: PlayerGame[]) {
   return games.map((game) => ({
@@ -41,33 +69,90 @@ function signatureForDraft(games: PlayerGame[], picks: Picks, mondayPrediction: 
   });
 }
 
+function hasParticipationAccess(account: AccountSummary): boolean {
+  return account.overallResult === "eligible";
+}
+
+function eligibilityActionLabel(account: AccountSummary): string {
+  if (!account.profileComplete) return "Finish your player card";
+  return "Review your player access";
+}
+
+function eligibilityStatusLabel(account: AccountSummary): string {
+  return account.reasonLabel;
+}
+
+function formatMoneyline(value: number): string {
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function formatOddsUpdate(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Indiana/Indianapolis",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(value));
+}
+
 const navItems: { view: View; label: string; icon: IconName }[] = [
   { view: "home", label: "Home", icon: "home" },
   { view: "picks", label: "Picks", icon: "picks" },
   { view: "standings", label: "Standings", icon: "standings" },
-  { view: "profile", label: "Profile", icon: "profile" },
 ];
 
-export function PickemApp({
-  account,
-  week,
-  isAdmin,
-  draftOwnerId,
-  standings,
-  initialView,
-}: {
+const viewHrefs: Record<View, string> = {
+  home: "/",
+  picks: "/picks",
+  standings: "/standings",
+};
+
+function viewFromCurrentUrl(): View {
+  if (window.location.pathname === "/picks") return "picks";
+  if (window.location.pathname === "/standings") return "standings";
+  const candidate = new URLSearchParams(window.location.search).get("view");
+  return candidate === "picks" || candidate === "standings"
+    ? candidate
+    : "home";
+}
+
+type PickemAppProps = {
   account: AccountSummary;
   week: PlayerWeek | null;
   isAdmin: boolean;
   draftOwnerId: string;
-  standings: StandingsSnapshot;
-  initialView: "home" | "picks" | "standings" | "profile";
-}) {
+  standings: StandingsSnapshot | null;
+  initialView: View;
+  initialBoardId?: string;
+};
+
+export function PickemApp(props: PickemAppProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(props.initialBoardId ?? null);
+  const router = useRouter();
+  const selected = props.week?.entries.find(entry => entry.id === selectedId) ?? null;
+  const week = useMemo(() => props.week ? { ...props.week, entry: selected } : null, [props.week, selected]);
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState !== "hidden") router.refresh(); };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, [router]);
+  return <PickemSession {...props} week={week} key={`${week?.id}:${selected?.id ?? "list"}:${selected?.resetRevision ?? 0}`}
+    boardList={!selected && week ? <BoardList week={week} canParticipate={hasParticipationAccess(props.account)} draftOwnerId={props.draftOwnerId} onOpen={setSelectedId} /> : null}
+    onBack={() => { setSelectedId(null); router.refresh(); }}
+  />;
+}
+
+function PickemSession({ account, week, isAdmin, draftOwnerId, standings, initialView, boardList, onBack }: PickemAppProps & { boardList: ReactNode; onBack: () => void }) {
+  const router = useRouter();
   const [view, setView] = useState<View>(initialView);
   const [picks, setPicks] = useState<Picks>(() =>
     picksForCurrentSlate(week?.games ?? [], week?.entry?.draftPicks ?? {}),
   );
-  const [mondayTotal, setMondayTotal] = useState(() => week?.entry?.mondayPrediction ?? 44);
+  const [mondayTotal, setMondayTotal] = useState<number | null>(() => week?.entry?.mondayPrediction ?? null);
+  const [liveAccount, setLiveAccount] = useState(account);
   const [status, setStatus] = useState(week?.entry ? "Your saved entry is loaded." : "");
   const [reviewing, setReviewing] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(() => {
@@ -75,21 +160,139 @@ export function PickemApp({
     return {
       versionNumber: week.entry.currentVersionNumber,
       committedAt: week.entry.submittedAt,
-      action: week.entry.currentVersionNumber === 1 ? "submit" : "edit",
+      action: week.entry.officialAction ?? "submit",
+      officialPicks: week.entry.officialPicks,
+      mondayPrediction: week.entry.officialMondayPrediction ?? 0,
+      draftRevision: week.entry.draftRevision,
     };
   });
+  const [draftRevision, setDraftRevision] = useState(week?.entry?.draftRevision ?? 0);
+  const [draftConflict, setDraftConflict] = useState<DraftConflictState | null>(null);
+  const [submissionAttempt, setSubmissionAttempt] = useState<SubmissionAttempt | null>(null);
   const [draftReady, setDraftReady] = useState(false);
+  const [draftSync, setDraftSync] = useState<DraftSyncState>({
+    state: week?.entry ? "synced" : "idle",
+    syncedAt: week?.entry?.updatedAt ?? null,
+  });
+  const [draftRetryVersion, setDraftRetryVersion] = useState(0);
+  const [livePlayerPicks, setLivePlayerPicks] = useState<LivePlayerPicks[]>(() => week?.livePlayerPicks ?? []);
+  const [livePicksFeedState, setLivePicksFeedState] = useState<LivePicksFeedState>("live");
+  const [deadlineLockedWeekId, setDeadlineLockedWeekId] = useState<string | null>(
+    week?.isLocked ? week.id : null,
+  );
+  const [mobileAlert, setMobileAlert] = useState<MobileAlertState>(null);
   const [isPending, startTransition] = useTransition();
-  const firstMissingRef = useRef<HTMLDivElement | null>(null);
+  const firstMissingRef = useRef<HTMLFieldSetElement | null>(null);
   const lastSavedSignatureRef = useRef("");
+  const currentDraftSignatureRef = useRef("");
+  const draftSaveInFlightRef = useRef(false);
+  const draftSaveQueuedRef = useRef(false);
 
-  const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id) : null;
+  const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id, week.entry?.boardNumber === 1 ? undefined : week.entry?.id, week.entry?.resetRevision) : null;
+  const activeWeekId = week?.id ?? null;
   const games = week?.games ?? [];
-  const canParticipate = account.overallResult === "eligible";
-  const isLocked = week?.isLocked ?? true;
+  const canParticipate = hasParticipationAccess(liveAccount);
+  const isLocked = (week?.isLocked ?? true) || deadlineLockedWeekId === activeWeekId || Boolean(week?.entry?.archivedAt) || ["locked", "scored", "disqualified"].includes(week?.entry?.status ?? "");
+  const shouldCheckOdds = shouldRefreshUpcomingOdds(games);
+
+  const selectView = (nextView: View) => {
+    if (nextView !== view) {
+      router.push(viewHrefs[nextView]);
+    }
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+  };
 
   useEffect(() => {
-    if (!week || !draftStorageKey) {
+    const syncViewFromHistory = () => {
+      setView(viewFromCurrentUrl());
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+    };
+    window.addEventListener("popstate", syncViewFromHistory);
+    return () => window.removeEventListener("popstate", syncViewFromHistory);
+  }, []);
+
+  useEffect(() => {
+    if (!activeWeekId || view !== "picks" || isLocked) return;
+    let active = true;
+
+    const refreshLivePicks = async () => {
+      if (document.visibilityState === "hidden") return;
+      setLivePicksFeedState("refreshing");
+      try {
+        const response = await fetch(`/api/picks/live?weekId=${encodeURIComponent(activeWeekId)}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("LIVE_PICKS_REFRESH_FAILED");
+        const body = await response.json() as { players: LivePlayerPicks[] };
+        if (!active) return;
+        setLivePlayerPicks(body.players);
+        setLivePicksFeedState("live");
+      } catch {
+        if (active) setLivePicksFeedState("stale");
+      }
+    };
+
+    const interval = window.setInterval(() => void refreshLivePicks(), 12_000);
+    const resumeRefresh = () => {
+      if (document.visibilityState === "visible") void refreshLivePicks();
+    };
+    void refreshLivePicks();
+    document.addEventListener("visibilitychange", resumeRefresh);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", resumeRefresh);
+    };
+  }, [activeWeekId, isLocked, view]);
+
+  useEffect(() => {
+    if (!activeWeekId || view !== "picks" || isLocked || !shouldCheckOdds) return;
+    let active = true;
+
+    const refreshOdds = async () => {
+      try {
+        const response = await fetch("/api/activity/scores", { cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json() as { updatedGames?: number };
+        if (active && (result.updatedGames ?? 0) > 0) router.refresh();
+      } catch {
+        // Keep the stored slate usable when the optional reference-line feed is unavailable.
+      }
+    };
+
+    void refreshOdds();
+    return () => {
+      active = false;
+    };
+  }, [activeWeekId, isLocked, router, shouldCheckOdds, view]);
+
+  useEffect(() => {
+    const retryAfterReconnect = () => {
+      if (currentDraftSignatureRef.current === lastSavedSignatureRef.current) return;
+      setStatus("Connection restored. Retrying your saved draft…");
+      setDraftRetryVersion((version) => version + 1);
+    };
+    window.addEventListener("online", retryAfterReconnect);
+    return () => window.removeEventListener("online", retryAfterReconnect);
+  }, []);
+
+  useEffect(() => {
+    const focusTarget = receipt ? "receipt-title" : reviewing ? "review-title" : null;
+    if (!focusTarget) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById(focusTarget)?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [receipt, reviewing]);
+
+  async function refreshEligibility(): Promise<AccountSummary> {
+    const response = await fetch("/api/eligibility", { cache: "no-store" });
+    if (!response.ok) throw new Error("ELIGIBILITY_REFRESH_FAILED");
+    const body = await response.json() as { account: AccountSummary };
+    setLiveAccount(body.account);
+    return body.account;
+  }
+
+  useEffect(() => {
+    if (!week || !draftStorageKey || boardList || week.entry?.archivedAt) {
       return;
     }
 
@@ -102,18 +305,30 @@ export function PickemApp({
     } catch {
       // Server-backed drafts still work when browser storage is unavailable.
     }
-    const serverVersion = week.entry?.currentVersionNumber ?? 0;
     const frame = window.requestAnimationFrame(() => {
       try {
         if (stored) {
           const draft = JSON.parse(stored) as {
             picks?: Picks;
-            mondayTotal?: number;
+            mondayTotal?: number | null;
             baseVersion?: number;
+            draftRevision?: number;
+            submissionAttempt?: SubmissionAttempt | null;
           };
-          if ((draft.baseVersion ?? 0) >= serverVersion) {
-            if (draft.picks) setPicks(picksForCurrentSlate(week.games, draft.picks));
-            if (Number.isInteger(draft.mondayTotal)) setMondayTotal(draft.mondayTotal ?? 44);
+          const storedRevision = draft.draftRevision ?? draft.baseVersion ?? 0;
+          if (shouldRestoreLocalDraft(storedRevision, week.entry?.draftRevision ?? 0)) {
+            const restoredPicks = draft.picks
+              ? picksForCurrentSlate(week.games, draft.picks)
+              : week.entry?.draftPicks ?? {};
+            const restoredMondayTotal = draft.mondayTotal === null || Number.isInteger(draft.mondayTotal)
+              ? draft.mondayTotal ?? null
+              : week.entry?.mondayPrediction ?? null;
+            setPicks(restoredPicks);
+            setMondayTotal(restoredMondayTotal);
+            const restoredSignature = signatureForDraft(week.games, restoredPicks, restoredMondayTotal);
+            if (draft.submissionAttempt?.signature === restoredSignature) {
+              setSubmissionAttempt(draft.submissionAttempt);
+            }
           }
         }
       } catch {
@@ -122,23 +337,26 @@ export function PickemApp({
         lastSavedSignatureRef.current = signatureForDraft(
           week.games,
           week.entry?.draftPicks ?? {},
-          week.entry?.mondayPrediction ?? 44,
+          week.entry?.mondayPrediction ?? null,
         );
+        currentDraftSignatureRef.current = lastSavedSignatureRef.current;
+        setDraftRevision(week.entry?.draftRevision ?? 0);
         setDraftReady(true);
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [draftStorageKey, week]);
+  }, [boardList, draftStorageKey, week]);
 
   useEffect(() => {
-    if (!draftReady || !draftStorageKey || !week) return;
+    if (boardList || !draftReady || !draftStorageKey || !week || week.entry?.archivedAt) return;
     try {
       window.localStorage.setItem(
         draftStorageKey,
         JSON.stringify({
           picks,
           mondayTotal,
-          baseVersion: week.entry?.currentVersionNumber ?? 0,
+          draftRevision,
+          submissionAttempt,
         }),
       );
     } catch {
@@ -146,42 +364,109 @@ export function PickemApp({
     }
 
     const signature = signatureForDraft(week.games, picks, mondayTotal);
-    if (!canParticipate || isLocked || signature === lastSavedSignatureRef.current) return;
+    currentDraftSignatureRef.current = signature;
+    if (!canParticipate || isLocked || draftConflict || signature === lastSavedSignatureRef.current) return;
+    setDraftSync((current) => ({ ...current, state: "local" }));
+
+    if (!navigator.onLine) {
+      const frame = window.requestAnimationFrame(() => {
+        setDraftSync((current) => ({ ...current, state: "error" }));
+        setStatus("Saved on this device. Reconnect to sync this draft securely.");
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
 
     const timer = window.setTimeout(() => {
+      if (draftSaveInFlightRef.current) {
+        draftSaveQueuedRef.current = true;
+        setStatus("Your newest changes are saved on this device and waiting to sync.");
+        return;
+      }
+      draftSaveInFlightRef.current = true;
+      setDraftSync((current) => ({ ...current, state: "syncing" }));
       setStatus("Syncing draft…");
-      startTransition(async () => {
-        const result = await saveEntryDraft({
-          weekId: week.id,
-          picks,
-          mondayPrediction: mondayTotal,
-        });
-        if (result.ok) {
-          lastSavedSignatureRef.current = signature;
-        } else if (result.code === "invalid_pick") {
-          const currentPicks = picksForCurrentSlate(week.games, picks);
-          if (JSON.stringify(currentPicks) !== JSON.stringify(picks)) {
-            setPicks(currentPicks);
-            setStatus("The schedule changed. Your valid picks were kept and the draft is syncing again.");
+      void (async () => {
+        try {
+          const result = await saveEntryDraft({
+            weekId: week.id,
+            boardId: week.entry?.id,
+            picks,
+            mondayPrediction: mondayTotal,
+            baseDraftRevision: draftRevision,
+          });
+          if (result.ok) {
+            lastSavedSignatureRef.current = signature;
+            if (typeof result.draftRevision === "number") setDraftRevision(result.draftRevision);
+            setMobileAlert(null);
+            const newerChangesAreWaiting = currentDraftSignatureRef.current !== signature;
+            setDraftSync({
+              state: newerChangesAreWaiting ? "local" : "synced",
+              syncedAt: result.syncedAt ?? new Date().toISOString(),
+            });
+            setStatus(newerChangesAreWaiting
+              ? "Earlier changes synced. Your newest changes are saved on this device and waiting to sync."
+              : result.message);
+          } else if (result.code === "draft_conflict" && result.serverDraft) {
+            setDraftConflict(result.serverDraft);
+            setDraftSync((current) => ({ ...current, state: "error" }));
+            setStatus(result.message);
             return;
+          } else if (result.code === "invalid_pick") {
+            const currentPicks = picksForCurrentSlate(week.games, picks);
+            if (JSON.stringify(currentPicks) !== JSON.stringify(picks)) {
+              setPicks(currentPicks);
+              setDraftSync((current) => ({ ...current, state: "local" }));
+              setStatus("The schedule changed. Your valid picks were kept and the draft is syncing again.");
+              return;
+            }
+          }
+          if (!result.ok) {
+            if (result.code === "board_reset") { router.refresh(); }
+            if (result.code === "deadline_passed") {
+              setDeadlineLockedWeekId(activeWeekId);
+              setReviewing(false);
+            } else {
+              setMobileAlert({
+                message: result.message,
+                tone: result.code === "rate_limited" ? "warning" : "error",
+              });
+            }
+            setDraftSync((current) => ({ ...current, state: "error" }));
+            setStatus(result.message);
+          }
+        } catch {
+          setDraftSync((current) => ({ ...current, state: "error" }));
+          const message = "This draft is saved on your device but has not reached the server. Retry when your connection is stable.";
+          setStatus(message);
+          setMobileAlert({ message, tone: "error" });
+        } finally {
+          draftSaveInFlightRef.current = false;
+          if (draftSaveQueuedRef.current) {
+            draftSaveQueuedRef.current = false;
+            setDraftRetryVersion((version) => version + 1);
           }
         }
-        setStatus(result.message);
-      });
+      })();
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [canParticipate, draftReady, draftStorageKey, isLocked, mondayTotal, picks, week]);
+  }, [boardList, activeWeekId, canParticipate, draftConflict, draftReady, draftRetryVersion, draftRevision, draftStorageKey, isLocked, mondayTotal, picks, router, submissionAttempt, week]);
 
   if (!week) {
+    const emptyContent = view === "standings" && standings ? (
+      <StandingsView standings={standings} currentUserId={draftOwnerId} />
+    ) : (
+      <section className="single-view no-week-view">
+        <RouteSketch /><RouteSketch mirrored />
+        <p className="week-label">Coach&apos;s call sheet</p>
+        <h1>{view === "picks" ? "No picks are open." : "The next slate is being drawn up."}</h1>
+        <p className="lead">There is no published week yet. Once the commissioner publishes one, the official matchups will appear here automatically.</p>
+        <div className="empty-state"><Icon name="picks" /><h2>Check back soon</h2><p>Your player account is ready for kickoff.</p></div>
+        <PwaInstallHomeCard />
+      </section>
+    );
     return (
-      <AppFrame view={view} setView={setView} account={account} isAdmin={isAdmin}>
-        <section className="single-view no-week-view">
-          <RouteSketch /><RouteSketch mirrored />
-          <p className="week-label">Coach&apos;s call sheet</p>
-          <h1>The next slate is being drawn up.</h1>
-          <p className="lead">There is no published week yet. Once the commissioner publishes one, the official matchups will appear here automatically.</p>
-          <div className="empty-state"><Icon name="picks" /><h2>Check back soon</h2><p>Your player account is ready for kickoff.</p></div>
-        </section>
+      <AppFrame view={view} setView={selectView} account={account} isAdmin={isAdmin}>
+        {emptyContent}
       </AppFrame>
     );
   }
@@ -189,12 +474,18 @@ export function PickemApp({
   const selectedCount = games.filter((game) => Boolean(picks[game.id])).length;
   const missingCount = games.length - selectedCount;
   const firstMissingId = games.find((game) => !picks[game.id])?.id;
-  const isComplete = selectedCount === games.length && Number.isInteger(mondayTotal) && mondayTotal >= 0;
-  const selectedTeams = games.map((game) => picks[game.id]).filter(Boolean);
+  const isComplete = selectedCount === games.length && mondayTotal !== null && Number.isInteger(mondayTotal) && mondayTotal >= 0;
 
   const chooseTeam = (gameId: string, abbreviation: string) => {
     if (isLocked) return;
+    if (!canParticipate) {
+      setStatus(`${eligibilityStatusLabel(liveAccount)}. Complete eligibility before making picks.`);
+      return;
+    }
     setPicks((current) => ({ ...current, [gameId]: abbreviation }));
+    setSubmissionAttempt(null);
+    setDraftSync((current) => ({ ...current, state: "local" }));
+    setMobileAlert(null);
     setStatus(`${abbreviation} selected. Syncing your draft…`);
     setReviewing(false);
     setReceipt(null);
@@ -206,19 +497,32 @@ export function PickemApp({
       return;
     }
     if (!isComplete) {
-      setStatus(`${missingCount} ${missingCount === 1 ? "pick is" : "picks are"} still missing. Choose one team in every matchup.`);
-      window.setTimeout(() => firstMissingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      if (missingCount > 0) {
+        setStatus(`${missingCount} ${missingCount === 1 ? "pick is" : "picks are"} still missing. Choose one team in every matchup.`);
+        window.setTimeout(() => firstMissingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      } else {
+        setStatus("Enter your own tiebreaker total before reviewing the card.");
+        window.setTimeout(() => document.getElementById("monday-total")?.focus(), 50);
+      }
       return;
     }
+    if (!canParticipate) {
+      setStatus(`${eligibilityStatusLabel(liveAccount)}. Complete account setup before reviewing this card.`);
+      return;
+    }
+    const signature = signatureForDraft(week.games, picks, mondayTotal);
+    setSubmissionAttempt((current) => submissionAttemptForSignature(
+      current,
+      signature,
+      () => crypto.randomUUID(),
+    ));
     setReviewing(true);
     setStatus("Review every selection before submitting your official entry.");
   };
 
   const commitEntry = () => {
     if (!canParticipate) {
-      setStatus(account.reasonLabel);
-      setView("profile");
-      setReviewing(false);
+      setStatus(`${eligibilityStatusLabel(liveAccount)}. Review your player access before submitting; your selections are preserved.`);
       return;
     }
     if (isLocked) {
@@ -227,26 +531,136 @@ export function PickemApp({
     }
 
     startTransition(async () => {
-      setStatus("Sending your official entry…");
-      const result = await submitEntry({
-        weekId: week.id,
-        picks,
-        mondayPrediction: mondayTotal,
-        submissionKey: crypto.randomUUID(),
-      });
-      setStatus(result.message);
-      if (result.ok && result.receipt) {
-        setReceipt(result.receipt);
-        setReviewing(false);
-        lastSavedSignatureRef.current = signatureForDraft(week.games, picks, mondayTotal);
-        if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
+      try {
+        setStatus("Confirming account access before submission…");
+        const currentAccount = await refreshEligibility();
+        if (!hasParticipationAccess(currentAccount)) {
+          setStatus(`${currentAccount.reasonLabel}. Review your player access and return to submit; your selections are preserved.`);
+          return;
+        }
+
+        setStatus("Sending your official entry…");
+        const signature = signatureForDraft(week.games, picks, mondayTotal);
+        const attempt = submissionAttemptForSignature(
+          submissionAttempt,
+          signature,
+          () => crypto.randomUUID(),
+        );
+        setSubmissionAttempt(attempt);
+        const result = await submitEntry({
+          weekId: week.id,
+            boardId: week.entry?.id,
+          picks,
+          mondayPrediction: mondayTotal,
+          baseDraftRevision: draftRevision,
+          submissionKey: attempt.key,
+        });
+        setStatus(result.message);
+        if (result.ok && result.receipt) {
+          setMobileAlert(null);
+          setReceipt(result.receipt);
+          setSubmissionAttempt(null);
+          setDraftConflict(null);
+          setDraftRevision(result.receipt.draftRevision);
+          setReviewing(false);
+          lastSavedSignatureRef.current = signatureForDraft(week.games, picks, mondayTotal);
+          setDraftSync({ state: "synced", syncedAt: result.receipt.committedAt });
+          if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
+        } else {
+          if (result.code === "board_reset") { router.refresh(); }
+          if (result.code === "deadline_passed") {
+            setDeadlineLockedWeekId(activeWeekId);
+            setReviewing(false);
+          } else {
+            setMobileAlert({
+              message: result.message,
+              tone: result.code === "rate_limited" ? "warning" : "error",
+            });
+          }
+          if (result.code === "ineligible") {
+            await refreshEligibility().catch(() => undefined);
+          }
+        }
+      } catch {
+        const message = "Your entry was not submitted. Check your connection and try again; your selections are preserved.";
+        setStatus(message);
+        setMobileAlert({ message, tone: "error" });
       }
     });
   };
 
+  const handleDeadlineLock = () => {
+    setDeadlineLockedWeekId(week.id);
+    setReviewing(false);
+    setMobileAlert(null);
+    setStatus(
+      (week.entry?.currentVersionNumber ?? 0) > 0
+        ? "Deadline reached. Your latest submitted card is official."
+        : "Deadline reached. Picks are locked for this week.",
+    );
+  };
+
+  const loadNewerServerDraft = () => {
+    if (!draftConflict) return;
+    const serverPicks = picksForCurrentSlate(week.games, draftConflict.picks);
+    const serverSignature = signatureForDraft(
+      week.games,
+      serverPicks,
+      draftConflict.mondayPrediction,
+    );
+    setPicks(serverPicks);
+    setMondayTotal(draftConflict.mondayPrediction);
+    setDraftRevision(draftConflict.draftRevision);
+    setSubmissionAttempt(null);
+    setDraftConflict(null);
+    lastSavedSignatureRef.current = serverSignature;
+    currentDraftSignatureRef.current = serverSignature;
+    setDraftSync({ state: "synced", syncedAt: draftConflict.updatedAt });
+    setMobileAlert(null);
+    setStatus("The newer server draft is now loaded on this device.");
+  };
+
+  const keepThisDeviceDraft = () => {
+    if (!draftConflict) return;
+    setDraftRevision(draftConflict.draftRevision);
+    setDraftConflict(null);
+    setDraftSync((current) => ({ ...current, state: "local" }));
+    setMobileAlert(null);
+    setStatus("Keeping this device's draft. Syncing it over the server copy…");
+    setDraftRetryVersion((version) => version + 1);
+  };
+
+  const hasPendingOfficialEdits = (week.entry?.currentVersionNumber ?? 0) > 0
+    ? hasUnsubmittedOfficialEdits({
+        games: gameRulesForCurrentSlate(week.games),
+        draftPicks: picks,
+        draftMondayPrediction: mondayTotal,
+        officialPicks: receipt?.officialPicks ?? week.entry?.officialPicks ?? {},
+        officialMondayPrediction: receipt?.mondayPrediction ?? week.entry?.officialMondayPrediction ?? null,
+      })
+    : false;
+
   return (
-    <AppFrame view={view} setView={setView} account={account} isAdmin={isAdmin}>
-      {view === "picks" && (
+    <AppFrame view={view} setView={selectView} account={liveAccount} isAdmin={isAdmin}>
+      {view === "picks" && boardList}
+      {view === "picks" && !boardList && <div className="board-editor-toolbar">
+        <button className="board-back" type="button" disabled={isPending || draftSync.state === "syncing" || draftSync.state === "local"} onClick={onBack}>← All boards</button>
+        <strong>{week.entry?.boardName}</strong>
+        {week.entry?.archivedAt && <span>Archived · excluded from scoring</span>}
+        {(draftSync.state === "local" || draftSync.state === "syncing") && <small>Saving before switching boards…</small>}
+      </div>}
+      {view === "picks" && !boardList && week.entry?.lastResetAt && !week.entry?.archivedAt && week.entry.currentVersionNumber === 0 && <div className="board-notice" role="status"><strong>An administrator reset this board.</strong> Make new picks and submit before the deadline. Prior submissions are preserved in <Link href="/activity">My activity</Link> and no longer count toward scoring.</div>}
+      {view === "picks" && week.entry?.archivedAt && <section className="player-boards">
+        <header className="board-list-intro"><p className="week-label">{week.label}</p><h1>{week.entry.boardName}</h1></header>
+        <div className="board-notice"><strong>Archived board</strong> Read-only and excluded from scoring. Your saved picks and submission are preserved.</div>
+        <div className="board-list-content">
+          <h2>{week.entry.currentVersionNumber > 0 ? `Official version ${week.entry.currentVersionNumber}` : "Saved draft"}</h2>
+          <p>Tiebreaker: {week.entry.currentVersionNumber > 0 ? week.entry.officialMondayPrediction : week.entry.mondayPrediction}</p>
+          {games.map(game => <div className="board-archived-pick" key={game.id}><span>{game.away.abbreviation} @ {game.home.abbreviation}</span><strong>{(week.entry!.currentVersionNumber > 0 ? week.entry!.officialPicks : week.entry!.draftPicks)[game.id] ?? "No pick"}</strong></div>)}
+          {week.entry.currentVersionNumber > 0 && <details className="board-archive"><summary>Last saved working draft</summary><p>Tiebreaker: {week.entry.mondayPrediction ?? "—"}</p>{games.map(game => <div className="board-archived-pick" key={game.id}><span>{game.away.abbreviation} @ {game.home.abbreviation}</span><strong>{week.entry!.draftPicks[game.id] ?? "No pick"}</strong></div>)}</details>}
+        </div>
+      </section>}
+      {view === "picks" && !boardList && !week.entry?.archivedAt && (
         <PicksView
           week={week}
           games={games}
@@ -254,24 +668,48 @@ export function PickemApp({
           selectedCount={selectedCount}
           mondayTotal={mondayTotal}
           status={status}
+          mobileAlert={mobileAlert}
+          draftSync={draftSync}
+          draftConflict={draftConflict}
           reviewing={reviewing}
           receipt={receipt}
+          hasPendingOfficialEdits={hasPendingOfficialEdits}
           firstMissingId={firstMissingId}
           firstMissingRef={firstMissingRef}
           onChoose={chooseTeam}
-          onMondayTotal={setMondayTotal}
+          onMondayTotal={(value) => {
+            if (isLocked) return;
+            setMondayTotal(value);
+            setReceipt(null);
+            setReviewing(false);
+            setSubmissionAttempt(null);
+            setDraftSync((current) => ({ ...current, state: "local" }));
+          }}
           onReview={beginReview}
           onReceipt={commitEntry}
-          account={account}
+          account={liveAccount}
+          canParticipate={canParticipate}
           isPending={isPending}
           isLocked={isLocked}
+          onDeadlineLock={handleDeadlineLock}
           hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0}
+          onRetryDraft={() => {
+            setDraftSync((current) => ({ ...current, state: "local" }));
+            setStatus("Retrying your saved draft…");
+            setMobileAlert({ message: "Retrying your saved draft…", tone: "warning" });
+            setDraftRetryVersion((version) => version + 1);
+          }}
+          onDismissMobileAlert={() => setMobileAlert(null)}
+          onLoadServerDraft={loadNewerServerDraft}
+          onKeepDeviceDraft={keepThisDeviceDraft}
           onEdit={() => { setReviewing(false); setReceipt(null); setStatus("Edit mode restored. Submit again to make changes official."); }}
+          currentUserId={draftOwnerId}
+          livePlayerPicks={livePlayerPicks}
+          livePicksFeedState={livePicksFeedState}
         />
       )}
-      {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => setView("picks")} account={account} />}
-      {view === "standings" && <StandingsView standings={standings} currentUserId={draftOwnerId} />}
-      {view === "profile" && <ProfileView selectedTeams={selectedTeams} totalGames={games.length} account={account} isAdmin={isAdmin} />}
+      {view === "home" && <HomeView week={week} selectedCount={selectedCount} onContinue={() => selectView("picks")} account={liveAccount} canParticipate={canParticipate} hasSubmitted={(week.entry?.currentVersionNumber ?? 0) > 0} />}
+      {view === "standings" && standings ? <StandingsView standings={standings} currentUserId={draftOwnerId} /> : null}
     </AppFrame>
   );
 }
@@ -294,19 +732,32 @@ function AppFrame({
       <aside className="side-nav" aria-label="Primary navigation">
         <button className="brand-home" type="button" onClick={() => setView("home")} aria-label="Any Given Pick home"><BrandLockup /></button>
         <div className="nav-list">
-          {navItems.map((item) => (
+          {navItems.map((item) => item.view === "standings" ? (
+            <Link
+              className={`nav-item nav-item--link${view === item.view ? " nav-item--active" : ""}`}
+              href={viewHrefs[item.view]}
+              key={item.view}
+              prefetch={false}
+              aria-current={view === item.view ? "page" : undefined}
+            >
+              <Icon name={item.icon} /><span>{item.label}</span>
+            </Link>
+          ) : (
             <button className={`nav-item${view === item.view ? " nav-item--active" : ""}`} key={item.view} type="button" onClick={() => setView(item.view)} aria-current={view === item.view ? "page" : undefined}>
               <Icon name={item.icon} /><span>{item.label}</span>
             </button>
           ))}
-          <Link className="nav-item nav-item--link" href="/activity">
+          <Link className="nav-item nav-item--link" href="/profile" prefetch={false}>
+            <Icon name="profile" /><span>Profile</span>
+          </Link>
+          <Link className="nav-item nav-item--link" href="/activity" prefetch={false}>
             <Icon name="activity" /><span>My activity</span>
           </Link>
-          <Link className="nav-item nav-item--link" href="/results">
+          <Link className="nav-item nav-item--link" href="/results" prefetch={false}>
             <Icon name="results" /><span>Results</span>
           </Link>
           {isAdmin && (
-            <Link className="nav-item nav-item--link" href="/admin">
+            <Link className="nav-item nav-item--link" href="/admin" prefetch={false}>
               <Icon name="settings" /><span>Admin</span>
             </Link>
           )}
@@ -319,7 +770,7 @@ function AppFrame({
         {children}
       </section>
       <MobileAppNav
-        active={view}
+        active={view === "standings" ? "results" : view}
         isAdmin={isAdmin}
         onSelectView={setView}
       />
@@ -332,136 +783,473 @@ type PicksViewProps = {
   games: PlayerGame[];
   picks: Picks;
   selectedCount: number;
-  mondayTotal: number;
+  mondayTotal: number | null;
   status: string;
+  mobileAlert: MobileAlertState;
+  draftSync: DraftSyncState;
+  draftConflict: DraftConflictState | null;
   reviewing: boolean;
   receipt: ReceiptData | null;
+  hasPendingOfficialEdits: boolean;
   firstMissingId?: string;
-  firstMissingRef: React.RefObject<HTMLDivElement | null>;
+  firstMissingRef: React.RefObject<HTMLFieldSetElement | null>;
   onChoose: (gameId: string, abbreviation: string) => void;
-  onMondayTotal: (value: number) => void;
+  onMondayTotal: (value: number | null) => void;
   onReview: () => void;
   onReceipt: () => void;
   onEdit: () => void;
   account: AccountSummary;
+  canParticipate: boolean;
   isPending: boolean;
   isLocked: boolean;
+  onDeadlineLock: () => void;
   hasSubmitted: boolean;
+  onRetryDraft: () => void;
+  onDismissMobileAlert: () => void;
+  onLoadServerDraft: () => void;
+  onKeepDeviceDraft: () => void;
+  currentUserId: string;
+  livePlayerPicks: LivePlayerPicks[];
+  livePicksFeedState: LivePicksFeedState;
 };
 
+function savedPickCount(games: PlayerGame[], picks: Picks): number {
+  return games.filter((game) => (
+    picks[game.id] === game.away.abbreviation || picks[game.id] === game.home.abbreviation
+  )).length;
+}
+
 function PicksView(props: PicksViewProps) {
+  const [controlsExpanded, setControlsExpanded] = useState(false);
+  const controlsRef = useRef<HTMLElement | null>(null);
   const tiebreakerLabel = props.week.seasonPhase === "preseason" ? "Tiebreaker" : "Monday";
+  const oddsProviders = Array.from(new Set(
+    props.games.flatMap((game) => game.odds?.provider ? [game.odds.provider] : []),
+  ));
+  const latestOddsUpdate = props.games.reduce<string | null>((latest, game) => {
+    if (!game.odds) return latest;
+    if (!latest || new Date(game.odds.updatedAt).getTime() > new Date(latest).getTime()) {
+      return game.odds.updatedAt;
+    }
+    return latest;
+  }, null);
+  const otherPlayers = props.livePlayerPicks.filter((player) => player.userId !== props.currentUserId);
+  const missingCount = props.games.length - props.selectedCount;
+  const showControls = () => {
+    setControlsExpanded(true);
+    window.requestAnimationFrame(() => {
+      if (window.matchMedia("(max-width: 61.25rem)").matches) {
+        controlsRef.current?.scrollIntoView({ block: "start" });
+      }
+    });
+  };
+  const chooseTeam = (gameId: string, abbreviation: string) => {
+    props.onChoose(gameId, abbreviation);
+    if (!props.isLocked && props.canParticipate && missingCount > 0
+      && savedPickCount(props.games, { ...props.picks, [gameId]: abbreviation }) === props.games.length) {
+      showControls();
+    }
+  };
+  const reviewPicks = () => {
+    if (missingCount === 0) showControls();
+    props.onReview();
+  };
   return (
-    <div className="picks-layout">
+    <div className={`picks-layout${props.isLocked ? " picks-layout--locked" : !controlsExpanded ? " picks-layout--collapsed" : ""}`}>
       <section className="pick-sheet" aria-labelledby="picks-title">
+        {!props.isLocked ? (
+          <div className="entry-controls-toggle-bar">
+            <span>{props.draftConflict ? "Newer draft found · Open controls to resolve"
+              : props.draftSync.state === "error" ? "Draft not synced · Open controls to retry"
+                : missingCount > 0 ? `${props.selectedCount}/${props.games.length} picked · Total opens after your last pick`
+                  : `${props.selectedCount}/${props.games.length} picked · Set your total and review`}</span>
+            <button type="button" aria-expanded={controlsExpanded} aria-controls="entry-controls"
+              onClick={() => controlsExpanded ? setControlsExpanded(false) : showControls()}>
+              <span>{controlsExpanded ? "Hide" : "Show"} {tiebreakerLabel} total</span>
+              <span aria-hidden="true">{controlsExpanded ? "−" : "+"}</span>
+            </button>
+          </div>
+        ) : null}
         <header className="pick-header">
           <RouteSketch /><RouteSketch mirrored />
           <p className="week-label">{props.week.label} Pick&apos;em</p>
-          <h1 id="picks-title">Make your picks</h1>
-          <div className="deadline-marker"><Icon name="clock" /><span>{props.isLocked ? "Locked" : "Locks"} · {props.week.deadlineLabel}</span></div>
-          <div className="eligibility-line"><Icon name="shield" /><span>{props.account.reasonLabel}</span></div>
+          <h1 id="picks-title">{props.isLocked ? "Calls are locked" : "Make your picks"}</h1>
+          <div className={`deadline-marker${props.isLocked ? " deadline-marker--locked" : ""}`}>
+            <Icon name="clock" />
+            <span className="deadline-marker__copy">
+              <strong>{props.isLocked ? "Locked" : "Locks"} · {props.week.deadlineLabel}</strong>
+              {!props.isLocked ? (
+                <DeadlineCountdown
+                  deadline={props.week.entryDeadline}
+                  fallbackLabel={props.week.deadlineLabel}
+                  onLock={props.onDeadlineLock}
+                />
+              ) : null}
+            </span>
+          </div>
+          <div className="eligibility-line"><Icon name="shield" /><span>{eligibilityStatusLabel(props.account)}</span></div>
+          {!props.canParticipate && !props.isLocked ? (
+            <Link className="eligibility-action" href="/profile">{eligibilityActionLabel(props.account)}</Link>
+          ) : null}
         </header>
 
-        <ProgressMeasure selected={props.selectedCount} total={props.games.length} />
+        {props.isLocked ? (
+          <LockedResultsHandoff hasSubmitted={props.hasSubmitted} />
+        ) : (
+          <>
+            <ProgressMeasure selected={props.selectedCount} total={props.games.length} tiebreakerSet={props.mondayTotal !== null} />
 
-        <div className="matchup-list" aria-label="Weekly matchups">
-          {props.games.map((game) => {
-            const selected = props.picks[game.id];
-            const missing = !selected;
-            return (
-              <div className={`matchup${missing ? " matchup--missing" : ""}`} key={game.id} ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}>
-                <div className="matchup-time"><span>{game.day}</span><span>{game.time}</span></div>
-                <button className={`team-choice${selected === game.away.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.away.abbreviation)} aria-pressed={selected === game.away.abbreviation} aria-label={`Pick ${game.away.name}`} disabled={props.isLocked || props.isPending}>
-                  {selected === game.away.abbreviation && <Icon name="check" />}<span>{game.away.abbreviation}</span><small>{game.away.name}</small>
-                </button>
-                <span className="at-mark" aria-hidden="true">@</span>
-                <button className={`team-choice${selected === game.home.abbreviation ? " team-choice--selected" : ""}`} type="button" onClick={() => props.onChoose(game.id, game.home.abbreviation)} aria-pressed={selected === game.home.abbreviation} aria-label={`Pick ${game.home.name}`} disabled={props.isLocked || props.isPending}>
-                  {selected === game.home.abbreviation && <Icon name="check" />}<span>{game.home.abbreviation}</span><small>{game.home.name}</small>
-                </button>
-              </div>
-            );
-          })}
+            <div className="scoreboard-toolbar">
+          <p>Your highlighted row is editable. Every active player&apos;s saved calls appear below.</p>
+          <span className={`scoreboard-live-state scoreboard-live-state--${props.livePicksFeedState}`} aria-live="polite">
+            {props.livePicksFeedState === "refreshing" ? "Refreshing…" : props.livePicksFeedState === "stale" ? "Refresh paused" : "Live board"}
+          </span>
         </div>
-        <p className="prototype-note">Official commissioner-published slate · kickoff times shown in Eastern Time.</p>
+
+        <div className="scoreboard-scroll" role="region" aria-label="Live player picks scoreboard" tabIndex={0}>
+          <table className="scoreboard-entry-table">
+            <caption className="sr-only">Make your picks in the first row and compare them with other active players&apos; saved picks.</caption>
+            <thead>
+              <tr>
+                <th className="scoreboard-player-column" scope="col">Player</th>
+                {props.games.map((game) => {
+                  const mondayTotal = props.week.seasonPhase === "regular" && game.isMondayTiebreaker
+                    ? game.odds?.overUnder ?? null
+                    : null;
+                  return (
+                    <th scope="col" key={game.id}>
+                      <strong className="scoreboard-matchup-label">
+                        <span><TeamCrest code={game.away.abbreviation} size="xs" />{game.away.abbreviation}</span>
+                        <b>@</b>
+                        <span><TeamCrest code={game.home.abbreviation} size="xs" />{game.home.abbreviation}</span>
+                      </strong>
+                      <span>{game.day} · {game.time}</span>
+                      {game.odds ? (
+                        <span className="scoreboard-odds">
+                          <b>{game.away.abbreviation} {game.odds.awayMoneyline === null ? "—" : formatMoneyline(game.odds.awayMoneyline)}</b>
+                          <b>{game.home.abbreviation} {game.odds.homeMoneyline === null ? "—" : formatMoneyline(game.odds.homeMoneyline)}</b>
+                          {mondayTotal !== null ? <em>O/U {mondayTotal}</em> : null}
+                        </span>
+                      ) : <span className="scoreboard-odds scoreboard-odds--empty">Odds pending</span>}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="scoreboard-your-row">
+                <th className="scoreboard-player-column" scope="row">
+                  <strong>{props.account.displayName ?? "Your picks"}</strong>
+                  <span>You · {props.selectedCount}/{props.games.length} picked</span>
+                </th>
+                {props.games.map((game) => {
+                  const selected = props.picks[game.id];
+                  return (
+                    <td key={game.id}>
+                      <fieldset
+                        id={`matchup-${game.id}`}
+                        className={`scoreboard-entry-choice${selected ? "" : " scoreboard-entry-choice--missing"}`}
+                        ref={game.id === props.firstMissingId ? props.firstMissingRef : undefined}
+                      >
+                        <legend className="sr-only">Pick {game.away.name} or {game.home.name}</legend>
+                        {[game.away, game.home].map((team) => {
+                          const moneyline = team.abbreviation === game.away.abbreviation
+                            ? game.odds?.awayMoneyline ?? null
+                            : game.odds?.homeMoneyline ?? null;
+                          const isSelected = selected === team.abbreviation;
+                          return (
+                            <button
+                              className={`scoreboard-team-choice${isSelected ? " scoreboard-team-choice--selected" : ""}`}
+                              type="button"
+                              key={team.abbreviation}
+                              onClick={() => chooseTeam(game.id, team.abbreviation)}
+                              aria-pressed={isSelected}
+                              aria-label={`Pick ${team.name}${moneyline !== null ? `. Moneyline ${formatMoneyline(moneyline)}` : ""}`}
+                              disabled={!props.canParticipate || props.isLocked || props.isPending}
+                            >
+                              {isSelected ? <Icon name="check" /> : null}
+                              <TeamCrest code={team.abbreviation} size="sm" />
+                              <span>{team.abbreviation}</span>
+                              <small>{moneyline === null ? "ML —" : `ML ${formatMoneyline(moneyline)}`}</small>
+                            </button>
+                          );
+                        })}
+                      </fieldset>
+                    </td>
+                  );
+                })}
+              </tr>
+              {otherPlayers.map((player) => {
+                const playerPickCount = savedPickCount(props.games, player.picks);
+                return (
+                  <tr key={player.entryId}>
+                    <th className="scoreboard-player-column" scope="row">
+                      <strong>{player.displayName} · {player.boardName}</strong>
+                      <span>{playerPickCount}/{props.games.length} saved</span>
+                    </th>
+                    {props.games.map((game) => {
+                      const selection = player.picks[game.id];
+                      const validSelection = selection === game.away.abbreviation || selection === game.home.abbreviation;
+                      return (
+                        <td key={game.id}>
+                          <span className={`scoreboard-saved-pick${validSelection ? " scoreboard-saved-pick--selected" : ""}`}>
+                            {validSelection ? <><TeamCrest code={selection} size="xs" />{selection}</> : "—"}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+            </div>
+            <p className="prototype-note">
+              Official commissioner-published slate · kickoff times shown in Eastern Time.
+              {oddsProviders.length > 0 && latestOddsUpdate ? ` Moneylines and Monday O/U are informational reference lines from ${oddsProviders.join(" / ")} via ESPN; they may change and never affect scoring. Latest line update ${formatOddsUpdate(latestOddsUpdate)}.` : ""}
+            </p>
+          </>
+        )}
       </section>
 
-      <aside className="game-panel" aria-label="Entry controls">
-        <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} /></div>
-        <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isLocked || props.isPending} />
-        <div className="rules-note">
-          <RouteSketch mirrored /><h2>How this week works</h2>
-          <ul><li>Pick one team in each matchup.</li><li>Each correct pick counts as one point.</li><li>{tiebreakerLabel} Total breaks a tie.</li><li>Your latest submitted version before the deadline is official.</li></ul>
-        </div>
-
-        {props.receipt ? (
-          <Receipt receipt={props.receipt} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={props.isLocked} />
-        ) : props.reviewing ? (
-          <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} isPending={props.isPending} isLocked={props.isLocked} hasSubmitted={props.hasSubmitted} />
+      <aside id="entry-controls" ref={controlsRef} className="game-panel" aria-label="Entry controls" hidden={!props.isLocked && !controlsExpanded}>
+        {props.isLocked ? (
+          <LockedControlPanel hasSubmitted={props.hasSubmitted} />
         ) : (
-          <button className="review-action" type="button" onClick={props.onReview} disabled={props.isPending || props.isLocked}>
-            <Icon name="whistle" /><span>{props.isLocked ? "Entry locked" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
-          </button>
+          <>
+            <button className="entry-controls-mobile-close" type="button" aria-expanded={controlsExpanded} aria-controls="entry-controls"
+              onClick={() => {
+                setControlsExpanded(false);
+                document.querySelector<HTMLButtonElement>(".entry-controls-toggle-bar button")?.focus();
+              }}>Hide {tiebreakerLabel} total <span aria-hidden="true">−</span></button>
+            <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} tiebreakerSet={props.mondayTotal !== null} /></div>
+            <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isPending} />
+            <div className="rules-note">
+              <RouteSketch mirrored /><h2>How this week works</h2>
+              <ul><li>Pick one team in each matchup.</li><li>Each correct pick counts as one point.</li><li>{tiebreakerLabel} Total breaks a tie.</li><li>Your latest submitted version before the deadline is official.</li></ul>
+            </div>
+
+            {props.receipt ? (
+              <Receipt receipt={props.receipt} games={props.games} hasPendingEdits={props.hasPendingOfficialEdits} tiebreakerLabel={tiebreakerLabel} onEdit={props.onEdit} locked={false} />
+            ) : props.reviewing ? (
+              <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} canParticipate={props.canParticipate} isPending={props.isPending} isLocked={false} hasSubmitted={props.hasSubmitted} />
+            ) : (
+              <button className="review-action" type="button" onClick={reviewPicks} disabled={!props.canParticipate || props.isPending}>
+                <Icon name="whistle" /><span>{!props.canParticipate ? "Account setup required" : missingCount > 0 ? `Finish ${missingCount} ${missingCount === 1 ? "pick" : "picks"}` : props.mondayTotal === null ? "Set tiebreaker" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
+              </button>
+            )}
+            <p className="status-message" aria-live="polite">{props.status || "Draft changes sync automatically."}</p>
+            {props.hasPendingOfficialEdits && !props.receipt ? (
+              <p className="official-edit-warning" role="status">
+                Your earlier official card is still safe. These edits do not count until you submit again.
+              </p>
+            ) : null}
+            {props.draftConflict ? (
+              <section className="draft-conflict" role="alert" aria-labelledby="draft-conflict-title">
+                <h2 id="draft-conflict-title">Newer draft found</h2>
+                <p>Another device saved changes after this screen loaded. Nothing will be overwritten until you choose.</p>
+                <div>
+                  <button type="button" onClick={props.onLoadServerDraft}>Load newer draft</button>
+                  <button type="button" onClick={props.onKeepDeviceDraft}>Keep this device</button>
+                </div>
+              </section>
+            ) : null}
+            <div className={`draft-sync-status draft-sync-status--${props.draftSync.state}`}>
+              <span aria-hidden="true" />
+              <p>
+                {props.draftSync.state === "synced"
+                  ? "Synced securely"
+                  : props.draftSync.state === "syncing"
+                    ? "Syncing with the server"
+                    : props.draftSync.state === "error"
+                      ? "Saved on this device · Not yet synced"
+                      : props.draftSync.state === "local"
+                        ? "Saved on this device · Waiting to sync"
+                        : "Ready for your first pick"}
+              </p>
+              {props.draftSync.state === "error" && !props.draftConflict ? (
+                <button type="button" onClick={props.onRetryDraft} disabled={!props.canParticipate}>Retry draft</button>
+              ) : null}
+            </div>
+          </>
         )}
-        <p className="status-message" aria-live="polite">{props.status || (props.isLocked ? "The deadline has passed. Your latest submitted entry is official." : "Draft changes sync automatically.")}</p>
       </aside>
+      {props.isLocked ? (
+        <div className="mobile-pick-dock mobile-pick-dock--locked" role="status" aria-live="polite">
+          <span><strong>Locked</strong>{props.hasSubmitted ? "Card official" : "Entry closed"}</span>
+          <Link href="/results" prefetch={false}>See results <Icon name="arrow" /></Link>
+        </div>
+      ) : props.draftConflict ? (
+        <div className="mobile-pick-dock mobile-pick-dock--conflict" role="alert">
+          <p>A newer draft exists on another device.</p>
+          <div>
+            <button type="button" onClick={props.onLoadServerDraft}>Load newer</button>
+            <button type="button" onClick={props.onKeepDeviceDraft}>Keep mine</button>
+          </div>
+        </div>
+      ) : props.mobileAlert ? (
+        <div
+          className={`mobile-pick-dock mobile-pick-dock--alert mobile-pick-dock--${props.mobileAlert.tone}`}
+          role={props.mobileAlert.tone === "error" ? "alert" : "status"}
+        >
+          <p>{props.mobileAlert.message}</p>
+          <button
+            type="button"
+            onClick={props.draftSync.state === "error" ? props.onRetryDraft : props.onDismissMobileAlert}
+            disabled={props.isPending}
+          >
+            {props.draftSync.state === "error" ? "Retry" : "Dismiss"}
+          </button>
+        </div>
+      ) : (
+        <div className="mobile-pick-dock" aria-label="Pick progress and next action">
+          <span><strong>{props.selectedCount}/{props.games.length}</strong>{missingCount === 0 && props.mondayTotal === null ? "Tiebreaker needed" : "picks"}</span>
+          <button type="button" onClick={reviewPicks} disabled={!props.canParticipate || props.isPending}>
+            {missingCount > 0 ? `Next missing (${missingCount})` : props.mondayTotal === null ? "Set tiebreaker" : "Review card"}
+            <Icon name="arrow" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function ProgressMeasure({ selected, total }: { selected: number; total: number }) {
-  const percent = total ? Math.round((selected / total) * 100) : 0;
+function LockedResultsHandoff({ hasSubmitted }: { hasSubmitted: boolean }) {
   return (
-    <div className="progress-measure" aria-label={`${selected} of ${total} picks selected`}>
-      <div className="progress-copy"><strong>{selected}</strong><span>of {total} selected</span></div>
+    <section className="locked-results-handoff" aria-labelledby="locked-results-title">
+      <div className="locked-results-handoff__mark"><Icon name="whistle" /></div>
+      <div>
+        <h2 id="locked-results-title">The board has moved to results.</h2>
+        <p>
+          {hasSubmitted
+            ? "Your latest submitted card is official. Follow every matchup and compare the official calls as scores arrive."
+            : "The deadline has passed, so this call sheet is read-only. Follow the official cards and game results from here."}
+        </p>
+        <div className="locked-results-handoff__actions">
+          <Link className="review-action review-action--link" href="/results" prefetch={false}>
+            <span>See official cards</span><Icon name="arrow" />
+          </Link>
+          {hasSubmitted ? <Link href="/activity" prefetch={false}>View my card</Link> : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LockedControlPanel({ hasSubmitted }: { hasSubmitted: boolean }) {
+  return (
+    <section className="locked-control-panel">
+      <Icon name="shield" />
+      <h2>{hasSubmitted ? "Your card is official." : "Entry is closed."}</h2>
+      <span>The Results page now carries the weekly action.</span>
+      <Link href="/results" prefetch={false}>Open results <Icon name="arrow" /></Link>
+    </section>
+  );
+}
+
+function ProgressMeasure({ selected, total, tiebreakerSet }: { selected: number; total: number; tiebreakerSet: boolean }) {
+  const percent = total ? Math.round((selected / total) * 100) : 0;
+  const progressLabel = `${selected} of ${total} picks selected. Tiebreaker ${tiebreakerSet ? "set" : "still required"}.`;
+  return (
+    <div className="progress-measure" aria-label={progressLabel}>
+      <div className="progress-copy"><strong>{selected}</strong><span>of {total} selected · TB {tiebreakerSet ? "set" : "needed"}</span></div>
       <div className="yard-scale" aria-hidden="true"><span className="yard-fill" style={{ transform: `scaleX(${percent / 100})` }} />{Array.from({ length: total + 1 }, (_, index) => <i key={index} />)}</div>
       <div className="scale-labels" aria-hidden="true"><span>0</span><span>{Math.floor(total / 2)}</span><span>{total}</span></div>
     </div>
   );
 }
 
-function MondayTotal({ label, value, onChange, disabled }: { label: string; value: number; onChange: (value: number) => void; disabled: boolean }) {
+function MondayTotal({ label, value, onChange, disabled }: { label: string; value: number | null; onChange: (value: number | null) => void; disabled: boolean }) {
+  const numericValue = value ?? 0;
   return (
     <div className="monday-total">
       <div className="drill-tag"><span>2-min</span><span>drill</span></div>
       <label htmlFor="monday-total">{label} <strong>Total</strong></label>
       <div className="number-control">
-        <button type="button" onClick={() => onChange(Math.min(200, value + 1))} aria-label={`Increase ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>+</button>
-        <input id="monday-total" min="0" max="200" step="1" inputMode="numeric" type="number" value={value} disabled={disabled} onChange={(event) => { const nextValue = Number.parseInt(event.target.value, 10); onChange(Number.isFinite(nextValue) ? Math.min(200, Math.max(0, nextValue)) : 0); }} />
-        <button type="button" onClick={() => onChange(Math.max(0, value - 1))} aria-label={`Decrease ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>−</button>
+        <button type="button" onClick={() => onChange(Math.min(200, numericValue + 1))} aria-label={`Increase ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>+</button>
+        <input id="monday-total" min="0" max="200" step="1" inputMode="numeric" type="number" value={value ?? ""} placeholder="—" required aria-describedby="monday-total-help" disabled={disabled} onChange={(event) => { if (!event.target.value) { onChange(null); return; } const nextValue = Number.parseInt(event.target.value, 10); onChange(Number.isFinite(nextValue) ? Math.min(200, Math.max(0, nextValue)) : null); }} />
+        <button type="button" onClick={() => onChange(Math.max(0, numericValue - 1))} aria-label={`Decrease ${label.toLocaleLowerCase("en-US")} total`} disabled={disabled}>−</button>
       </div>
+      <span className="sr-only" id="monday-total-help">Enter your own whole-number tiebreaker prediction from 0 to 200.</span>
     </div>
   );
 }
 
-function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, onEdit, account, isPending, isLocked, hasSubmitted }: { games: PlayerGame[]; picks: Picks; mondayTotal: number; tiebreakerLabel: string; onReceipt: () => void; onEdit: () => void; account: AccountSummary; isPending: boolean; isLocked: boolean; hasSubmitted: boolean }) {
-  const canParticipate = account.overallResult === "eligible" && !isLocked;
+function selectedTeamName(game: PlayerGame, selection: string | undefined): string {
+  if (selection === game.away.abbreviation) return game.away.name;
+  if (selection === game.home.abbreviation) return game.home.name;
+  return "No selection";
+}
+
+function ReviewPanel({ games, picks, mondayTotal, tiebreakerLabel, onReceipt, onEdit, account, canParticipate, isPending, isLocked, hasSubmitted }: { games: PlayerGame[]; picks: Picks; mondayTotal: number | null; tiebreakerLabel: string; onReceipt: () => void; onEdit: () => void; account: AccountSummary; canParticipate: boolean; isPending: boolean; isLocked: boolean; hasSubmitted: boolean }) {
+  const editGame = (gameId: string) => {
+    onEdit();
+    window.requestAnimationFrame(() => {
+      const matchup = document.getElementById(`matchup-${gameId}`);
+      matchup?.scrollIntoView({ behavior: "smooth", block: "center" });
+      matchup?.querySelector<HTMLButtonElement>("button[aria-pressed='true'], button")?.focus();
+    });
+  };
   return (
     <section className="review-panel" aria-labelledby="review-title">
-      <h2 id="review-title">Review your entry</h2>
-      <div className="review-grid">{games.map((game) => <span key={game.id}>{picks[game.id]}</span>)}</div>
+      <h2 id="review-title" tabIndex={-1}>Review your entry</h2>
+      <p className="review-count">{games.length} matchup {games.length === 1 ? "call" : "calls"}</p>
+      <ol className="review-list">
+        {games.map((game) => (
+          <li key={game.id}>
+            <span>
+              <small>{game.away.abbreviation} @ {game.home.abbreviation} · {game.day} {game.time}</small>
+              <strong className="review-team-call">{picks[game.id] ? <TeamCode code={picks[game.id]} size="xs" /> : null}<span>{selectedTeamName(game, picks[game.id])}</span></strong>
+            </span>
+            <button type="button" onClick={() => editGame(game.id)}>Edit pick</button>
+          </li>
+        ))}
+      </ol>
       <p>{tiebreakerLabel} Total <strong>{mondayTotal}</strong></p>
       <button className="commit-action" type="button" onClick={onReceipt} disabled={!canParticipate || isPending}>{isPending ? "Submitting…" : canParticipate ? (hasSubmitted ? "Submit changes" : "Submit official entry") : isLocked ? "Entry locked" : "Eligibility required"}</button>
-      {!canParticipate && !isLocked && <Link className="text-action text-action--link" href="/profile">{account.reasonLabel}</Link>}
+          {!canParticipate && !isLocked && <Link className="text-action text-action--link" href="/profile" prefetch={false}>{account.reasonLabel}</Link>}
       <button className="text-action" type="button" onClick={onEdit} disabled={isPending}>Back to picks</button>
     </section>
   );
 }
 
-function Receipt({ receipt, picks, mondayTotal, tiebreakerLabel, onEdit, locked }: { receipt: ReceiptData; picks: Picks; mondayTotal: number; tiebreakerLabel: string; onEdit: () => void; locked: boolean }) {
+function Receipt({ receipt, games, hasPendingEdits, tiebreakerLabel, onEdit, locked }: { receipt: ReceiptData; games: PlayerGame[]; hasPendingEdits: boolean; tiebreakerLabel: string; onEdit: () => void; locked: boolean }) {
   const time = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Indiana/Indianapolis" }).format(new Date(receipt.committedAt));
   return (
     <section className="receipt" aria-labelledby="receipt-title">
-      <Icon name="check" /><h2 id="receipt-title">Entry {receipt.action === "edit" ? "updated" : "submitted"}</h2>
-      <p>{Object.values(picks).join(" · ")}</p><p>{tiebreakerLabel} Total <strong>{mondayTotal}</strong></p>
-      <time>{time} ET</time><small>Official version {receipt.versionNumber} · Keep this timestamp as your receipt.</small>
+      <Icon name="check" /><h2 id="receipt-title" tabIndex={-1}>Entry {receipt.action === "edit" ? "updated" : "submitted"}</h2>
+      <p className="review-count">{games.length} official matchup {games.length === 1 ? "call" : "calls"}</p>
+      {hasPendingEdits ? <p className="receipt-pending-edits">Unsubmitted changes are saved separately and have not changed this receipt.</p> : null}
+      <ol className="review-list review-list--receipt">
+        {games.map((game) => (
+          <li key={game.id}><span><small>{game.away.abbreviation} @ {game.home.abbreviation}</small><strong className="review-team-call">{receipt.officialPicks[game.id] ? <TeamCode code={receipt.officialPicks[game.id]} size="xs" /> : null}<span>{selectedTeamName(game, receipt.officialPicks[game.id])}</span></strong></span></li>
+        ))}
+      </ol>
+      <p>{tiebreakerLabel} Total <strong>{receipt.mondayPrediction}</strong></p>
+      <time dateTime={receipt.committedAt}>{time} ET</time><small>Official version {receipt.versionNumber} · Keep this timestamp as your receipt.</small>
+      <Link className="receipt-reminders-link" href="/profile#email-reminders" prefetch={false}>Manage deadline and results reminders</Link>
       {!locked && <button className="text-action" type="button" onClick={onEdit}>Edit and resubmit</button>}
     </section>
   );
 }
 
-function HomeView({ selectedCount, onContinue, account, week }: { selectedCount: number; onContinue: () => void; account: AccountSummary; week: PlayerWeek }) {
+function HomeView({ selectedCount, onContinue, account, week, canParticipate, hasSubmitted }: { selectedCount: number; onContinue: () => void; account: AccountSummary; week: PlayerWeek; canParticipate: boolean; hasSubmitted: boolean }) {
+  const homeState = getHomeWeekState({
+    deadlineLabel: week.deadlineLabel,
+    games: week.games,
+    hasSubmitted,
+    isLocked: week.isLocked,
+    selectedCount,
+  });
+  const statusLabel = homeState.lockedStatusLabel
+    ?? eligibilityStatusLabel(account);
+  const action = homeState.destination === "picks"
+    ? canParticipate
+      ? <button className="review-action" type="button" onClick={onContinue}><span>{homeState.actionLabel}</span><Icon name="arrow" /></button>
+      : <Link className="review-action review-action--link" href="/profile" prefetch={false}><span>{eligibilityActionLabel(account)}</span><Icon name="arrow" /></Link>
+    : <Link className="review-action review-action--link" href={`/${homeState.destination}`} prefetch={false}><span>{homeState.actionLabel}</span><Icon name="arrow" /></Link>;
   return (
-    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">Finish and submit your entry before {week.deadlineLabel}.</p><div className="home-status"><Icon name="shield" /><span>{account.reasonLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div><button className="review-action" type="button" onClick={onContinue}><span>{selectedCount ? "Continue your picks" : "Make your picks"}</span><Icon name="arrow" /></button></section>
+    <section className="single-view home-view"><RouteSketch /><RouteSketch mirrored /><p className="week-label">{week.label} Pick&apos;em</p><h1>One sheet. {week.games.length} calls.</h1><p className="lead">{homeState.lead}</p><div className="home-status"><Icon name={homeState.lockedStatusLabel ? "check" : "shield"} /><span>{statusLabel}</span><strong>{selectedCount}/{week.games.length} picks</strong></div>{action}<Link className="home-reminders-link" href="/profile#email-reminders" prefetch={false}>Set deadline and results reminders</Link><PwaInstallHomeCard /><div className="home-trust-links"><Link href="/rules">Beta rules</Link><Link href="/privacy">Privacy</Link><Link href="/support">Support</Link><span>Built by <a href="https://droidan1.dev">Droidan1</a></span></div></section>
   );
 }
 
@@ -483,7 +1271,7 @@ function StandingsView({
         </p>
         <div className="standings-table" role="table" aria-label={`${standings.season} regular-season standings`}>
           <div className="standings-row standings-row--header" role="row">
-            <span>Rank</span><span>Player</span><span>Correct</span><span>TB diff</span>
+            <span role="columnheader">Rank</span><span role="columnheader">Player</span><span role="columnheader">Correct</span><span role="columnheader">TB diff</span>
           </div>
           {standings.rows.map((entry) => (
             <div
@@ -491,14 +1279,14 @@ function StandingsView({
               role="row"
               key={entry.userId}
             >
-              <strong>{entry.rank}</strong>
-              <span>{entry.displayName}</span>
-              <span>{entry.correctPicks}/{entry.gradedPicks}</span>
-              <span>{entry.tiebreakerDiff ?? "—"}</span>
+              <span className="standings-rank" role="cell"><strong>{entry.rank}</strong>{entry.rankChange !== null && entry.rankChange !== 0 ? <small className={entry.rankChange > 0 ? "standings-rank--up" : "standings-rank--down"}>{entry.rankChange > 0 ? `↑${entry.rankChange}` : `↓${Math.abs(entry.rankChange)}`}</small> : null}</span>
+              <span className="standings-player" role="cell"><PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} size={32} />{entry.displayName}</span>
+              <span role="cell">{entry.correctPicks}/{entry.gradedPicks}</span>
+              <span role="cell">{entry.tiebreakerDiff ?? "—"}</span>
             </div>
           ))}
         </div>
-        <Link className="standings-results-link" href="/results">View weekly results <Icon name="arrow" /></Link>
+        <Link className="standings-results-link" href="/results" prefetch={false}>View weekly results <Icon name="arrow" /></Link>
       </section>
     );
   }
@@ -522,17 +1310,11 @@ function StandingsView({
               : "Week 1 results will set the first official leaderboard."}
         </p>
       </div>
-      <Link className="standings-results-link" href="/results">View weekly results <Icon name="arrow" /></Link>
+      <Link className="standings-results-link" href="/results" prefetch={false}>View weekly results <Icon name="arrow" /></Link>
     </section>
   );
 }
 
-function ProfileView({ selectedTeams, totalGames, account, isAdmin }: { selectedTeams: string[]; totalGames: number; account: AccountSummary; isAdmin: boolean }) {
-  return (
-    <section className="single-view profile-view"><p className="week-label">Profile & access</p><h1>{account.displayName ?? "Finish your player card"}</h1><div className="access-lines"><div><Icon name="shield" /><span>Indiana location</span><strong>{account.locationResult === "in_state" ? "Cleared" : "Open"}</strong></div><div><Icon name="check" /><span>Age requirement</span><strong>{account.ageEligible ? "Cleared" : "Open"}</strong></div><div><Icon name="profile" /><span>Verified sign-in</span><strong>{account.verifiedAuth ? "Cleared" : "Open"}</strong></div><div><Icon name="picks" /><span>Draft selections</span><strong>{selectedTeams.length}/{totalGames}</strong></div></div><p className="prototype-note">{account.reasonLabel}. Eligibility evidence is evaluated on the server.</p><div className="profile-actions"><Link className="review-action" href="/profile">Open player card</Link>{isAdmin && <Link className="admin-profile-link" href="/admin"><Icon name="settings" />Open admin settings</Link>}</div></section>
-  );
-}
-
 function AccountDock({ account, compact = false }: { account: AccountSummary; compact?: boolean }) {
-  return <div className={`account-dock${compact ? " account-dock--compact" : ""}`}><UserButton /><Link href="/profile"><span>{account.displayName ?? "Player card"}</span><small>{account.overallResult === "eligible" ? "Eligible" : "Read-only"}</small></Link></div>;
+  return <div className={`account-dock${compact ? " account-dock--compact" : ""}`}><UserButton /><Link href="/profile" prefetch={false}><span>{account.displayName ?? "Player card"}</span><small>{account.overallResult === "eligible" ? "Eligible" : "Read-only"}</small></Link></div>;
 }
