@@ -3822,6 +3822,61 @@ button:disabled {
   color: var(--paper-100);
 }
 
+.picks-layout.picks-layout--collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.surface:has(.picks-layout) {
+  overflow-x: clip;
+}
+
+.game-panel[hidden] {
+  display: none;
+}
+
+.entry-controls-toggle-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--sage);
+  background: var(--paper-200);
+  font-size: 0.85rem;
+}
+
+.entry-controls-toggle-bar button,
+.entry-controls-mobile-close {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--ink);
+  background: var(--maize);
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.entry-controls-toggle-bar button {
+  flex-shrink: 0;
+}
+
+.entry-controls-toggle-bar button:focus-visible,
+.entry-controls-mobile-close:focus-visible {
+  outline: 3px solid var(--clay);
+  outline-offset: 3px;
+}
+
+.entry-controls-mobile-close {
+  display: none;
+}
+
 .game-panel .progress-measure {
   min-height: 8rem;
   grid-template-columns: 1fr;
@@ -5995,6 +6050,22 @@ button:disabled {
   .game-panel {
     position: static;
     min-height: auto;
+    scroll-margin-top: calc(3.6rem + env(safe-area-inset-top));
+  }
+
+  .entry-controls-toggle-bar {
+    top: calc(3.6rem + env(safe-area-inset-top));
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .entry-controls-toggle-bar button {
+    width: 100%;
+  }
+
+  .entry-controls-mobile-close {
+    display: flex;
+    margin: 0.75rem;
   }
 
   .rules-note {

@@ -820,6 +820,8 @@ function savedPickCount(games: PlayerGame[], picks: Picks): number {
 }
 
 function PicksView(props: PicksViewProps) {
+  const [controlsExpanded, setControlsExpanded] = useState(false);
+  const controlsRef = useRef<HTMLElement | null>(null);
   const tiebreakerLabel = props.week.seasonPhase === "preseason" ? "Tiebreaker" : "Monday";
   const oddsProviders = Array.from(new Set(
     props.games.flatMap((game) => game.odds?.provider ? [game.odds.provider] : []),
@@ -833,9 +835,41 @@ function PicksView(props: PicksViewProps) {
   }, null);
   const otherPlayers = props.livePlayerPicks.filter((player) => player.userId !== props.currentUserId);
   const missingCount = props.games.length - props.selectedCount;
+  const showControls = () => {
+    setControlsExpanded(true);
+    window.requestAnimationFrame(() => {
+      if (window.matchMedia("(max-width: 61.25rem)").matches) {
+        controlsRef.current?.scrollIntoView({ block: "start" });
+      }
+    });
+  };
+  const chooseTeam = (gameId: string, abbreviation: string) => {
+    props.onChoose(gameId, abbreviation);
+    if (!props.isLocked && props.canParticipate && missingCount > 0
+      && savedPickCount(props.games, { ...props.picks, [gameId]: abbreviation }) === props.games.length) {
+      showControls();
+    }
+  };
+  const reviewPicks = () => {
+    if (missingCount === 0) showControls();
+    props.onReview();
+  };
   return (
-    <div className={`picks-layout${props.isLocked ? " picks-layout--locked" : ""}`}>
+    <div className={`picks-layout${props.isLocked ? " picks-layout--locked" : !controlsExpanded ? " picks-layout--collapsed" : ""}`}>
       <section className="pick-sheet" aria-labelledby="picks-title">
+        {!props.isLocked ? (
+          <div className="entry-controls-toggle-bar">
+            <span>{props.draftConflict ? "Newer draft found · Open controls to resolve"
+              : props.draftSync.state === "error" ? "Draft not synced · Open controls to retry"
+                : missingCount > 0 ? `${props.selectedCount}/${props.games.length} picked · Total opens after your last pick`
+                  : `${props.selectedCount}/${props.games.length} picked · Set your total and review`}</span>
+            <button type="button" aria-expanded={controlsExpanded} aria-controls="entry-controls"
+              onClick={() => controlsExpanded ? setControlsExpanded(false) : showControls()}>
+              <span>{controlsExpanded ? "Hide" : "Show"} {tiebreakerLabel} total</span>
+              <span aria-hidden="true">{controlsExpanded ? "−" : "+"}</span>
+            </button>
+          </div>
+        ) : null}
         <header className="pick-header">
           <RouteSketch /><RouteSketch mirrored />
           <p className="week-label">{props.week.label} Pick&apos;em</p>
@@ -928,7 +962,7 @@ function PicksView(props: PicksViewProps) {
                               className={`scoreboard-team-choice${isSelected ? " scoreboard-team-choice--selected" : ""}`}
                               type="button"
                               key={team.abbreviation}
-                              onClick={() => props.onChoose(game.id, team.abbreviation)}
+                              onClick={() => chooseTeam(game.id, team.abbreviation)}
                               aria-pressed={isSelected}
                               aria-label={`Pick ${team.name}${moneyline !== null ? `. Moneyline ${formatMoneyline(moneyline)}` : ""}`}
                               disabled={!props.canParticipate || props.isLocked || props.isPending}
@@ -978,11 +1012,16 @@ function PicksView(props: PicksViewProps) {
         )}
       </section>
 
-      <aside className="game-panel" aria-label="Entry controls">
+      <aside id="entry-controls" ref={controlsRef} className="game-panel" aria-label="Entry controls" hidden={!props.isLocked && !controlsExpanded}>
         {props.isLocked ? (
           <LockedControlPanel hasSubmitted={props.hasSubmitted} />
         ) : (
           <>
+            <button className="entry-controls-mobile-close" type="button" aria-expanded={controlsExpanded} aria-controls="entry-controls"
+              onClick={() => {
+                setControlsExpanded(false);
+                document.querySelector<HTMLButtonElement>(".entry-controls-toggle-bar button")?.focus();
+              }}>Hide {tiebreakerLabel} total <span aria-hidden="true">−</span></button>
             <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} tiebreakerSet={props.mondayTotal !== null} /></div>
             <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isPending} />
             <div className="rules-note">
@@ -995,7 +1034,7 @@ function PicksView(props: PicksViewProps) {
             ) : props.reviewing ? (
               <ReviewPanel games={props.games} picks={props.picks} mondayTotal={props.mondayTotal} tiebreakerLabel={tiebreakerLabel} onReceipt={props.onReceipt} onEdit={props.onEdit} account={props.account} canParticipate={props.canParticipate} isPending={props.isPending} isLocked={false} hasSubmitted={props.hasSubmitted} />
             ) : (
-              <button className="review-action" type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending}>
+              <button className="review-action" type="button" onClick={reviewPicks} disabled={!props.canParticipate || props.isPending}>
                 <Icon name="whistle" /><span>{!props.canParticipate ? "Account setup required" : missingCount > 0 ? `Finish ${missingCount} ${missingCount === 1 ? "pick" : "picks"}` : props.mondayTotal === null ? "Set tiebreaker" : `Review ${props.games.length} picks`}</span><Icon name="arrow" />
               </button>
             )}
@@ -1065,7 +1104,7 @@ function PicksView(props: PicksViewProps) {
       ) : (
         <div className="mobile-pick-dock" aria-label="Pick progress and next action">
           <span><strong>{props.selectedCount}/{props.games.length}</strong>{missingCount === 0 && props.mondayTotal === null ? "Tiebreaker needed" : "picks"}</span>
-          <button type="button" onClick={props.onReview} disabled={!props.canParticipate || props.isPending}>
+          <button type="button" onClick={reviewPicks} disabled={!props.canParticipate || props.isPending}>
             {missingCount > 0 ? `Next missing (${missingCount})` : props.mondayTotal === null ? "Set tiebreaker" : "Review card"}
             <Icon name="arrow" />
           </button>
