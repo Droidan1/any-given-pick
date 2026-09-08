@@ -490,6 +490,9 @@ export const contestEntries = pgTable(
     boardNumber: integer("board_number").notNull().default(1),
     boardName: varchar("board_name", { length: 40 }).notNull().default("Board 1"),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    lastResetAt: timestamp("last_reset_at", { withTimezone: true }),
+    resetRevision: integer("reset_revision").notNull().default(0),
+    resetVersionNumber: integer("reset_version_number").notNull().default(0),
     draftPicks: jsonb("draft_picks").$type<Record<string, string>>().notNull().default({}),
     draftMondayPrediction: integer("draft_monday_prediction"),
     draftRevision: integer("draft_revision").notNull().default(0),
@@ -501,6 +504,8 @@ export const contestEntries = pgTable(
   },
   (table) => [
     uniqueIndex("contest_entries_week_user_board_unique").on(table.contestWeekId, table.userId, table.boardNumber),
+    check("contest_entries_reset_version_check", sql`${table.resetVersionNumber} >= 0`),
+    check("contest_entries_reset_revision_check", sql`${table.resetRevision} >= 0 and ${table.resetRevision} <= ${table.draftRevision}`),
     check("contest_entries_board_number_positive", sql`${table.boardNumber} > 0`),
     index("contest_entries_week_status_idx").on(table.contestWeekId, table.status),
     check(

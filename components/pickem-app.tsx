@@ -139,7 +139,7 @@ export function PickemApp(props: PickemAppProps) {
     window.addEventListener("focus", refresh);
     return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
   }, [router]);
-  return <PickemSession {...props} week={week} key={`${week?.id}:${selected?.id ?? "list"}`}
+  return <PickemSession {...props} week={week} key={`${week?.id}:${selected?.id ?? "list"}:${selected?.resetRevision ?? 0}`}
     boardList={!selected && week ? <BoardList week={week} canParticipate={hasParticipationAccess(props.account)} draftOwnerId={props.draftOwnerId} onOpen={setSelectedId} /> : null}
     onBack={() => { setSelectedId(null); router.refresh(); }}
   />;
@@ -160,7 +160,7 @@ function PickemSession({ account, week, isAdmin, draftOwnerId, standings, initia
     return {
       versionNumber: week.entry.currentVersionNumber,
       committedAt: week.entry.submittedAt,
-      action: week.entry.currentVersionNumber === 1 ? "submit" : "edit",
+      action: week.entry.officialAction ?? "submit",
       officialPicks: week.entry.officialPicks,
       mondayPrediction: week.entry.officialMondayPrediction ?? 0,
       draftRevision: week.entry.draftRevision,
@@ -188,7 +188,7 @@ function PickemSession({ account, week, isAdmin, draftOwnerId, standings, initia
   const draftSaveInFlightRef = useRef(false);
   const draftSaveQueuedRef = useRef(false);
 
-  const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id, week.entry?.boardNumber === 1 ? undefined : week.entry?.id) : null;
+  const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id, week.entry?.boardNumber === 1 ? undefined : week.entry?.id, week.entry?.resetRevision) : null;
   const activeWeekId = week?.id ?? null;
   const games = week?.games ?? [];
   const canParticipate = hasParticipationAccess(liveAccount);
@@ -421,6 +421,7 @@ function PickemSession({ account, week, isAdmin, draftOwnerId, standings, initia
             }
           }
           if (!result.ok) {
+            if (result.code === "board_reset") { router.refresh(); }
             if (result.code === "deadline_passed") {
               setDeadlineLockedWeekId(activeWeekId);
               setReviewing(false);
@@ -448,7 +449,7 @@ function PickemSession({ account, week, isAdmin, draftOwnerId, standings, initia
       })();
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [boardList, activeWeekId, canParticipate, draftConflict, draftReady, draftRetryVersion, draftRevision, draftStorageKey, isLocked, mondayTotal, picks, submissionAttempt, week]);
+  }, [boardList, activeWeekId, canParticipate, draftConflict, draftReady, draftRetryVersion, draftRevision, draftStorageKey, isLocked, mondayTotal, picks, router, submissionAttempt, week]);
 
   if (!week) {
     const emptyContent = view === "standings" && standings ? (
@@ -566,6 +567,7 @@ function PickemSession({ account, week, isAdmin, draftOwnerId, standings, initia
           setDraftSync({ state: "synced", syncedAt: result.receipt.committedAt });
           if (draftStorageKey) window.localStorage.removeItem(draftStorageKey);
         } else {
+          if (result.code === "board_reset") { router.refresh(); }
           if (result.code === "deadline_passed") {
             setDeadlineLockedWeekId(activeWeekId);
             setReviewing(false);
@@ -647,6 +649,7 @@ function PickemSession({ account, week, isAdmin, draftOwnerId, standings, initia
         {week.entry?.archivedAt && <span>Archived · excluded from scoring</span>}
         {(draftSync.state === "local" || draftSync.state === "syncing") && <small>Saving before switching boards…</small>}
       </div>}
+      {view === "picks" && !boardList && week.entry?.lastResetAt && !week.entry?.archivedAt && week.entry.currentVersionNumber === 0 && <div className="board-notice" role="status"><strong>An administrator reset this board.</strong> Make new picks and submit before the deadline. Prior submissions are preserved in <Link href="/activity">My activity</Link> and no longer count toward scoring.</div>}
       {view === "picks" && week.entry?.archivedAt && <section className="player-boards">
         <header className="board-list-intro"><p className="week-label">{week.label}</p><h1>{week.entry.boardName}</h1></header>
         <div className="board-notice"><strong>Archived board</strong> Read-only and excluded from scoring. Your saved picks and submission are preserved.</div>

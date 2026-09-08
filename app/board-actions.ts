@@ -57,7 +57,7 @@ export async function manageBoard(input: BoardMutation): Promise<BoardMutationRe
         }
         boardId = entry.id;
         if (data.intent === "delete") {
-          if (entry.boardNumber === 1 || entry.currentVersionNumber > 0) return { ok: false, message: "Board 1 and submitted boards cannot be deleted." };
+          if (entry.boardNumber === 1 || entry.currentVersionNumber > 0 || entry.lastResetAt !== null) return { ok: false, message: "Board 1 and boards with submission or reset history cannot be deleted." };
           await transaction.delete(contestEntries).where(eq(contestEntries.id, entry.id));
         } else {
           await transaction.update(contestEntries).set({ boardName: data.name, updatedAt: now }).where(eq(contestEntries.id, entry.id));

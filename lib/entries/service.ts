@@ -115,6 +115,7 @@ export async function getCurrentPlayerWeek(
     db
       .select({
         entryId: contestEntries.id,
+        action: entryVersions.action,
         mondayPrediction: entryVersions.mondayPrediction,
         committedAt: entryVersions.committedAt,
       })
@@ -163,10 +164,12 @@ export async function getCurrentPlayerWeek(
     return {
       id: entry.id, boardNumber: entry.boardNumber, boardName: entry.boardName,
       archivedAt: entry.archivedAt?.toISOString() ?? null,
+      lastResetAt: entry.lastResetAt?.toISOString() ?? null, resetRevision: entry.resetRevision,
       status: entry.status, draftPicks: entry.draftPicks, draftRevision: entry.draftRevision,
       officialPicks: Object.fromEntries(officialPickRows.filter(pick => pick.entryId === entry.id).map(pick => [pick.gameId, pick.selectedTeamCode])),
       mondayPrediction: entry.draftMondayPrediction,
       officialMondayPrediction: officialVersion?.mondayPrediction ?? null,
+      officialAction: officialVersion ? officialVersion.action as "submit" | "edit" : null,
       currentVersionNumber: entry.currentVersionNumber,
       submittedAt: officialVersion?.committedAt.toISOString() ?? entry.submittedAt?.toISOString() ?? null,
       updatedAt: entry.updatedAt.toISOString(),

@@ -44,3 +44,10 @@ describe("pick draft storage", () => {
     expect(shouldRestoreLocalDraft(4, 4)).toBe(true);
   });
 });
+
+
+it("uses a new device-storage namespace after an administrator resets a board", () => {
+  expect(userDraftStorageKey("player", "week", undefined, 4)).not.toBe(userDraftStorageKey("player", "week"));
+  expect(userDraftStorageKey("player", "week", "extra", 4)).not.toBe(userDraftStorageKey("player", "week", "extra"));
+  expect(userDraftStorageKey("player", "week", "extra", 5)).not.toBe(userDraftStorageKey("player", "week", "extra", 4));
+});

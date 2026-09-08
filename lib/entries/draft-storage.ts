@@ -1,6 +1,7 @@
 const LEGACY_GLOBAL_DRAFT_KEY = "any-given-pick-draft:v1";
 
-export function userDraftStorageKey(userId: string, weekId: string, boardId?: string) {
+export function userDraftStorageKey(userId: string, weekId: string, boardId?: string, resetRevision = 0) {
+  if (resetRevision > 0) return `any-given-pick-draft:v5:${userId}:${weekId}:${boardId ?? "board-1"}:${resetRevision}`;
   if (boardId) return `any-given-pick-draft:v4:${userId}:${weekId}:${boardId}`;
   return `any-given-pick-draft:v3:${userId}:${weekId}`;
 }

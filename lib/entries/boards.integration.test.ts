@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as schema from "@/lib/db/schema";
+import { resetPlayerBoard } from "@/app/admin/picks/reset-board-action";
 import { manageBoard } from "@/app/board-actions";
 import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import { updateBoardSettings } from "@/app/admin/board-settings-actions";
@@ -249,5 +250,119 @@ describe("board actions against PostgreSQL", () => {
     expect(rows.filter(row => !row.archivedAt).map(row => row.id)).toEqual([ids[0], ids[2]]);
     const audits = await db.select().from(schema.auditEvents).where(and(eq(schema.auditEvents.action, "boards.settings_changed"), eq(schema.auditEvents.actorUserId, adminId)));
     expect(audits.at(-1)?.metadata).toMatchObject({ next_limit: 2, archived_count: 1 });
+  });
+});
+
+
+async function resetBoard(boardId: string, overrides: Partial<Parameters<typeof resetPlayerBoard>[0]> = {}) {
+  const [entry] = await db.select().from(schema.contestEntries).where(eq(schema.contestEntries.id, boardId));
+  return resetPlayerBoard({ boardId, expectedDraftRevision: entry?.draftRevision ?? 0, expectedVersionNumber: entry?.currentVersionNumber ?? 0, reason: "Player requested a fresh start", confirmed: true, ...overrides });
+}
+
+describe("administrator board reset", () => {
+  it("requires an administrator and explicit confirmation", async () => {
+    const id = await create();
+    context.userId = otherId;
+    await expect(resetBoard(id)).rejects.toThrow("ADMIN_REQUIRED");
+    context.userId = adminId;
+    expect((await resetBoard(id, { confirmed: false })).ok).toBe(false);
+    expect((await db.select().from(schema.contestEntries))[0].resetRevision).toBe(0);
+  });
+
+  it("clears only the chosen board and preserves submissions, picks, identity, and an audit record", async () => {
+    await enable();
+    const first = await create("Original");
+    const extra = await create("Second");
+    await submit(first, "IND", 41);
+    await submit(extra, "CHI", 30);
+    const versions = await db.select().from(schema.entryVersions);
+    const picks = await db.select().from(schema.entryVersionPicks);
+    const [before] = await db.select().from(schema.contestEntries).where(eq(schema.contestEntries.id, first));
+    const [untouched] = await db.select().from(schema.contestEntries).where(eq(schema.contestEntries.id, extra));
+    expect((await resetBoard(first)).ok).toBe(true);
+    const [after] = await db.select().from(schema.contestEntries).where(eq(schema.contestEntries.id, first));
+    expect(after).toMatchObject({ id: first, boardName: "Original", boardNumber: 1, status: "draft", draftPicks: {}, draftMondayPrediction: null, currentVersionNumber: 0, submittedAt: null, draftRevision: before.draftRevision + 1, resetRevision: before.draftRevision + 1 });
+    expect(after.lastResetAt).toBeTruthy();
+    expect(await db.select().from(schema.entryVersions)).toEqual(versions);
+    expect(await db.select().from(schema.entryVersionPicks)).toEqual(picks);
+    expect((await db.select().from(schema.contestEntries).where(eq(schema.contestEntries.id, extra)))[0]).toEqual(untouched);
+    expect((await getSeasonStandings()).rows[0].correctPicks).toBe(0);
+    const card = (await getPlayerActivity(adminId)).cards.find(card => card.id === first)!;
+    expect(card).toMatchObject({ versionNumber: 0, officialPicks: [], pickCount: 0 });
+    expect(card.submissionHistory[0]).toMatchObject({ versionNumber: 1, isCurrent: false, voidedByReset: true, mondayPrediction: 41 });
+    expect(card.submissionHistory[0].picks[0].selectedTeamCode).toBe("IND");
+    const [audit] = await db.select().from(schema.auditEvents).where(eq(schema.auditEvents.action, "board.reset"));
+    expect(audit).toMatchObject({ actorUserId: adminId, targetUserId: adminId, entityId: first, metadata: { previous_version_number: 1, reason: "Player requested a fresh start" } });
+    expect((await getCurrentPlayerWeek(adminId))?.entries.find(entry => entry.id === first)).toMatchObject({ officialPicks: {}, officialMondayPrediction: null, resetRevision: after.resetRevision });
+  });
+
+  it("blocks old autosaves and submissions, then permits a fresh submission with a new version number", async () => {
+    const id = await create();
+    const key = crypto.randomUUID();
+    await submit(id, "IND", 41, key);
+    const [before] = await db.select().from(schema.contestEntries);
+    await resetBoard(id);
+    const stale = { weekId, boardId: id, picks: { [gameId]: "IND" }, mondayPrediction: 41, baseDraftRevision: before.draftRevision };
+    expect((await saveEntryDraft(stale)).code).toBe("board_reset");
+    expect((await submitEntry({ ...stale, submissionKey: key })).code).toBe("board_reset");
+    expect((await submitEntry({ ...stale, submissionKey: crypto.randomUUID() })).code).toBe("board_reset");
+    expect((await db.select().from(schema.contestEntries))[0].draftPicks).toEqual({});
+    const fresh = await submit(id, "CHI", 30);
+    expect(fresh.receipt).toMatchObject({ versionNumber: 2, action: "submit", mondayPrediction: 30 });
+    expect((await submit(id, "IND", 41, key)).ok).toBe(false);
+    const card = (await getPlayerActivity(adminId)).cards[0];
+    expect(card.officialPicks[0].selectedTeamCode).toBe("CHI");
+    expect(card.submissionHistory.map(version => [version.versionNumber, version.isCurrent, version.voidedByReset])).toEqual([[2, true, false], [1, false, true]]);
+  });
+
+  it("keeps post-reset receipts valid even when timestamps match the reset", async () => {
+    const id = await create();
+    await submit(id);
+    await resetBoard(id);
+    const [reset] = await db.select().from(schema.contestEntries);
+    const key = crypto.randomUUID();
+    await submit(id, "CHI", 30, key);
+    await db.update(schema.entryVersions).set({ committedAt: reset.lastResetAt! }).where(eq(schema.entryVersions.versionNumber, 2));
+    expect((await submit(id, "CHI", 30, key)).ok).toBe(true);
+    const card = (await getPlayerActivity(adminId)).cards[0];
+    expect(card.submissionHistory[0]).toMatchObject({ versionNumber: 2, isCurrent: true, voidedByReset: false });
+    await resetBoard(id);
+    await resetBoard(id);
+    expect((await db.select().from(schema.contestEntries))[0].resetVersionNumber).toBe(2);
+    expect((await submit(id, "CHI", 30, key)).ok).toBe(false);
+  });
+
+  it("rejects stale confirmations when either the draft or official version changed", async () => {
+    const id = await create();
+    await submit(id);
+    const [before] = await db.select().from(schema.contestEntries);
+    await submit(id);
+    expect((await resetBoard(id, { expectedVersionNumber: before.currentVersionNumber })).ok).toBe(false);
+    await saveEntryDraft({ weekId, boardId: id, picks: {}, mondayPrediction: null, baseDraftRevision: before.draftRevision });
+    expect((await resetBoard(id, { expectedDraftRevision: before.draftRevision })).ok).toBe(false);
+    expect((await db.select().from(schema.contestEntries))[0].lastResetAt).toBeNull();
+  });
+
+  it("refuses resets at or after the deadline and for closed weeks", async () => {
+    const id = await create();
+    await submit(id);
+    await db.update(schema.contestWeeks).set({ entryDeadline: new Date() });
+    expect((await resetBoard(id)).ok).toBe(false);
+    await db.update(schema.contestWeeks).set({ entryDeadline: new Date(Date.now() + 3_600_000), status: "locked" });
+    expect((await resetBoard(id)).ok).toBe(false);
+    expect((await db.select().from(schema.contestEntries))[0].currentVersionNumber).toBe(1);
+  });
+
+  it("keeps archived and disqualified boards protected and reset history undeletable", async () => {
+    await enable();
+    await create();
+    const extra = await create();
+    await submit(extra);
+    await resetBoard(extra);
+    expect((await manageBoard({ intent: "delete", weekId, boardId: extra })).ok).toBe(false);
+    await db.update(schema.contestEntries).set({ status: "disqualified" }).where(eq(schema.contestEntries.id, extra));
+    expect((await resetBoard(extra)).ok).toBe(false);
+    await updateBoardSettings({ multipleBoardsEnabled: false, maxBoards: 3, revision: 1, confirmed: true });
+    expect((await resetBoard(extra)).ok).toBe(false);
   });
 });

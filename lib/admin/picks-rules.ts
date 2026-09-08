@@ -9,6 +9,7 @@ export type AdminPlayerPickCard = {
   displayName: string;
   submissionStatus: AdminPlayerPickStatus;
   entry: RevealedEntry | null;
+  resetState: { draftRevision: number; versionNumber: number } | null;
 };
 
 export type AdminPicksRosterRow = {
@@ -16,6 +17,7 @@ export type AdminPicksRosterRow = {
   entryId?: string | null;
   boardName?: string | null;
   displayName: string;
+  draftRevision?: number | null;
   currentVersionNumber: number | null;
   entryStatus: "draft" | "submitted" | "locked" | "scored" | "disqualified" | null;
 };
@@ -38,6 +40,7 @@ export function buildAdminPlayerPickCards(input: {
       boardName: player.boardName,
       displayName: player.displayName,
       submissionStatus,
+      resetState: player.entryId && typeof player.draftRevision === "number" && player.entryStatus !== "disqualified" ? { draftRevision: player.draftRevision, versionNumber: player.currentVersionNumber ?? 0 } : null,
       entry: input.revealStatus === "revealed"
         ? revealedEntries.get(player.entryId ?? "") ?? null
         : null,

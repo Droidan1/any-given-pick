@@ -23,12 +23,15 @@ export type PlayerEntry = {
   boardNumber: number;
   boardName: string;
   archivedAt: string | null;
+  lastResetAt: string | null;
+  resetRevision: number;
   status: "draft" | "submitted" | "locked" | "scored" | "disqualified";
   draftPicks: Record<string, string>;
   draftRevision: number;
   officialPicks: Record<string, string>;
   mondayPrediction: number | null;
   officialMondayPrediction: number | null;
+  officialAction: "submit" | "edit" | null;
   currentVersionNumber: number;
   submittedAt: string | null;
   updatedAt: string;
@@ -79,6 +82,7 @@ export type EntryActionResult = {
     | "ineligible"
     | "incomplete"
     | "invalid_pick"
+    | "board_reset"
     | "draft_conflict"
     | "rate_limited"
     | "server_error";

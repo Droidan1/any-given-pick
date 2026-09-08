@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
@@ -142,6 +142,7 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
         .limit(1);
 
       if (parsed.data.boardId && !existing) return { ok: false, code: "not_found", message: "This board was not found." };
+      if (existing && parsed.data.baseDraftRevision < existing.resetRevision) return { ok: false, code: "board_reset", message: "An administrator reset this board. Refresh to load the empty board before making new picks." };
       if (existing?.archivedAt) return { ok: false, code: "not_open", message: "This board was archived by an administrator and is excluded from scoring." };
       if (existing && ["locked", "scored", "disqualified"].includes(existing.status)) {
         return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
@@ -292,6 +293,7 @@ export async function submitEntry(
           and(
             eq(entryVersions.submissionKey, parsed.data.submissionKey),
             isNull(contestEntries.archivedAt),
+            gt(entryVersions.versionNumber, contestEntries.resetVersionNumber),
             eq(contestEntries.userId, appUser.id),
             parsed.data.boardId ? eq(contestEntries.id, parsed.data.boardId) : eq(contestEntries.boardNumber, 1),
             eq(contestEntries.contestWeekId, parsed.data.weekId),
@@ -374,6 +376,7 @@ export async function submitEntry(
         .for("update")
         .limit(1);
       if (parsed.data.boardId && !existing) return { ok: false, code: "not_found", message: "This board was not found." };
+      if (existing && parsed.data.baseDraftRevision < existing.resetRevision) return { ok: false, code: "board_reset", message: "An administrator reset this board. Refresh to load the empty board before making new picks." };
       if (existing?.archivedAt) return { ok: false, code: "not_open", message: "This board was archived by an administrator and is excluded from scoring." };
       if (existing && ["locked", "scored", "disqualified"].includes(existing.status)) {
         return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
@@ -392,7 +395,9 @@ export async function submitEntry(
               updatedAt: now,
             })
             .returning();
-      const versionNumber = entry.currentVersionNumber + 1;
+      const [versionHistory] = await transaction.select({ lastVersion: sql<number>`coalesce(max(${entryVersions.versionNumber}), 0)` })
+        .from(entryVersions).where(eq(entryVersions.contestEntryId, entry.id));
+      const versionNumber = versionHistory.lastVersion + 1;
       const action = entry.currentVersionNumber === 0 ? "submit" : "edit";
 
       const [version] = await transaction

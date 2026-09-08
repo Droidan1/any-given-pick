@@ -44,6 +44,7 @@ export async function getAdminPicksBoard(input: {
       userId: users.id,
       entryId: contestEntries.id,
       boardName: contestEntries.boardName,
+      draftRevision: contestEntries.draftRevision,
       displayName: profiles.displayName,
       currentVersionNumber: contestEntries.currentVersionNumber,
       entryStatus: contestEntries.status,

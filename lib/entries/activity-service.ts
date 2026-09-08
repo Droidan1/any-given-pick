@@ -40,6 +40,8 @@ export type ActivityCard = {
   boardName: string;
   boardNumber: number;
   stateLabel: string;
+  lastResetAt: string | null;
+  submissionHistory: { versionNumber: number; committedAt: string; mondayPrediction: number; isCurrent: boolean; voidedByReset: boolean; picks: ActivityPick[] }[];
   versionNumber: number;
   pickCount: number;
   gameCount: number;
@@ -67,6 +69,8 @@ type EntryRow = {
   boardName: string;
   boardNumber: number;
   archivedAt: Date | null;
+  lastResetAt: Date | null;
+  resetVersionNumber: number;
   entryStatus: string;
   weekId: string;
   season: number;
@@ -132,6 +136,8 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
         boardName: contestEntries.boardName,
         boardNumber: contestEntries.boardNumber,
         archivedAt: contestEntries.archivedAt,
+        lastResetAt: contestEntries.lastResetAt,
+        resetVersionNumber: contestEntries.resetVersionNumber,
         entryStatus: contestEntries.status,
         weekId: contestWeeks.id,
         season: contestWeeks.season,
@@ -158,7 +164,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
   if (currentWeek && !rows.some((row) => row.weekId === currentWeek.id)) {
     rows.unshift({
       entryId: `current-${currentWeek.id}`,
-      boardName: "Board 1", boardNumber: 1, archivedAt: null, entryStatus: "draft",
+      boardName: "Board 1", boardNumber: 1, archivedAt: null, lastResetAt: null, resetVersionNumber: 0, entryStatus: "draft",
       weekId: currentWeek.id,
       season: currentWeek.season,
       seasonPhase: currentWeek.seasonPhase,
@@ -204,15 +210,13 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       : Promise.resolve([]),
   ]);
 
-  const latestVersionByEntry = new Map<string, (typeof versionRows)[number]>();
+  const currentVersionByEntry = new Map<string, (typeof versionRows)[number]>();
+  const entryById = new Map(entryRows.map(entry => [entry.entryId, entry]));
   for (const version of versionRows) {
-    if (!latestVersionByEntry.has(version.entryId)) {
-      latestVersionByEntry.set(version.entryId, version);
-    }
+    if (entryById.get(version.entryId)?.currentVersionNumber === version.versionNumber) currentVersionByEntry.set(version.entryId, version);
   }
-
-  const latestVersionIds = [...latestVersionByEntry.values()].map((version) => version.id);
-  const versionPickRows = latestVersionIds.length > 0
+  const historyVersionIds = versionRows.map(version => version.id);
+  const versionPickRows = historyVersionIds.length > 0
     ? await db
         .select({
           entryVersionId: entryVersionPicks.entryVersionId,
@@ -220,7 +224,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
           selectedTeamCode: entryVersionPicks.selectedTeamCode,
         })
         .from(entryVersionPicks)
-        .where(inArray(entryVersionPicks.entryVersionId, latestVersionIds))
+        .where(inArray(entryVersionPicks.entryVersionId, historyVersionIds))
     : [];
 
   const gamesByWeek = new Map<string, GameRow[]>();
@@ -241,7 +245,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
     const weekGames = gamesByWeek.get(row.weekId) ?? [];
     const gameRules = rulesForGames(weekGames);
     const isCurrent = currentWeek?.id === row.weekId;
-    const latestVersion = latestVersionByEntry.get(row.entryId) ?? null;
+    const latestVersion = currentVersionByEntry.get(row.entryId) ?? null;
     const officialPicks = latestVersion
       ? officialPicksByVersion.get(latestVersion.id) ?? {}
       : {};
@@ -278,7 +282,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       stateLabel = `Official version ${latestVersion.versionNumber}`;
     } else if (isCurrent) {
       state = "draft";
-      stateLabel = "Current draft";
+      stateLabel = row.lastResetAt ? "Reset by admin · Not submitted" : "Current draft";
     } else {
       state = "not_submitted";
       stateLabel = "Not submitted";
@@ -327,6 +331,13 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
       isCurrent,
       state,
       stateLabel,
+      lastResetAt: row.lastResetAt?.toISOString() ?? null,
+      submissionHistory: versionRows.filter(version => version.entryId === row.entryId).map(version => ({
+        versionNumber: version.versionNumber, committedAt: version.committedAt.toISOString(), mondayPrediction: version.mondayPrediction,
+        isCurrent: version.versionNumber === row.currentVersionNumber,
+        voidedByReset: version.versionNumber <= row.resetVersionNumber,
+        picks: buildPicks(officialPicksByVersion.get(version.id) ?? {}),
+      })),
       versionNumber: latestVersion?.versionNumber ?? 0,
       pickCount: Object.keys(displayedPicks).length,
       gameCount: weekGames.length,

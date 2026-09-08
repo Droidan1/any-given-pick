@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function RulesPage() {
   return (
     <PublicInfoShell
-      eyebrow="Public beta · Rules version 1.3 · September 8, 2026"
+      eyebrow="Public beta · Rules version 1.4 · September 8, 2026"
       title="Call it fair. Keep it fun."
       summary="Any Given Pick is a free weekly football pick’em beta for approved adults. There is no purchase, wager, entry fee, or cash prize."
     >
@@ -21,6 +21,7 @@ export default function RulesPage() {
         <h2>2. Making an official entry</h2>
         <p>Pick one team in every published matchup and enter the requested combined-score tiebreaker. Autosaved team selections appear on the live player board while entry is open, but drafts are not official. Your latest complete submission accepted by the server before the displayed deadline is your official entry. Server time controls the deadline.</p>
         <p>The administrator sets the number of boards allowed per player each week. Each board has its own picks, tiebreaker, and official submission. Copying a board creates a draft that must be submitted separately.</p>
+        <p>Before the deadline, an administrator may reset an individual board. Reset clears its picks and tiebreaker and removes its current submission from scoring. Past submissions stay in the player’s private history, and the player must submit again before the deadline. Resets do not reopen closed weeks.</p>
       </section>
       <section>
         <h2>3. Scoring and standings</h2>

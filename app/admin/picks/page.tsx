@@ -1,3 +1,5 @@
+import { ResetBoardControl } from "./reset-board-control";
+import { resetPlayerBoard } from "./reset-board-action";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
@@ -106,7 +108,7 @@ export default async function AdminPicksPage({
         <div className="admin-picks-intro">
           <div>
             <h1 id="admin-picks-title">Every official call</h1>
-            <p>Confirm who submitted, then inspect every official selection after the weekly lock. Drafts and unsent edits are never shown.</p>
+            <p>Confirm who submitted, then inspect every official selection after the weekly lock. Drafts and unsent edits are never shown. Before the deadline, you can reset an individual board so the player can start over.</p>
           </div>
           <Icon name="results" />
         </div>
@@ -155,10 +157,18 @@ export default async function AdminPicksPage({
               {board.players.length > 0 ? board.players.map((player) => {
                 if (!player.entry) {
                   return (
-                    <div className="admin-player-picks admin-player-picks--status" key={player.entryId ?? player.userId}>
+                    <article key={player.entryId ?? player.userId}>
+                    <div className="admin-player-picks admin-player-picks--status">
                       <strong>{player.displayName}{player.boardName ? ` · ${player.boardName}` : ""}</strong>
                       <span className={`admin-player-picks__status admin-player-picks__status--${player.submissionStatus}`}>{statusLabel(player)}</span>
                     </div>
+                    {player.entryId && player.resetState && board.revealStatus === "open" && <ResetBoardControl
+                      boardId={player.entryId} boardName={player.boardName ?? "Board 1"} playerName={player.displayName}
+                      draftRevision={player.resetState.draftRevision} versionNumber={player.resetState.versionNumber}
+                      description="This clears all picks and the tiebreaker and removes this board’s official submission from scoring. Past submissions remain in the player’s history. The player must submit again before the deadline. Other boards are unchanged."
+                      resetAction={resetPlayerBoard}
+                    />}
+                    </article>
                   );
                 }
 

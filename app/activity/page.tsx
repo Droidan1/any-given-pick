@@ -200,6 +200,14 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
           </div>
         )}
 
+        {card.lastResetAt && <p className="board-notice">Reset by an administrator on {formatDateTime(card.lastResetAt)}. Submissions made before the reset no longer count toward scoring.</p>}
+        {card.submissionHistory.length > 0 && <details className="board-archive"><summary>Submission history ({card.submissionHistory.length})</summary>
+          {card.submissionHistory.map(version => <details className="board-archive" key={version.versionNumber}>
+            <summary>Version {version.versionNumber} · {version.isCurrent ? "Current official submission" : version.voidedByReset ? "Removed by reset · Not scoring" : "Superseded · Not scoring"} · {formatDateTime(version.committedAt)}</summary>
+            <p>Tiebreaker: {version.mondayPrediction}</p>
+            {version.picks.map(pick => <div className="board-archived-pick" key={pick.gameId}><span>{pick.awayTeamCode} @ {pick.homeTeamCode}</span><strong>{pick.selectedTeamCode ?? "—"}</strong></div>)}
+          </details>)}
+        </details>}
         {card.isCurrent ? (
           <Link className="activity-card__action" href={`/picks?board=${encodeURIComponent(card.id)}`} prefetch={false}>
             <span>{card.pickCount > 0 ? "Open current card" : "Make current picks"}</span>

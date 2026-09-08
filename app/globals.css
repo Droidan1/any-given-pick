@@ -11120,3 +11120,13 @@ button:disabled {
   }
 
 }
+
+.admin-board-reset { padding: .75rem 1.25rem; border-top: 1px solid var(--sage); color: var(--ink); background: var(--paper-100); }
+.admin-board-reset__button { min-height: 2.75rem; padding: .5rem .8rem; color: var(--clay-deep); background: transparent; border: 1px solid currentColor; font: inherit; cursor: pointer; }
+.admin-board-reset__button:disabled { opacity: .55; cursor: not-allowed; }
+.admin-board-reset > small { display: block; margin-top: .5rem; }
+.admin-board-reset .board-confirm { margin-top: 0; }
+.admin-board-reset label { display: grid; gap: .5rem; margin-bottom: 1rem; }
+.admin-board-reset label span { color: var(--ink-soft); font-size: .85rem; }
+.admin-board-reset textarea { width: 100%; min-height: 5rem; padding: .75rem; border: 1px solid var(--ink-soft); background: var(--paper-100); color: var(--ink); font: inherit; resize: vertical; }
+.admin-board-reset .board-status:empty { min-height: 0; margin: 0; }
