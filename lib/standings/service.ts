@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gt, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { getDb } from "@/lib/db";
 import {
@@ -11,6 +11,7 @@ import {
   games,
   profiles,
 } from "@/lib/db/schema";
+import { bestBoardsPerWeek } from "@/lib/entries/board-rules";
 import { addRankChanges, rankStandings } from "./rules";
 import type { StandingsSnapshot, UnrankedStanding } from "./types";
 
@@ -78,6 +79,8 @@ async function computeSeasonStandings(): Promise<StandingsSnapshot> {
     db
       .select({
         versionId: entryVersions.id,
+        weekId: contestEntries.contestWeekId,
+        boardNumber: contestEntries.boardNumber,
         userId: contestEntries.userId,
         displayName: profiles.displayName,
         profilePhotoUrl: profiles.profilePhotoUrl,
@@ -99,6 +102,7 @@ async function computeSeasonStandings(): Promise<StandingsSnapshot> {
         eq(contestWeeks.seasonPhase, "regular"),
         gt(contestEntries.currentVersionNumber, 0),
         ne(contestEntries.status, "disqualified"),
+        isNull(contestEntries.archivedAt),
       )),
   ]);
 
@@ -160,26 +164,29 @@ async function computeSeasonStandings(): Promise<StandingsSnapshot> {
     }
   };
 
-  for (const entry of entryRows) {
-    const standing = participants.get(entry.userId) ?? newStanding(entry);
-    const versionPicks = picksByVersion.get(entry.versionId) ?? [];
-    for (const pick of versionPicks) {
+  const scoredBoards = entryRows.map(entry => {
+    const standing = newStanding(entry);
+    for (const pick of picksByVersion.get(entry.versionId) ?? []) {
       const game = gamesById.get(pick.gameId);
-      if (
-        !game ||
-        game.status !== "final" ||
-        game.awayScore === null ||
-        game.homeScore === null
-      ) continue;
-
+      if (!game || game.status !== "final" || game.awayScore === null || game.homeScore === null) continue;
       applyFinalPick(standing, entry, game, pick.selectedTeamCode);
-      if (throughWeek !== null && game.weekNumber < throughWeek) {
-        const priorStanding = priorParticipants.get(entry.userId) ?? newStanding(entry);
-        applyFinalPick(priorStanding, entry, game, pick.selectedTeamCode);
-        priorParticipants.set(entry.userId, priorStanding);
-      }
     }
-    participants.set(entry.userId, standing);
+    return { ...standing, weekId: entry.weekId, weekNumber: entry.weekNumber, boardNumber: entry.boardNumber,
+      tiebreakerDiff: standing.hasTiebreaker ? standing.tiebreakerDiff : null };
+  });
+  for (const board of bestBoardsPerWeek(scoredBoards)) {
+    const addBoard = (target: Map<string, StandingAccumulator>) => {
+      const standing = target.get(board.userId) ?? { ...board, correctPicks: 0, gradedPicks: 0, tiebreakerDiff: 0, hasTiebreaker: false };
+      standing.correctPicks += board.correctPicks;
+      standing.gradedPicks += board.gradedPicks;
+      if (board.tiebreakerDiff !== null) {
+        standing.tiebreakerDiff = (standing.tiebreakerDiff ?? 0) + board.tiebreakerDiff;
+        standing.hasTiebreaker = true;
+      }
+      target.set(board.userId, standing);
+    };
+    addBoard(participants);
+    if (throughWeek !== null && board.weekNumber < throughWeek && board.gradedPicks > 0) addBoard(priorParticipants);
   }
 
   const rankedRows = rankStandings(

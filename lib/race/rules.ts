@@ -157,7 +157,7 @@ export function buildLiveWeekRace(results: WeeklyResults): LiveWeekRace {
   }
 
   const gamesById = new Map(results.games.map((game) => [game.id, game]));
-  const drafts: PlayerDraft[] = results.entries.map((entry) => {
+  const drafts: PlayerDraft[] = results.entries.filter(entry => entry.isBestBoard).map((entry) => {
     const livePicks = entry.picks.filter((pick) => pick.gameStatus === "in_progress");
     const pendingPicks = entry.picks.filter((pick) => ["scheduled", "postponed"].includes(pick.gameStatus));
     const unresolvedPicks = [...livePicks, ...pendingPicks];

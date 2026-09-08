@@ -36,7 +36,9 @@ export type ActivityCard = {
   weekNumber: number;
   weekLabel: string;
   isCurrent: boolean;
-  state: "draft" | "pending_edits" | "official" | "not_submitted";
+  state: "draft" | "pending_edits" | "official" | "not_submitted" | "archived" | "disqualified";
+  boardName: string;
+  boardNumber: number;
   stateLabel: string;
   versionNumber: number;
   pickCount: number;
@@ -62,6 +64,10 @@ export type PlayerActivity = {
 
 type EntryRow = {
   entryId: string;
+  boardName: string;
+  boardNumber: number;
+  archivedAt: Date | null;
+  entryStatus: string;
   weekId: string;
   season: number;
   seasonPhase: "preseason" | "regular";
@@ -123,6 +129,10 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
     db
       .select({
         entryId: contestEntries.id,
+        boardName: contestEntries.boardName,
+        boardNumber: contestEntries.boardNumber,
+        archivedAt: contestEntries.archivedAt,
+        entryStatus: contestEntries.status,
         weekId: contestWeeks.id,
         season: contestWeeks.season,
         seasonPhase: contestWeeks.seasonPhase,
@@ -148,6 +158,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
   if (currentWeek && !rows.some((row) => row.weekId === currentWeek.id)) {
     rows.unshift({
       entryId: `current-${currentWeek.id}`,
+      boardName: "Board 1", boardNumber: 1, archivedAt: null, entryStatus: "draft",
       weekId: currentWeek.id,
       season: currentWeek.season,
       seasonPhase: currentWeek.seasonPhase,
@@ -253,7 +264,13 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
 
     let state: ActivityCard["state"];
     let stateLabel: string;
-    if (hasPendingEdits) {
+    if (row.archivedAt) {
+      state = "archived";
+      stateLabel = "Archived · Excluded from scoring";
+    } else if (row.entryStatus === "disqualified") {
+      state = "disqualified";
+      stateLabel = "Disqualified";
+    } else if (hasPendingEdits) {
       state = "pending_edits";
       stateLabel = "Edits not submitted";
     } else if (latestVersion) {
@@ -301,6 +318,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
 
     return {
       id: row.entryId,
+      boardName: row.boardName, boardNumber: row.boardNumber,
       weekId: row.weekId,
       season: row.season,
       seasonPhase: row.seasonPhase,
@@ -331,7 +349,7 @@ export async function getPlayerActivity(userId: string): Promise<PlayerActivity>
     cards,
     currentCard,
     pastCards,
-    officialCardCount: cards.filter((card) => card.versionNumber > 0).length,
-    draftCardCount: cards.filter((card) => card.versionNumber === 0).length,
+    officialCardCount: cards.filter((card) => card.versionNumber > 0 && card.state !== "archived" && card.state !== "disqualified").length,
+    draftCardCount: cards.filter((card) => card.versionNumber === 0 && card.state !== "archived").length,
   };
 }

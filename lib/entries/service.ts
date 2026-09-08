@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne } from "drizzle-orm";
 import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getDb } from "@/lib/db";
 import { contestEntries, contestWeeks, entryVersionPicks, entryVersions, games, profiles, users } from "@/lib/db/schema";
-import type { LivePlayerPicks, PlayerWeek } from "./types";
+import { getBoardSettings } from "./board-settings";
+import type { LivePlayerPicks, PlayerEntry, PlayerWeek } from "./types";
 
 const BUSINESS_TIME_ZONE = "America/Indiana/Indianapolis";
 
@@ -38,6 +39,8 @@ async function loadLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[]> {
   const rows = await getDb()
     .select({
       userId: users.id,
+      entryId: contestEntries.id,
+      boardName: contestEntries.boardName,
       displayName: profiles.displayName,
       picks: contestEntries.draftPicks,
       updatedAt: contestEntries.updatedAt,
@@ -49,6 +52,8 @@ async function loadLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[]> {
       and(
         eq(contestEntries.userId, users.id),
         eq(contestEntries.contestWeekId, weekId),
+        isNull(contestEntries.archivedAt),
+        ne(contestEntries.status, "disqualified"),
       ),
     )
     .where(eq(users.accountState, "active"))
@@ -56,6 +61,8 @@ async function loadLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[]> {
 
   return rows.map((row) => ({
     userId: row.userId,
+    entryId: row.entryId ?? row.userId,
+    boardName: row.boardName ?? "Board 1",
     displayName: row.displayName,
     picks: row.picks ?? {},
     updatedAt: row.updatedAt?.toISOString() ?? null,
@@ -89,7 +96,7 @@ export async function getCurrentPlayerWeek(
   const now = new Date();
   const isLocked = now >= week.entryDeadline;
 
-  const [gameRows, entryRows, officialVersionRows, officialPickRows, livePlayerPicks] = await Promise.all([
+  const [gameRows, entryRows, officialVersionRows, officialPickRows, livePlayerPicks, boardSettings] = await Promise.all([
     db
       .select()
       .from(games)
@@ -104,9 +111,10 @@ export async function getCurrentPlayerWeek(
           eq(contestEntries.userId, userId),
         ),
       )
-      .limit(1),
+      .orderBy(asc(contestEntries.boardNumber)),
     db
       .select({
+        entryId: contestEntries.id,
         mondayPrediction: entryVersions.mondayPrediction,
         committedAt: entryVersions.committedAt,
       })
@@ -124,9 +132,10 @@ export async function getCurrentPlayerWeek(
           eq(contestEntries.userId, userId),
         ),
       )
-      .limit(1),
+      .orderBy(asc(contestEntries.boardNumber)),
     db
       .select({
+        entryId: contestEntries.id,
         gameId: entryVersionPicks.gameId,
         selectedTeamCode: entryVersionPicks.selectedTeamCode,
       })
@@ -146,10 +155,23 @@ export async function getCurrentPlayerWeek(
         ),
       ),
     input.includeLivePicks ? loadLivePlayerPicks(week.id) : Promise.resolve([]),
+    getBoardSettings(),
   ]);
 
-  const entry = entryRows[0] ?? null;
-  const officialVersion = officialVersionRows[0] ?? null;
+  const entries: PlayerEntry[] = entryRows.map(entry => {
+    const officialVersion = officialVersionRows.find(version => version.entryId === entry.id);
+    return {
+      id: entry.id, boardNumber: entry.boardNumber, boardName: entry.boardName,
+      archivedAt: entry.archivedAt?.toISOString() ?? null,
+      status: entry.status, draftPicks: entry.draftPicks, draftRevision: entry.draftRevision,
+      officialPicks: Object.fromEntries(officialPickRows.filter(pick => pick.entryId === entry.id).map(pick => [pick.gameId, pick.selectedTeamCode])),
+      mondayPrediction: entry.draftMondayPrediction,
+      officialMondayPrediction: officialVersion?.mondayPrediction ?? null,
+      currentVersionNumber: entry.currentVersionNumber,
+      submittedAt: officialVersion?.committedAt.toISOString() ?? entry.submittedAt?.toISOString() ?? null,
+      updatedAt: entry.updatedAt.toISOString(),
+    };
+  });
   return {
     id: week.id,
     season: week.season,
@@ -179,22 +201,9 @@ export async function getCurrentPlayerWeek(
           }
         : null,
     })),
-    entry: entry
-      ? {
-          id: entry.id,
-          status: entry.status,
-          draftPicks: entry.draftPicks,
-          draftRevision: entry.draftRevision,
-          officialPicks: Object.fromEntries(
-            officialPickRows.map((pick) => [pick.gameId, pick.selectedTeamCode]),
-          ),
-          mondayPrediction: entry.draftMondayPrediction,
-          officialMondayPrediction: officialVersion?.mondayPrediction ?? null,
-          currentVersionNumber: entry.currentVersionNumber,
-          submittedAt: officialVersion?.committedAt.toISOString() ?? entry.submittedAt?.toISOString() ?? null,
-          updatedAt: entry.updatedAt.toISOString(),
-        }
-      : null,
+    entry: entries.find(entry => entry.boardNumber === 1) ?? null,
+    entries,
+    boardSettings,
     livePlayerPicks,
   };
 }

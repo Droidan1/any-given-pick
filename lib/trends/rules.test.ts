@@ -36,6 +36,7 @@ function revealedResults(): WeeklyResults {
     ],
     entries: [
       {
+        entryId: "board-user-1", boardNumber: 1, boardName: "Board 1", tiebreakerDiff: null, isBestBoard: true,
         userId: "user-1",
         displayName: "Coach",
         profilePhotoUrl: null,

@@ -20,6 +20,9 @@ export type PlayerGame = {
 
 export type PlayerEntry = {
   id: string;
+  boardNumber: number;
+  boardName: string;
+  archivedAt: string | null;
   status: "draft" | "submitted" | "locked" | "scored" | "disqualified";
   draftPicks: Record<string, string>;
   draftRevision: number;
@@ -32,6 +35,8 @@ export type PlayerEntry = {
 };
 
 export type LivePlayerPicks = {
+  entryId: string;
+  boardName: string;
   userId: string;
   displayName: string;
   picks: Record<string, string>;
@@ -50,9 +55,12 @@ export type PlayerWeek = {
   games: PlayerGame[];
   entry: PlayerEntry | null;
   livePlayerPicks: LivePlayerPicks[];
+  entries: PlayerEntry[];
+  boardSettings: import("./board-rules").BoardSettings;
 };
 
 export type EntryMutationInput = {
+  boardId?: string;
   weekId: string;
   picks: Record<string, string>;
   mondayPrediction: number | null;
@@ -83,6 +91,7 @@ export type EntryActionResult = {
     draftRevision: number;
     updatedAt: string;
   };
+  boardId?: string;
   receipt?: {
     versionNumber: number;
     committedAt: string;

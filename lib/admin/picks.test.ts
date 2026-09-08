@@ -4,12 +4,13 @@ import { buildAdminPlayerPickCards, type AdminPicksRosterRow } from "./picks-rul
 import type { RevealedEntry } from "@/lib/results/service";
 
 const roster: AdminPicksRosterRow[] = [
-  { userId: "submitted", displayName: "Submitted Player", currentVersionNumber: 2, entryStatus: "submitted" },
+  { userId: "submitted", entryId: "entry-one", displayName: "Submitted Player", currentVersionNumber: 2, entryStatus: "submitted" },
   { userId: "waiting", displayName: "Waiting Player", currentVersionNumber: 0, entryStatus: "draft" },
   { userId: "removed", displayName: "Removed Player", currentVersionNumber: 1, entryStatus: "disqualified" },
 ];
 
 const revealedEntry: RevealedEntry = {
+  entryId: "entry-one", boardNumber: 1, boardName: "Board 1", tiebreakerDiff: null, isBestBoard: true,
   userId: "submitted",
   displayName: "Submitted Player",
   profilePhotoUrl: null,

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { saveEntryDraft, submitEntry } from "@/app/entry-actions";
 import type { AccountSummary } from "@/lib/account-types";
 import { draftPayloadSignature, sanitizeDraftPicks } from "@/lib/entries/rules";
@@ -19,6 +19,7 @@ import { getHomeWeekState } from "@/lib/home-week-state";
 import { hasUnsubmittedOfficialEdits } from "@/lib/entries/official-receipt";
 import { shouldRefreshUpcomingOdds } from "@/lib/scores/odds-refresh";
 import type { StandingsSnapshot } from "@/lib/standings/types";
+import { BoardList } from "./board-list";
 import { BrandLockup } from "./brand-lockup";
 import { DeadlineCountdown } from "./deadline-countdown";
 import { Icon, type IconName, RouteSketch } from "./icons";
@@ -117,21 +118,34 @@ function viewFromCurrentUrl(): View {
     : "home";
 }
 
-export function PickemApp({
-  account,
-  week,
-  isAdmin,
-  draftOwnerId,
-  standings,
-  initialView,
-}: {
+type PickemAppProps = {
   account: AccountSummary;
   week: PlayerWeek | null;
   isAdmin: boolean;
   draftOwnerId: string;
   standings: StandingsSnapshot | null;
-  initialView: "home" | "picks" | "standings";
-}) {
+  initialView: View;
+  initialBoardId?: string;
+};
+
+export function PickemApp(props: PickemAppProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(props.initialBoardId ?? null);
+  const router = useRouter();
+  const selected = props.week?.entries.find(entry => entry.id === selectedId) ?? null;
+  const week = useMemo(() => props.week ? { ...props.week, entry: selected } : null, [props.week, selected]);
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState !== "hidden") router.refresh(); };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, [router]);
+  return <PickemSession {...props} week={week} key={`${week?.id}:${selected?.id ?? "list"}`}
+    boardList={!selected && week ? <BoardList week={week} canParticipate={hasParticipationAccess(props.account)} draftOwnerId={props.draftOwnerId} onOpen={setSelectedId} /> : null}
+    onBack={() => { setSelectedId(null); router.refresh(); }}
+  />;
+}
+
+function PickemSession({ account, week, isAdmin, draftOwnerId, standings, initialView, boardList, onBack }: PickemAppProps & { boardList: ReactNode; onBack: () => void }) {
   const router = useRouter();
   const [view, setView] = useState<View>(initialView);
   const [picks, setPicks] = useState<Picks>(() =>
@@ -174,17 +188,16 @@ export function PickemApp({
   const draftSaveInFlightRef = useRef(false);
   const draftSaveQueuedRef = useRef(false);
 
-  const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id) : null;
+  const draftStorageKey = week ? userDraftStorageKey(draftOwnerId, week.id, week.entry?.boardNumber === 1 ? undefined : week.entry?.id) : null;
   const activeWeekId = week?.id ?? null;
   const games = week?.games ?? [];
   const canParticipate = hasParticipationAccess(liveAccount);
-  const isLocked = (week?.isLocked ?? true) || deadlineLockedWeekId === activeWeekId;
+  const isLocked = (week?.isLocked ?? true) || deadlineLockedWeekId === activeWeekId || Boolean(week?.entry?.archivedAt) || ["locked", "scored", "disqualified"].includes(week?.entry?.status ?? "");
   const shouldCheckOdds = shouldRefreshUpcomingOdds(games);
 
   const selectView = (nextView: View) => {
     if (nextView !== view) {
-      window.history.pushState(null, "", viewHrefs[nextView]);
-      setView(nextView);
+      router.push(viewHrefs[nextView]);
     }
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
   };
@@ -279,7 +292,7 @@ export function PickemApp({
   }
 
   useEffect(() => {
-    if (!week || !draftStorageKey) {
+    if (!week || !draftStorageKey || boardList || week.entry?.archivedAt) {
       return;
     }
 
@@ -332,10 +345,10 @@ export function PickemApp({
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [draftStorageKey, week]);
+  }, [boardList, draftStorageKey, week]);
 
   useEffect(() => {
-    if (!draftReady || !draftStorageKey || !week) return;
+    if (boardList || !draftReady || !draftStorageKey || !week || week.entry?.archivedAt) return;
     try {
       window.localStorage.setItem(
         draftStorageKey,
@@ -357,6 +370,7 @@ export function PickemApp({
 
     if (!navigator.onLine) {
       const frame = window.requestAnimationFrame(() => {
+        setDraftSync((current) => ({ ...current, state: "error" }));
         setStatus("Saved on this device. Reconnect to sync this draft securely.");
       });
       return () => window.cancelAnimationFrame(frame);
@@ -375,6 +389,7 @@ export function PickemApp({
         try {
           const result = await saveEntryDraft({
             weekId: week.id,
+            boardId: week.entry?.id,
             picks,
             mondayPrediction: mondayTotal,
             baseDraftRevision: draftRevision,
@@ -433,7 +448,7 @@ export function PickemApp({
       })();
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [activeWeekId, canParticipate, draftConflict, draftReady, draftRetryVersion, draftRevision, draftStorageKey, isLocked, mondayTotal, picks, submissionAttempt, week]);
+  }, [boardList, activeWeekId, canParticipate, draftConflict, draftReady, draftRetryVersion, draftRevision, draftStorageKey, isLocked, mondayTotal, picks, submissionAttempt, week]);
 
   if (!week) {
     const emptyContent = view === "standings" && standings ? (
@@ -533,6 +548,7 @@ export function PickemApp({
         setSubmissionAttempt(attempt);
         const result = await submitEntry({
           weekId: week.id,
+            boardId: week.entry?.id,
           picks,
           mondayPrediction: mondayTotal,
           baseDraftRevision: draftRevision,
@@ -624,7 +640,24 @@ export function PickemApp({
 
   return (
     <AppFrame view={view} setView={selectView} account={liveAccount} isAdmin={isAdmin}>
-      {view === "picks" && (
+      {view === "picks" && boardList}
+      {view === "picks" && !boardList && <div className="board-editor-toolbar">
+        <button className="board-back" type="button" disabled={isPending || draftSync.state === "syncing" || draftSync.state === "local"} onClick={onBack}>← All boards</button>
+        <strong>{week.entry?.boardName}</strong>
+        {week.entry?.archivedAt && <span>Archived · excluded from scoring</span>}
+        {(draftSync.state === "local" || draftSync.state === "syncing") && <small>Saving before switching boards…</small>}
+      </div>}
+      {view === "picks" && week.entry?.archivedAt && <section className="player-boards">
+        <header className="board-list-intro"><p className="week-label">{week.label}</p><h1>{week.entry.boardName}</h1></header>
+        <div className="board-notice"><strong>Archived board</strong> Read-only and excluded from scoring. Your saved picks and submission are preserved.</div>
+        <div className="board-list-content">
+          <h2>{week.entry.currentVersionNumber > 0 ? `Official version ${week.entry.currentVersionNumber}` : "Saved draft"}</h2>
+          <p>Tiebreaker: {week.entry.currentVersionNumber > 0 ? week.entry.officialMondayPrediction : week.entry.mondayPrediction}</p>
+          {games.map(game => <div className="board-archived-pick" key={game.id}><span>{game.away.abbreviation} @ {game.home.abbreviation}</span><strong>{(week.entry!.currentVersionNumber > 0 ? week.entry!.officialPicks : week.entry!.draftPicks)[game.id] ?? "No pick"}</strong></div>)}
+          {week.entry.currentVersionNumber > 0 && <details className="board-archive"><summary>Last saved working draft</summary><p>Tiebreaker: {week.entry.mondayPrediction ?? "—"}</p>{games.map(game => <div className="board-archived-pick" key={game.id}><span>{game.away.abbreviation} @ {game.home.abbreviation}</span><strong>{week.entry!.draftPicks[game.id] ?? "No pick"}</strong></div>)}</details>}
+        </div>
+      </section>}
+      {view === "picks" && !boardList && !week.entry?.archivedAt && (
         <PicksView
           week={week}
           games={games}
@@ -642,7 +675,10 @@ export function PickemApp({
           firstMissingRef={firstMissingRef}
           onChoose={chooseTeam}
           onMondayTotal={(value) => {
+            if (isLocked) return;
             setMondayTotal(value);
+            setReceipt(null);
+            setReviewing(false);
             setSubmissionAttempt(null);
             setDraftSync((current) => ({ ...current, state: "local" }));
           }}
@@ -909,9 +945,9 @@ function PicksView(props: PicksViewProps) {
               {otherPlayers.map((player) => {
                 const playerPickCount = savedPickCount(props.games, player.picks);
                 return (
-                  <tr key={player.userId}>
+                  <tr key={player.entryId}>
                     <th className="scoreboard-player-column" scope="row">
-                      <strong>{player.displayName}</strong>
+                      <strong>{player.displayName} · {player.boardName}</strong>
                       <span>{playerPickCount}/{props.games.length} saved</span>
                     </th>
                     {props.games.map((game) => {

@@ -133,7 +133,7 @@ export default async function AdminPicksPage({
             <div className="admin-picks-ledger-heading">
               <div>
                 <h2>{board.selectedWeek?.label}</h2>
-                <p>{board.players.length} approved {board.players.length === 1 ? "player" : "players"} · {board.submittedCount} official {board.submittedCount === 1 ? "entry" : "entries"} · {board.notSubmittedCount} still need to submit{board.disqualifiedCount > 0 ? ` · ${board.disqualifiedCount} disqualified` : ""}</p>
+                <p>{new Set(board.players.map(player => player.userId)).size} approved {new Set(board.players.map(player => player.userId)).size === 1 ? "player" : "players"} · {board.submittedCount} official {board.submittedCount === 1 ? "entry" : "entries"}{board.disqualifiedCount > 0 ? ` · ${board.disqualifiedCount} disqualified` : ""}</p>
               </div>
               <span className={`admin-picks-lock-state admin-picks-lock-state--${board.revealStatus}`}>
                 {board.revealStatus === "revealed" ? "Official picks revealed" : "Official cards locked"}
@@ -155,17 +155,17 @@ export default async function AdminPicksPage({
               {board.players.length > 0 ? board.players.map((player) => {
                 if (!player.entry) {
                   return (
-                    <div className="admin-player-picks admin-player-picks--status" key={player.userId}>
-                      <strong>{player.displayName}</strong>
+                    <div className="admin-player-picks admin-player-picks--status" key={player.entryId ?? player.userId}>
+                      <strong>{player.displayName}{player.boardName ? ` · ${player.boardName}` : ""}</strong>
                       <span className={`admin-player-picks__status admin-player-picks__status--${player.submissionStatus}`}>{statusLabel(player)}</span>
                     </div>
                   );
                 }
 
                 return (
-                  <details className="admin-player-picks" open={player.userId === appUser.id} key={player.userId}>
+                  <details className="admin-player-picks" open={player.userId === appUser.id} key={player.entryId ?? player.userId}>
                     <summary>
-                      <span className="admin-player-picks__identity"><strong>{player.displayName}</strong><small>Official version {player.entry.versionNumber} · {formatDateTime(player.entry.committedAt)}</small></span>
+                      <span className="admin-player-picks__identity"><strong>{player.displayName}{player.boardName ? ` · ${player.boardName}` : ""}</strong><small>Official version {player.entry.versionNumber} · {formatDateTime(player.entry.committedAt)}</small></span>
                       <span className="admin-player-picks__status admin-player-picks__status--submitted">Official entry</span>
                       <span className="admin-player-picks__measure"><strong>{player.entry.correctPicks}/{player.entry.gradedPicks}</strong><small>correct</small></span>
                       <span className="admin-player-picks__measure"><strong>{player.entry.mondayPrediction}</strong><small>tiebreaker</small></span>

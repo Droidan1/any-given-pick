@@ -1,3 +1,66 @@
+.board-archived-pick { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 0; border-top: 1px solid var(--sage); }
+/* Multiple-board settings and the player's ruled board list. */
+.board-settings, .player-boards { background: var(--paper-100); color: var(--ink); }
+.board-settings { border-top: 1px solid var(--sage); padding: clamp(1.25rem, 4vw, 2.5rem); }
+.board-settings form { max-width: 52rem; }
+.board-mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border: 0; padding: 0; margin: 1.5rem 0; }
+.board-mode-options legend { margin-bottom: .75rem; font-weight: 700; }
+.board-mode-options label { display: flex; align-items: center; gap: .85rem; border: 1px solid var(--sage); padding: 1rem; cursor: pointer; }
+.board-mode-options .board-mode-selected { border: 2px solid var(--ink); padding: calc(1rem - 1px); background: var(--paper-200); }
+.board-mode-options input { width: 1.25rem; height: 1.25rem; accent-color: var(--field-900); flex: 0 0 auto; }
+.board-mode-options strong, .board-mode-options small { display: block; }
+.board-mode-options small { margin-top: .3rem; color: var(--ink-soft); line-height: 1.4; }
+.board-limit-field { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 0; border-block: 1px solid var(--sage); }
+.board-limit-field small { display: block; margin-top: .35rem; color: var(--ink-soft); }
+.board-limit-field input { width: 6rem; padding: .65rem; background: var(--paper-100); color: var(--ink); border: 1px solid var(--ink-soft); border-radius: 0; font: 700 2rem var(--font-display); text-align: center; }
+.board-setting-rules { display: grid; gap: 1rem; padding: 1.25rem 0; line-height: 1.55; }
+.board-setting-rules p { margin: 0; }
+.board-confirm, .board-form { background: var(--paper-200); border: 1px solid var(--clay-deep); padding: 1.25rem; margin-top: 1.25rem; }
+.board-confirm h3, .board-form h3 { margin: 0 0 .75rem; font: 700 1.75rem/1 var(--font-display); text-transform: uppercase; }
+.board-confirm p, .board-form p { margin: .75rem 0 1.25rem; line-height: 1.55; }
+.board-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.board-actions button, .board-open, .board-editor-toolbar button { min-height: 2.75rem; padding: .55rem .8rem; border: 1px solid var(--ink-soft); border-radius: 0; background: var(--paper-100); color: var(--ink); cursor: pointer; font: inherit; }
+.board-primary, .board-actions .board-primary { min-height: 3.5rem; padding: .85rem 2rem .85rem 1.25rem; background: var(--maize); color: var(--field-950); border: 0; border-radius: 0; clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%); font: 700 1.3rem/1.2 var(--font-display); text-transform: uppercase; letter-spacing: .035em; cursor: pointer; }
+.board-primary:hover, .board-actions .board-primary:hover { background: var(--maize-deep); }
+.board-settings button:disabled, .player-boards button:disabled, .board-editor-toolbar button:disabled { opacity: .55; cursor: not-allowed; }
+.board-status { min-height: 1.5rem; margin: .85rem 0 0; line-height: 1.5; }
+.board-list-intro { padding: clamp(1.5rem, 4vw, 3rem); border-bottom: 1px solid var(--sage); }
+.board-list-intro h1 { max-width: 15ch; font: 800 clamp(3.25rem, 6vw, 5rem)/.94 var(--font-display); letter-spacing: -.025em; text-transform: uppercase; margin: .8rem 0 1.5rem; }
+.board-list-intro > p:last-child { color: var(--ink-soft); margin: 1.25rem 0 0; line-height: 1.5; }
+.board-list-intro .deadline-marker { max-width: 100%; }
+.board-list-content { padding: 1.5rem clamp(1rem, 4vw, 3rem) 2rem; }
+.board-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 1.25rem; }
+.board-list-heading h2 { font: 700 1.85rem/1 var(--font-display); text-transform: uppercase; margin: 0; }
+.board-list-heading > span { color: var(--ink-soft); }
+.board-empty { padding: 1rem 0; }
+.player-board-row { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto; column-gap: 1rem; align-items: center; padding: 1.4rem 0 1rem; border-top: 1px solid var(--sage); }
+.player-board-number { font: 600 2.6rem/1 var(--font-display); color: var(--ink-soft); }
+.player-board-identity { min-width: 0; }
+.player-board-identity h3 { overflow-wrap: anywhere; font: 700 1.7rem/1.1 var(--font-display); margin: 0; }
+.player-board-identity p { color: var(--ink-soft); font-size: .9rem; line-height: 1.5; margin: .4rem 0 0; }
+.player-board-tools { grid-column: 2/-1; gap: 1rem; margin-top: .3rem; }
+.player-board-tools button { border: 0; background: transparent; padding: .5rem 0; text-decoration: underline; text-underline-offset: 4px; }
+.board-create { width: 100%; margin-top: 1.25rem; }
+.board-form label { display: grid; gap: .5rem; margin: 1rem 0; }
+.board-form input, .board-form select { width: 100%; min-width: 0; min-height: 2.75rem; padding: .75rem; border: 1px solid var(--ink-soft); border-radius: 0; background: var(--paper-100); color: var(--ink); font: inherit; }
+.board-archive { border-top: 1px solid var(--sage); padding-top: 1.25rem; margin-top: 1rem; }
+.board-archive summary { min-height: 2.75rem; cursor: pointer; font-weight: 700; }
+.board-archive > p { color: var(--ink-soft); line-height: 1.55; }
+.board-list-footer { padding: 1.2rem clamp(1rem, 4vw, 3rem); background: var(--field-900); color: var(--paper-200); line-height: 1.5; }
+.board-notice { background: var(--paper-200); color: var(--ink); border-left: 4px solid var(--clay); padding: 1rem 1.5rem; line-height: 1.6; }
+.board-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1rem 1.5rem; background: var(--paper-200); color: var(--ink); border-bottom: 1px solid var(--sage); }
+.board-editor-toolbar > span { overflow-wrap: anywhere; min-width: 0; }
+.activity-state--archived, .activity-state--disqualified { color: var(--clay-deep); border-color: var(--clay-deep); }
+@media (max-width: 40rem) {
+  .board-mode-options { grid-template-columns: 1fr; }
+  .player-board-row { grid-template-columns: 1.8rem minmax(0, 1fr) auto; column-gap: .6rem; }
+  .player-board-number { font-size: 2rem; }
+  .player-board-identity h3 { font-size: 1.45rem; }
+  .board-open { padding: .55rem .65rem; }
+  .board-list-intro h1 { font-size: 3.15rem; }
+  .board-list-heading > span { font-size: .9rem; }
+}
+
 :root {
   --field-950: oklch(21% 0.052 163);
   --field-900: oklch(27% 0.066 162);

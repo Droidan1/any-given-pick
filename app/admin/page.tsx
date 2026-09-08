@@ -15,6 +15,8 @@ import { listActiveOperationalAlerts } from "@/lib/monitoring/operational-alerts
 import { listCommissionerAnnouncements } from "@/lib/announcements/service";
 import { CommissionerAnnouncementManager } from "./commissioner-announcement-manager";
 import { PrivacyRequestList } from "./privacy-request-list";
+import { getBoardSettings } from "@/lib/entries/board-settings";
+import { BoardSettingsForm } from "./board-settings-form";
 import { UserAccessList } from "./user-access-list";
 
 export const metadata: Metadata = {
@@ -75,12 +77,13 @@ export default async function AdminSettingsPage() {
     );
   }
 
-  const [userDirectory, scoreHealth, privacyRequests, operationalAlerts, announcements] = await Promise.all([
+  const [userDirectory, scoreHealth, privacyRequests, operationalAlerts, announcements, boardSettings] = await Promise.all([
     listAdminUsers(appUser.id),
     evaluateScoreSyncWatchdog().then((result) => result.health),
     listPendingPrivacyRequests(),
     listActiveOperationalAlerts(),
     listCommissionerAnnouncements(),
+    getBoardSettings(),
   ]);
   const approvalRequired = isUserApprovalRequired();
   const alertEmailConfigured = Boolean(process.env.RESEND_API_KEY);
@@ -117,6 +120,7 @@ export default async function AdminSettingsPage() {
 
         <UserAccessList directory={userDirectory} />
 
+        <BoardSettingsForm key={boardSettings.revision} settings={boardSettings} />
         <PrivacyRequestList requests={privacyRequests} />
 
         <section className="admin-operations-health" aria-labelledby="operations-health-title">

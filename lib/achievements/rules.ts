@@ -77,7 +77,8 @@ export function buildPlayerAchievements(cards: AchievementCard[]): PlayerAchieve
   const officialCards = cards.filter(isOfficial).toSorted(cardOrder);
   const settledCards = officialCards.filter(isSettled);
   const firstOfficial = officialCards[0] ?? null;
-  const thirdSettled = settledCards[2] ?? null;
+  const settledWeeks = [...new Map(settledCards.map(card => [`${card.season}:${card.seasonPhase}:${card.weekNumber}`, card])).values()];
+  const thirdSettled = settledWeeks[2] ?? null;
   const doubleDigits = officialCards.find((card) => outcomeCount(card, "won") >= 10) ?? null;
   const hotRoute = officialCards.find((card) => longestWinStreak(card) >= 5) ?? null;
   const cleanSheet = settledCards.find((card) => {
@@ -138,9 +139,9 @@ export function buildPlayerAchievements(cards: AchievementCard[]): PlayerAchieve
       description: "Finish three weeks with an official card on the board.",
       earned: Boolean(thirdSettled),
       earnedOn: thirdSettled ? cardLabel(thirdSettled) : null,
-      progress: settledCards.length,
+      progress: settledWeeks.length,
       target: 3,
-      progressLabel: progressLabel(settledCards.length, 3, "finished weeks"),
+      progressLabel: progressLabel(settledWeeks.length, 3, "finished weeks"),
     },
     {
       id: "double_digits",

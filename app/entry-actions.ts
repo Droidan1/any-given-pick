@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
@@ -29,8 +29,11 @@ import { queueAndProcessSubmissionPush } from "@/lib/push/player-notifications";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 
+import { lockBoardSettings, lockPlayerBoards } from "@/lib/entries/board-settings";
+
 const entryInputSchema = z.object({
   weekId: z.uuid(),
+  boardId: z.uuid().optional(),
   picks: z.record(z.string(), z.string()),
   mondayPrediction: z.number().int().min(0).max(200).nullable(),
   baseDraftRevision: z.number().int().min(0),
@@ -105,13 +108,17 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
     const db = getDb();
 
     const result = await db.transaction(async (transaction): Promise<EntryActionResult> => {
-      const clock = await transaction.execute<{ now: Date }>(sql`select now() as now`);
-      const now = new Date(clock.rows[0].now);
+      await lockBoardSettings(transaction);
+      await lockPlayerBoards(transaction, appUser.id, parsed.data.weekId);
       const [week] = await transaction
         .select()
         .from(contestWeeks)
         .where(eq(contestWeeks.id, parsed.data.weekId))
+        .for("share")
         .limit(1);
+
+      const clock = await transaction.execute<{ now: Date }>(sql`select clock_timestamp() as now`);
+      const now = new Date(clock.rows[0].now);
 
       if (!week) return { ok: false, code: "not_found", message: "This week was not found." };
       if (week.status !== "published") {
@@ -128,11 +135,14 @@ export async function saveEntryDraft(input: EntryMutationInput): Promise<EntryAc
           and(
             eq(contestEntries.contestWeekId, week.id),
             eq(contestEntries.userId, appUser.id),
+            parsed.data.boardId ? eq(contestEntries.id, parsed.data.boardId) : eq(contestEntries.boardNumber, 1),
           ),
         )
         .for("update")
         .limit(1);
 
+      if (parsed.data.boardId && !existing) return { ok: false, code: "not_found", message: "This board was not found." };
+      if (existing?.archivedAt) return { ok: false, code: "not_open", message: "This board was archived by an administrator and is excluded from scoring." };
       if (existing && ["locked", "scored", "disqualified"].includes(existing.status)) {
         return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
       }
@@ -265,6 +275,8 @@ export async function submitEntry(
     const db = getDb();
 
     const result = await db.transaction(async (transaction): Promise<EntryActionResult> => {
+      await lockBoardSettings(transaction);
+      await lockPlayerBoards(transaction, appUser.id, parsed.data.weekId);
       const [duplicate] = await transaction
         .select({
           id: entryVersions.id,
@@ -279,7 +291,9 @@ export async function submitEntry(
         .where(
           and(
             eq(entryVersions.submissionKey, parsed.data.submissionKey),
+            isNull(contestEntries.archivedAt),
             eq(contestEntries.userId, appUser.id),
+            parsed.data.boardId ? eq(contestEntries.id, parsed.data.boardId) : eq(contestEntries.boardNumber, 1),
             eq(contestEntries.contestWeekId, parsed.data.weekId),
           ),
         )
@@ -309,13 +323,15 @@ export async function submitEntry(
         };
       }
 
-      const clock = await transaction.execute<{ now: Date }>(sql`select now() as now`);
-      const now = new Date(clock.rows[0].now);
       const [week] = await transaction
         .select()
         .from(contestWeeks)
         .where(eq(contestWeeks.id, parsed.data.weekId))
+        .for("share")
         .limit(1);
+
+      const clock = await transaction.execute<{ now: Date }>(sql`select clock_timestamp() as now`);
+      const now = new Date(clock.rows[0].now);
 
       if (!week) return { ok: false, code: "not_found", message: "This week was not found." };
       if (week.status !== "published") {
@@ -352,10 +368,13 @@ export async function submitEntry(
           and(
             eq(contestEntries.contestWeekId, week.id),
             eq(contestEntries.userId, appUser.id),
+            parsed.data.boardId ? eq(contestEntries.id, parsed.data.boardId) : eq(contestEntries.boardNumber, 1),
           ),
         )
         .for("update")
         .limit(1);
+      if (parsed.data.boardId && !existing) return { ok: false, code: "not_found", message: "This board was not found." };
+      if (existing?.archivedAt) return { ok: false, code: "not_open", message: "This board was archived by an administrator and is excluded from scoring." };
       if (existing && ["locked", "scored", "disqualified"].includes(existing.status)) {
         return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
       }

@@ -99,7 +99,7 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
           <span className="activity-card__eyebrow">
             {card.season} · {card.seasonPhase === "preseason" ? "Preseason" : "Regular season"}
           </span>
-          <strong>{card.weekLabel}</strong>
+          <strong>{card.weekLabel} · {card.boardName}</strong>
           <span className="activity-card__results">{activityResultSummary(card)}</span>
         </span>
         <span className={`activity-state activity-state--${card.state}`}>{card.stateLabel}</span>
@@ -201,7 +201,7 @@ function ActivityCardView({ card }: { card: ActivityCard }) {
         )}
 
         {card.isCurrent ? (
-          <Link className="activity-card__action" href="/" prefetch={false}>
+          <Link className="activity-card__action" href={`/picks?board=${encodeURIComponent(card.id)}`} prefetch={false}>
             <span>{card.pickCount > 0 ? "Open current card" : "Make current picks"}</span>
             <Icon name="arrow" />
           </Link>
@@ -225,7 +225,7 @@ export default async function ActivityPage() {
   const scoreGames = activity.cards.flatMap((card) => card.picks);
   const shouldPollScores = hasScoreRefreshWindow(scoreGames);
   const nextAutomaticCheckAt = nextScoreRefreshWindow(scoreGames);
-  const achievements = buildPlayerAchievements(activity.cards);
+  const achievements = buildPlayerAchievements(activity.cards.filter(card => card.state !== "archived" && card.state !== "disqualified"));
 
   return (
     <main className="account-shell activity-shell">
@@ -276,7 +276,7 @@ export default async function ActivityPage() {
           <div className="activity-section__header">
             <div>
               <p>On the board</p>
-              <h2 id="current-card-title">Current card</h2>
+              <h2 id="current-card-title">Current boards</h2>
             </div>
             <span>Working picks update here after a secure draft save.</span>
           </div>
@@ -286,7 +286,7 @@ export default async function ActivityPage() {
             nextAutomaticCheckAt={nextAutomaticCheckAt}
           />
           {activity.currentCard ? (
-            <ActivityCardView card={activity.currentCard} />
+            <div className="activity-history">{activity.cards.filter(card => card.isCurrent).map(card => <ActivityCardView card={card} key={card.id} />)}</div>
           ) : (
             <div className="activity-empty">
               <Icon name="clock" />

@@ -21,6 +21,7 @@ function finishedResults(): WeeklyResults {
     ],
     entries: [
       {
+        entryId: "board-current", boardNumber: 1, boardName: "Board 1", tiebreakerDiff: null, isBestBoard: true,
         userId: "current",
         displayName: "Napalm",
         profilePhotoUrl: null,
@@ -36,6 +37,7 @@ function finishedResults(): WeeklyResults {
         ],
       },
       {
+        entryId: "board-other", boardNumber: 1, boardName: "Board 1", tiebreakerDiff: null, isBestBoard: true,
         userId: "other",
         displayName: "Coach B",
         profilePhotoUrl: null,

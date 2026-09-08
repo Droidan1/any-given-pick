@@ -8,7 +8,7 @@ web
 
 ## Users
 
-The primary user is an approved adult age 21 or older who wants to make one complete set of weekly professional-football winner picks before a fixed deadline, compare saved calls on a shared live board, then follow transparent scoring and standings. Approved signed-in users can see other active players' autosaved selections while making their own picks and review official weekly results after lock. Admins approve players, configure schedules, publish weeks, monitor score health, and enter fallback results without receiving special pick visibility.
+The primary user is an approved adult age 21 or older who wants to make one or more independent sets of weekly professional-football winner picks before a fixed deadline, compare saved calls on a shared live board, then follow transparent scoring and standings. Approved signed-in users can see other active players' autosaved selections while making their own picks and review official weekly results after lock. Admins approve players, configure schedules, publish weeks, monitor score health, and enter fallback results without receiving special pick visibility.
 
 ## Product Purpose
 
@@ -16,7 +16,7 @@ Provide a simple, trustworthy, free-entry weekly pick'em experience. A successfu
 
 ## Positioning
 
-The product treats pick submission as an auditable weekly commitment rather than a wagering slip: one complete entry, a clearly visible deadline, a transparent live call board, provider-owned scoring, and non-cash digital prizes.
+The product treats pick submission as an auditable weekly commitment rather than a wagering slip: complete entries, with each player’s best board counting each week, a clearly visible deadline, a transparent live call board, provider-owned scoring, and non-cash digital prizes.
 
 ## Operating Context
 
@@ -58,3 +58,13 @@ Any Given Pick is the approved product name. The brand must communicate clarity,
 ## Accessibility & Inclusion
 
 Target WCAG 2.2 AA. Controls must remain touch-friendly from 360px mobile width upward, selected states cannot rely on color alone, deadline and eligibility states require plain-language labels, and all core actions must work with keyboard and assistive technology.
+
+## Multiple Pick’em Boards
+
+The approved interface is the board list (Option 2). Administrators choose one board or multiple boards globally and set the maximum active boards per player per week. Multiple boards start disabled. Existing entries become Board 1 without altering their picks or submission history.
+
+Players can name boards, copy picks and the tiebreaker into a new unsubmitted draft, and delete unsubmitted extra drafts before lock. Board 1 and submitted boards cannot be deleted. Each board owns its draft, tiebreaker, immutable submission versions, and receipt.
+
+Turning the feature off takes effect immediately: Board 1 remains eligible; every extra board is archived and excluded from scoring. Reducing the cap retains the earliest active boards. This applies across existing weeks, including historical standings. Archived picks remain read-only and are not automatically restored when the limit increases.
+
+Each player's best eligible submitted board is selected separately for each week by correct picks, then lowest tiebreaker difference, then earliest board number if both are equal. Season standings aggregate only those weekly best boards. Admins retain the same post-deadline reveal rules as players.

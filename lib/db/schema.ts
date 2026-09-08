@@ -465,6 +465,17 @@ export const games = pgTable(
   ],
 );
 
+export const boardSettings = pgTable("board_settings", {
+  id: integer("id").primaryKey().default(1),
+  multipleBoardsEnabled: boolean("multiple_boards_enabled").notNull().default(false),
+  maxBoards: integer("max_boards").notNull().default(4),
+  revision: integer("revision").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("board_settings_singleton", sql`${table.id} = 1`),
+  check("board_settings_limit", sql`${table.maxBoards} >= 2`),
+]);
+
 export const contestEntries = pgTable(
   "contest_entries",
   {
@@ -476,6 +487,9 @@ export const contestEntries = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     status: entryStatusEnum("status").notNull().default("draft"),
+    boardNumber: integer("board_number").notNull().default(1),
+    boardName: varchar("board_name", { length: 40 }).notNull().default("Board 1"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     draftPicks: jsonb("draft_picks").$type<Record<string, string>>().notNull().default({}),
     draftMondayPrediction: integer("draft_monday_prediction"),
     draftRevision: integer("draft_revision").notNull().default(0),
@@ -486,7 +500,8 @@ export const contestEntries = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("contest_entries_week_user_unique").on(table.contestWeekId, table.userId),
+    uniqueIndex("contest_entries_week_user_board_unique").on(table.contestWeekId, table.userId, table.boardNumber),
+    check("contest_entries_board_number_positive", sql`${table.boardNumber} > 0`),
     index("contest_entries_week_status_idx").on(table.contestWeekId, table.status),
     check(
       "contest_entries_monday_prediction_nonnegative_check",

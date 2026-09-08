@@ -98,3 +98,11 @@ The administrator operations panel shows active server and score-sync alerts. Th
 Checkly polls the production health endpoint every ten minutes from `us-east-2` and emails failure/recovery alerts to `brian@Droidan1.dev`. The endpoint itself switches to the stricter score-sync freshness threshold during game windows, so the external poll can run continuously without maintaining a second schedule. Preview monitoring changes with `npm run monitor:preview` before deploying them with `npm run monitor:deploy`.
 
 Before a database migration or beta release, review and rehearse [the database recovery procedure](./docs/DATABASE_RECOVERY.md).
+
+## Multiple-board controls
+
+Apply `drizzle/0018_multiple_boards.sql` with `npm run db:migrate` before running this code against an existing database. It preserves existing entries as Board 1 and initializes the global setting to one board (extra-board limit defaults to 4 when enabled). Do not deploy the new application code before the migration has run.
+
+Admins configure **Boards per player** under Admin settings. Limit reductions and disabling take effect immediately for all weeks: extra boards are archived and removed from scoring, including historical standings. Raising the limit allows new drafts; it does not restore archived boards. Players manage boards from Picks and can review archived boards and prior submissions in Activity.
+
+`npm ci` installs the added development-only PostgreSQL runtime. `npm test` runs the existing suite plus board rules and real SQL migration/action tests using isolated, in-memory PGlite databases. The tests never read `DATABASE_URL` or connect to the live app database; only authentication, eligibility, and Next.js revalidation are mocked. The production build can be checked with `npm run build -- --webpack`.

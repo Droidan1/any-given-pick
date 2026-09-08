@@ -136,20 +136,21 @@ function emptyRecap(
 export function buildWeeklyRecap(results: WeeklyResults): WeeklyRecap | null {
   if (results.revealStatus !== "revealed" || !results.selectedWeek) return null;
 
-  const entry = results.entries.find((candidate) => candidate.isCurrentUser) ?? null;
+  const bestEntries = results.entries.filter(entry => entry.isBestBoard);
+  const entry = bestEntries.find((candidate) => candidate.isCurrentUser) ?? null;
   const completedGames = results.games.filter((game) => ["final", "canceled"].includes(game.status)).length;
   const gameCount = results.games.length;
   const allGamesComplete = gameCount > 0 && completedGames === gameCount;
 
   if (!entry) {
-    return emptyRecap("no_entry", results.selectedWeek, completedGames, gameCount, null, results.entries.length);
+    return emptyRecap("no_entry", results.selectedWeek, completedGames, gameCount, null, bestEntries.length);
   }
   if (!allGamesComplete) {
-    return emptyRecap("waiting", results.selectedWeek, completedGames, gameCount, entry, results.entries.length);
+    return emptyRecap("waiting", results.selectedWeek, completedGames, gameCount, entry, bestEntries.length);
   }
 
   const actual = tiebreakerActual(results.games);
-  const ranked = rankStandings(results.entries.map((candidate) => ({
+  const ranked = rankStandings(bestEntries.map((candidate) => ({
     userId: candidate.userId,
     displayName: candidate.displayName,
     profilePhotoUrl: candidate.profilePhotoUrl,
@@ -182,7 +183,7 @@ export function buildWeeklyRecap(results: WeeklyResults): WeeklyRecap | null {
     voidPicks,
     gradedPicks: entry.gradedPicks,
     rank,
-    fieldSize: results.entries.length,
+    fieldSize: bestEntries.length,
     playersBehind,
     tiedAtRank,
     winRate: entry.gradedPicks > 0 ? Math.round((entry.correctPicks / entry.gradedPicks) * 100) : 0,

@@ -101,7 +101,7 @@ async function queueWeekDeliveries(kind: Exclude<PlayerEmailKind, "picks_submitt
   let recipients: Array<{ userId: string }>;
   if (kind === "deadline_approaching") {
     recipients = await db
-      .select({ userId: users.id })
+      .selectDistinct({ userId: users.id })
       .from(users)
       .leftJoin(
         emailNotificationPreferences,
@@ -109,7 +109,7 @@ async function queueWeekDeliveries(kind: Exclude<PlayerEmailKind, "picks_submitt
       )
       .leftJoin(
         contestEntries,
-        and(eq(contestEntries.userId, users.id), eq(contestEntries.contestWeekId, weekId)),
+        and(eq(contestEntries.userId, users.id), eq(contestEntries.contestWeekId, weekId), isNull(contestEntries.archivedAt)),
       )
       .where(and(
         eq(users.accountState, "active"),
@@ -118,11 +118,11 @@ async function queueWeekDeliveries(kind: Exclude<PlayerEmailKind, "picks_submitt
       ));
   } else if (kind === "results_available") {
     recipients = await db
-      .select({ userId: users.id })
+      .selectDistinct({ userId: users.id })
       .from(users)
       .innerJoin(
         contestEntries,
-        and(eq(contestEntries.userId, users.id), eq(contestEntries.contestWeekId, weekId)),
+        and(eq(contestEntries.userId, users.id), eq(contestEntries.contestWeekId, weekId), isNull(contestEntries.archivedAt)),
       )
       .leftJoin(
         emailNotificationPreferences,
@@ -135,7 +135,7 @@ async function queueWeekDeliveries(kind: Exclude<PlayerEmailKind, "picks_submitt
       ));
   } else {
     recipients = await db
-      .select({ userId: users.id })
+      .selectDistinct({ userId: users.id })
       .from(users)
       .leftJoin(
         emailNotificationPreferences,

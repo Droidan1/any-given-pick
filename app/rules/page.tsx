@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function RulesPage() {
   return (
     <PublicInfoShell
-      eyebrow="Public beta · Rules version 1.2 · August 20, 2026"
+      eyebrow="Public beta · Rules version 1.3 · September 8, 2026"
       title="Call it fair. Keep it fun."
       summary="Any Given Pick is a free weekly football pick’em beta for approved adults. There is no purchase, wager, entry fee, or cash prize."
     >
@@ -20,10 +20,12 @@ export default function RulesPage() {
       <section>
         <h2>2. Making an official entry</h2>
         <p>Pick one team in every published matchup and enter the requested combined-score tiebreaker. Autosaved team selections appear on the live player board while entry is open, but drafts are not official. Your latest complete submission accepted by the server before the displayed deadline is your official entry. Server time controls the deadline.</p>
+        <p>The administrator sets the number of boards allowed per player each week. Each board has its own picks, tiebreaker, and official submission. Copying a board creates a draft that must be submitted separately.</p>
       </section>
       <section>
         <h2>3. Scoring and standings</h2>
         <p>Each correct game winner earns one point. Ties, canceled games, postponed games, and provider corrections are handled according to the final status recorded on the call sheet. Equal records are ordered by the published tiebreaker method. Preseason entries do not count toward regular-season standings.</p>
+        <p>Your best eligible board counts each week, chosen by correct picks, then tiebreaker difference, then board number. Season standings combine those weekly best boards. Turning multiple boards off keeps Board 1 eligible and archives all extras immediately. Reducing the limit keeps the earliest active boards. Archived boards remain available for private review and are excluded from current and historical standings; raising the limit does not restore them.</p>
       </section>
       <section>
         <h2>4. Schedules and corrections</h2>

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { contestEntries, profiles, users } from "@/lib/db/schema";
 import {
@@ -42,6 +42,8 @@ export async function getAdminPicksBoard(input: {
   const roster: AdminPicksRosterRow[] = await getDb()
     .select({
       userId: users.id,
+      entryId: contestEntries.id,
+      boardName: contestEntries.boardName,
       displayName: profiles.displayName,
       currentVersionNumber: contestEntries.currentVersionNumber,
       entryStatus: contestEntries.status,
@@ -53,6 +55,7 @@ export async function getAdminPicksBoard(input: {
       and(
         eq(contestEntries.userId, users.id),
         eq(contestEntries.contestWeekId, selectedWeek.id),
+        isNull(contestEntries.archivedAt),
       ),
     )
     .where(eq(users.accountState, "active"))

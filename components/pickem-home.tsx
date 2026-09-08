@@ -63,7 +63,7 @@ function LiveScoreBoard({ week }: { week: PlayerWeek }) {
               </span>
               <small>
                 <b className={`home-live-game__status home-live-game__status--${game.status}`}>{statusLabel}</b>
-                <span>{selection ? `Your pick: ${selection}` : "No official pick"}</span>
+                <span>{selection ? `${week.entry?.boardName ?? "Board 1"}: ${selection}` : "No official pick"}</span>
               </small>
             </div>
           );
@@ -218,8 +218,8 @@ export function PickemHome({
       <section className={`single-view home-view${week.isLocked ? " home-view--scoreboard" : ""}`}>
         <RouteSketch /><RouteSketch mirrored />
         <p className="week-label">{week.label} Pick&apos;em</p>
-        <h1>One sheet. {week.games.length} calls.</h1>
-        <p className="lead">{homeState.lead}</p>
+        <h1>{week.boardSettings.multipleBoardsEnabled ? "Your boards." : "One sheet."} {week.games.length} calls.</h1>
+        <p className="lead">{week.boardSettings.multipleBoardsEnabled ? `Create up to ${week.boardSettings.maxBoards} independent boards. Your best eligible board counts each week.` : homeState.lead}</p>
         {announcement ? <CommissionerAnnouncementNotice announcement={announcement} /> : null}
         {!week.isLocked ? (
           <DeadlineCountdown
@@ -231,10 +231,10 @@ export function PickemHome({
         <div className="home-status">
           <Icon name={homeState.lockedStatusLabel ? "check" : "shield"} />
           <span>{statusLabel}</span>
-          <strong>{selectedCount}/{week.games.length} picks</strong>
+          <strong>{week.boardSettings.multipleBoardsEnabled ? `${week.entries.filter(entry => !entry.archivedAt && entry.currentVersionNumber > 0).length} submitted boards` : `${selectedCount}/${week.games.length} picks`}</strong>
         </div>
         <Link className="review-action review-action--link" href={actionHref} prefetch={false}>
-          <span>{actionLabel}</span><Icon name="arrow" />
+          <span>{week.boardSettings.multipleBoardsEnabled && !week.isLocked && canParticipate ? "Manage your boards" : actionLabel}</span><Icon name="arrow" />
         </Link>
         <LiveScoreBoard week={week} />
         <Link className="home-reminders-link" href="/profile#email-reminders" prefetch={false}>Set deadline and results reminders</Link>

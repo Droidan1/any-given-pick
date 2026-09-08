@@ -43,6 +43,7 @@ function resultsFixture(): WeeklyResults {
     ],
     entries: [
       {
+        entryId: "board-one", boardNumber: 1, boardName: "Board 1", tiebreakerDiff: null, isBestBoard: true,
         userId: "one",
         displayName: "Napalm",
         profilePhotoUrl: null,
@@ -62,6 +63,7 @@ function resultsFixture(): WeeklyResults {
         ],
       },
       {
+        entryId: "board-two", boardNumber: 1, boardName: "Board 1", tiebreakerDiff: null, isBestBoard: true,
         userId: "two",
         displayName: "Blitz Queen",
         profilePhotoUrl: null,

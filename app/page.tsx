@@ -10,12 +10,12 @@ import { auth } from "@clerk/nextjs/server";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; board?: string }>;
 }) {
   const [{ userId }, params] = await Promise.all([auth(), searchParams]);
   if (!userId) redirect("/sign-in");
   if (params.view === "profile") redirect("/profile");
-  if (params.view === "picks") redirect("/picks");
+  if (params.view === "picks") redirect(params.board ? `/picks?board=${encodeURIComponent(params.board)}` : "/picks");
   if (params.view === "standings") redirect("/standings");
 
   const appUser = await requireAppUser(userId);

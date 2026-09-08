@@ -6,7 +6,8 @@ import { hasAdminRole } from "@/lib/auth/admin";
 import { getAccountSummary } from "@/lib/eligibility/service";
 import { getCurrentPlayerWeek } from "@/lib/entries/service";
 
-export default async function PicksPage() {
+export default async function PicksPage({ searchParams }: { searchParams: Promise<{ board?: string }> }) {
+  const params = await searchParams;
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
@@ -26,6 +27,8 @@ export default async function PicksPage() {
       draftOwnerId={appUser.id}
       standings={null}
       initialView="picks"
+      initialBoardId={params.board}
+      key={`${week?.id}:${params.board ?? ""}`}
     />
   );
 }

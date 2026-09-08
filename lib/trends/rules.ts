@@ -84,7 +84,7 @@ export function buildPickTrends(results: WeeklyResults): PickTrendsSnapshot {
   }
 
   const distributions = new Map(results.distributions.map((distribution) => [distribution.gameId, distribution]));
-  const currentEntry = results.entries.find((entry) => entry.isCurrentUser);
+  const currentEntry = results.entries.find((entry) => entry.isCurrentUser && entry.isBestBoard);
   const currentPicks = new Map(currentEntry?.picks.map((pick) => [pick.gameId, pick.selectedTeamCode]) ?? []);
 
   const trends = results.games.map((game): PickTrend => {

@@ -127,6 +127,13 @@
       "when": 1787619274128,
       "tag": "0017_striped_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788886133598,
+      "tag": "0018_multiple_boards",
+      "breakpoints": true
     }
   ]
 }

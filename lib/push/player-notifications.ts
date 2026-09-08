@@ -77,12 +77,12 @@ async function queueWeekDeliveries(
 
   if (kind === "deadline_approaching") {
     recipients = await db
-      .select({ userId: users.id, subscriptionId: pushSubscriptions.id })
+      .selectDistinct({ userId: users.id, subscriptionId: pushSubscriptions.id })
       .from(pushSubscriptions)
       .innerJoin(users, eq(users.id, pushSubscriptions.userId))
       .leftJoin(
         contestEntries,
-        and(eq(contestEntries.userId, users.id), eq(contestEntries.contestWeekId, weekId)),
+        and(eq(contestEntries.userId, users.id), eq(contestEntries.contestWeekId, weekId), isNull(contestEntries.archivedAt)),
       )
       .where(and(
         eq(users.accountState, "active"),
@@ -90,12 +90,12 @@ async function queueWeekDeliveries(
       ));
   } else if (kind === "results_available") {
     recipients = await db
-      .select({ userId: users.id, subscriptionId: pushSubscriptions.id })
+      .selectDistinct({ userId: users.id, subscriptionId: pushSubscriptions.id })
       .from(pushSubscriptions)
       .innerJoin(users, eq(users.id, pushSubscriptions.userId))
       .innerJoin(
         contestEntries,
-        and(eq(contestEntries.userId, users.id), eq(contestEntries.contestWeekId, weekId)),
+        and(eq(contestEntries.userId, users.id), eq(contestEntries.contestWeekId, weekId), isNull(contestEntries.archivedAt)),
       )
       .where(and(
         eq(users.accountState, "active"),
@@ -103,7 +103,7 @@ async function queueWeekDeliveries(
       ));
   } else {
     recipients = await db
-      .select({ userId: users.id, subscriptionId: pushSubscriptions.id })
+      .selectDistinct({ userId: users.id, subscriptionId: pushSubscriptions.id })
       .from(pushSubscriptions)
       .innerJoin(users, eq(users.id, pushSubscriptions.userId))
       .where(eq(users.accountState, "active"));

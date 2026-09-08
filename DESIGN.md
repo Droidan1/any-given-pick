@@ -287,3 +287,12 @@ Deadlines use a clay banner with a clock icon, concise uppercase copy, and a cli
 - **Don't** use clipped tabs or clay accents as decoration without semantic purpose.
 - **Don't** place paragraphs in condensed uppercase type.
 - **Don't** shrink essential labels or touch targets to preserve desktop detail on mobile.
+
+
+## Multiple Boards — Approved Board List
+
+The player selected Option 2: a ruled weekly board list. Each row shows the board number, name, submission state, pick count, and tiebreaker. Create, rename, copy, and draft deletion use inline forms; selecting a row opens the existing full call sheet with a persistent board identity and an All boards action. Archived boards live beneath a disclosure and open read-only.
+
+The admin control uses two explicit modes, One board and Multiple boards, followed by the maximum total boards per player. Reducing access requires an inline confirmation that identifies immediate archiving and its effect on historical standings. This is a product confirmation for a consequential setting change.
+
+Verification: the implemented React screens were checked at 320, 390, 1024, and 1440 pixels. Rename, copying into an independent draft, draft deletion, immediate shutoff, and archive viewing were exercised. The existing field, paper, maize, clay, condensed typography, hard edges, and mobile navigation are retained.

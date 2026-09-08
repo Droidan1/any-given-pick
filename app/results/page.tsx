@@ -176,13 +176,13 @@ export default async function ResultsPage({
             {results.entries.length > 0 ? (
               <div className="results-entries">
                 {results.entries.map((entry) => (
-                  <details className={`results-entry${entry.isCurrentUser ? " results-entry--current" : ""}`} key={entry.userId}>
+                  <details className={`results-entry${entry.isCurrentUser ? " results-entry--current" : ""}`} key={entry.entryId}>
                     <summary>
                       <span className="results-entry__player">
                         <PlayerAvatar displayName={entry.displayName} photoUrl={entry.profilePhotoUrl} />
                         <span>
                         <strong>{entry.displayName}</strong>
-                        <small>Official version {entry.versionNumber} · {formatDateTime(entry.committedAt)}</small>
+                        <small>{entry.boardName} · {entry.isBestBoard ? "Best board · " : ""}Official version {entry.versionNumber} · {formatDateTime(entry.committedAt)}</small>
                         </span>
                       </span>
                       {entry.isCurrentUser ? <span className="results-entry__you">Your card</span> : null}
