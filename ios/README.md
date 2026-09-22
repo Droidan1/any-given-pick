@@ -78,10 +78,13 @@ If installing a development-signed Release build, override both
 `APNS_ENVIRONMENT=sandbox` and `APNS_ENTITLEMENT_ENVIRONMENT=development`.
 The `APNsEnvironment` Info.plist value must match the signed `aps-environment`.
 
-Publication and submission trigger immediate queue attempts. The existing
-notification cron handles deadline reminders, settled results, missed submission
-events, and retries; its current daily cadence is retained. This does not promise
-minute-by-minute reminder or result delivery. Native alert workers are disabled
+Publication and submission trigger immediate queue attempts. Score sync and
+manual final-score/cancellation changes trigger completed-week results checks
+after the response. The hourly GitHub notification workflow handles deadline
+reminders, missed events, and retries, with the daily Vercel cron as a fallback.
+The workflow must be on `main` to schedule; manually dispatch with the default
+`dry_run=true` to verify configuration without sending player alerts. Scheduler
+and provider delays mean delivery is not guaranteed at an exact minute. Native alert workers are disabled
 without `APNS_ENABLED=true`; email/web push continue as before.
 
 Delivery rechecks account state, current preference, deadline/submission state,

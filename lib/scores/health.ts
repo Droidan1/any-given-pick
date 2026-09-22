@@ -7,6 +7,7 @@ import { providerSyncStates } from "@/lib/db/schema";
 import { reportOperationalIssue, resolveOperationalIssue } from "@/lib/monitoring/operational-alerts";
 import { STANDINGS_CACHE_TAG } from "@/lib/standings/service";
 import { syncRecentEspnScores, type ScoreSyncSummary } from "./sync";
+import { scheduleResultsNotifications } from "./result-notifications";
 import { isScoreSyncReady, scoreSyncFreshnessWindowMinutes } from "./watchdog-policy";
 
 const SCORE_SYNC_KEY = "espn_scores";
@@ -122,7 +123,10 @@ async function completeScoreSyncAttempt(now: Date): Promise<ScoreSyncSummary> {
         updatedAt: now,
       })
       .where(eq(providerSyncStates.key, SCORE_SYNC_KEY));
-    if (summary.updatedGames > 0) revalidateTag(STANDINGS_CACHE_TAG, "max");
+    if (summary.updatedGames > 0) {
+      revalidateTag(STANDINGS_CACHE_TAG, "max");
+      scheduleResultsNotifications(now);
+    }
     if (errorMessage) {
       await reportOperationalIssue({
         kind: "score_sync",

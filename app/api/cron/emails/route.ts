@@ -1,5 +1,6 @@
 import { runEmailNotificationCycle } from "@/lib/email/notification-cycle";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
+import { inspectNotificationReadiness } from "@/lib/email/notification-readiness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,18 @@ export async function GET(request: Request) {
   }
 
   try {
+    const dryRun = new URL(request.url).searchParams.get("dryRun");
+    if (dryRun !== null && dryRun !== "true" && dryRun !== "false") {
+      return Response.json({ error: "dryRun must be true or false." }, {
+        status: 400, headers: { "Cache-Control": "no-store" },
+      });
+    }
+    if (dryRun === "true") {
+      // Authenticated, read-only connectivity/configuration check: no queue writes or sends.
+      return Response.json(await inspectNotificationReadiness(), {
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
     const summary = await runEmailNotificationCycle();
     return Response.json(summary, {
       status: summary.failed > 0 ? 502 : 200,

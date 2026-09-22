@@ -1,4 +1,4 @@
-name: Send player email reminders
+name: Send player notifications
 
 on:
   schedule:
@@ -6,6 +6,15 @@ on:
     # leaving provider retries and duplicate protection to the application.
     - cron: "17 * * * *"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Check production auth, database, and configuration without sending notifications"
+        type: boolean
+        default: true
+        required: true
+
+permissions:
+  contents: read
 
 concurrency:
   group: production-email-reminders
@@ -14,13 +23,14 @@ concurrency:
 jobs:
   send:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
-      - name: Request production email cycle
+      - name: Request production notification cycle
         env:
           APP_CRON_SECRET: ${{ secrets.SCORE_SYNC_CRON_SECRET }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
         run: |
           test -n "$APP_CRON_SECRET"
           curl --fail-with-body --retry 2 --retry-all-errors --max-time 50 \
             --header "Authorization: Bearer $APP_CRON_SECRET" \
-            https://anygivenpick.app/api/cron/emails
+            "https://anygivenpick.app/api/cron/emails?dryRun=$DRY_RUN"

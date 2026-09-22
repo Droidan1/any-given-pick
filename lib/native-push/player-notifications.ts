@@ -53,6 +53,28 @@ export async function queueNativeWeekPublished(weekId: string) {
   return { queued: await queueEvent("week_published", weekId), ...await processNativePushes() };
 }
 
+export async function queueAvailableNativeResults(now = new Date()): Promise<number> {
+  if (!nativePushEnabled()) return 0;
+  const rows = await getDb().select({ weekId: contestWeeks.id, gameStatus: games.status })
+    .from(contestWeeks).innerJoin(games, eq(games.contestWeekId, contestWeeks.id))
+    .where(and(
+      inArray(contestWeeks.status, ["published", "locked", "final"]),
+      gte(contestWeeks.entryDeadline, new Date(now.getTime() - 14 * 86400_000)),
+      lte(contestWeeks.entryDeadline, now),
+    ));
+  const statusesByWeek = new Map<string, Array<(typeof rows)[number]["gameStatus"]>>();
+  for (const { weekId, gameStatus } of rows) {
+    const statuses = statusesByWeek.get(weekId) ?? [];
+    statuses.push(gameStatus);
+    statusesByWeek.set(weekId, statuses);
+  }
+  let queued = 0;
+  for (const [weekId, statuses] of statusesByWeek) {
+    if (areResultsAvailable(statuses)) queued += await queueEvent("results_available", weekId);
+  }
+  return queued;
+}
+
 export async function runNativePushCycle(now = new Date()) {
   if (!nativePushEnabled()) return emptySummary();
   const db = getDb();
@@ -65,11 +87,9 @@ export async function runNativePushCycle(now = new Date()) {
     if (week.status === "published" && week.entryDeadline > now) {
       if (week.publishedAt && now.getTime() - week.publishedAt.getTime() <= 7 * 86400_000) queued += await queueEvent("week_published", week.id);
       if (week.entryDeadline.getTime() - now.getTime() <= DEADLINE_REMINDER_WINDOW_MS) queued += await queueEvent("deadline_approaching", week.id);
-    } else if (week.entryDeadline <= now) {
-      const statuses = await db.select({ status: games.status }).from(games).where(eq(games.contestWeekId, week.id));
-      if (areResultsAvailable(statuses.map((game) => game.status))) queued += await queueEvent("results_available", week.id);
     }
   }
+  queued += await queueAvailableNativeResults(now);
   // Recover submissions even if an after-response task was interrupted.
   const versions = await db.select({ version: entryVersions, entry: contestEntries }).from(entryVersions)
     .innerJoin(contestEntries, eq(contestEntries.id, entryVersions.contestEntryId))

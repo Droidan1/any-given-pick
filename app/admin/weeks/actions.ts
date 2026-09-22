@@ -13,19 +13,12 @@ import {
 import { requireAdminUser } from "@/lib/auth/admin";
 import { getDb } from "@/lib/db";
 import { auditEvents, contestWeeks, games } from "@/lib/db/schema";
-import {
-  processQueuedPlayerEmails,
-  queueAndProcessWeekPublishedEmails,
-  queueAvailableResultsEmails,
-} from "@/lib/email/player-notifications";
+import { queueAndProcessWeekPublishedEmails } from "@/lib/email/player-notifications";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
-import {
-  processQueuedPlayerPushes,
-  queueAndProcessWeekPublishedPushes,
-  queueAvailableResultsPushes,
-} from "@/lib/push/player-notifications";
+import { queueAndProcessWeekPublishedPushes } from "@/lib/push/player-notifications";
 import { runEspnScoreSyncWithHealth } from "@/lib/scores/health";
-import { queueNativeWeekPublished, runNativePushCycle } from "@/lib/native-push/player-notifications";
+import { queueNativeWeekPublished } from "@/lib/native-push/player-notifications";
+import { scheduleResultsNotifications } from "@/lib/scores/result-notifications";
 import { validatePublishableSlate } from "@/lib/admin/week-publish-policy";
 import {
   gameRecoveryDecision,
@@ -62,26 +55,6 @@ function revalidateGameSurfaces() {
   revalidatePath("/admin/weeks");
   revalidatePath("/results");
   revalidatePath("/standings");
-}
-
-function queueResultsNotifications() {
-  after(async () => {
-    try {
-      await Promise.all([
-        queueAvailableResultsEmails().then(() => processQueuedPlayerEmails()),
-        queueAvailableResultsPushes().then(() => processQueuedPlayerPushes()),
-        runNativePushCycle(),
-      ]);
-    } catch (error) {
-      await reportOperationalIssue({
-        kind: "player_notification_queue",
-        identity: "results_available",
-        severity: "warning",
-        message: "A results-available notification could not be queued or processed.",
-        context: { error_type: error instanceof Error ? error.name : "unknown" },
-      });
-    }
-  });
 }
 
 export async function saveWeekDraft(input: SaveWeekDraftInput): Promise<AdminActionResult> {
@@ -362,7 +335,7 @@ export async function saveFinalScore(input: {
   });
 
   if (result.ok) {
-    queueResultsNotifications();
+    scheduleResultsNotifications();
     revalidateGameSurfaces();
   }
   return result;
@@ -428,7 +401,7 @@ export async function recoverGame(input: RecoverGameInput): Promise<AdminActionR
   });
 
   if (result.ok) {
-    if (parsed.data.action === "cancel") queueResultsNotifications();
+    if (parsed.data.action === "cancel") scheduleResultsNotifications();
     revalidateGameSurfaces();
   }
   return result;
