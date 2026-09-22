@@ -65,6 +65,15 @@ struct ProfileView: View {
           }
 
           VStack(spacing: 12) {
+            NavigationLink(value: AppRoute.achievements) {
+              HStack {
+                Text("View player achievements")
+                Spacer()
+                Image(systemName: "medal.fill")
+              }
+            }
+            .buttonStyle(CallSheetSecondaryActionStyle())
+
             Link(destination: URL(string: "https://anygivenpick.app/profile")!) {
               HStack {
                 Text("Edit player card and photo")

@@ -91,6 +91,10 @@ struct MobileLivePlayerPicks: Decodable, Sendable, Identifiable {
   var id: String { userId }
 }
 
+struct MobileLivePicksEnvelope: Decodable, Sendable {
+  let players: [MobileLivePlayerPicks]
+}
+
 struct MobileWeeklyResults: Decodable, Sendable {
   let weeks: [MobileResultsWeek]
   let selectedWeek: MobileResultsWeek?
@@ -167,6 +171,54 @@ struct MobilePickDistribution: Decodable, Sendable, Identifiable {
   let homePercent: Int
 
   var id: String { gameId }
+}
+
+struct MobileStandingsEnvelope: Decodable, Sendable {
+  let standings: MobileStandingsSnapshot
+}
+
+struct MobileStandingsSnapshot: Decodable, Sendable {
+  let status: String
+  let season: Int
+  let weekOneFinalGames: Int
+  let weekOneGameCount: Int
+  let throughWeek: Int?
+  let rows: [MobileStandingRow]
+}
+
+struct MobileStandingRow: Decodable, Sendable, Identifiable {
+  let rank: Int
+  let rankChange: Int?
+  let userId: String
+  let displayName: String
+  let profilePhotoUrl: String?
+  let correctPicks: Int
+  let gradedPicks: Int
+  let tiebreakerDiff: Int?
+
+  var id: String { userId }
+}
+
+struct MobileAchievementsEnvelope: Decodable, Sendable {
+  let achievements: MobilePlayerAchievements
+}
+
+struct MobilePlayerAchievements: Decodable, Sendable {
+  let achievements: [MobilePlayerAchievement]
+  let earnedCount: Int
+  let totalCount: Int
+}
+
+struct MobilePlayerAchievement: Decodable, Sendable, Identifiable {
+  let id: String
+  let symbol: String
+  let title: String
+  let description: String
+  let earned: Bool
+  let earnedOn: String?
+  let progress: Int
+  let target: Int
+  let progressLabel: String
 }
 
 struct EntryMutationPayload: Encodable, Sendable {

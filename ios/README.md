@@ -38,14 +38,15 @@ Do not place a Clerk secret key in the iOS project. The checked-in value is the 
 - Clerk email-code sign-in and sign-up
 - Commissioner approval and account-state handling
 - Versioned `/api/mobile/v1` bootstrap, results, draft-save, and official-submit endpoints
-- Native weekly pick entry with draft-conflict recovery
-- Live saved-card progress, moneylines, and Monday over/under reference
+- Native scoreboard entry matrix with an editable player row and draft-conflict recovery
+- Live saved picks for every active player, real team marks, moneylines, and Monday over/under reference
 - Native revealed results and player scorecards
+- Native season standings and player achievement pages
 - Production health check, local notification test, and demo Live Activity
 
 ## Production roadmap
 
 - Native activity/archive and editable profile parity
-- Native live-race and standings views
+- Native live-race view
 - APNs registration and server-driven notifications
 - Score-sync-driven Live Activity updates

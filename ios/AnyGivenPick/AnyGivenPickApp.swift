@@ -18,13 +18,30 @@ struct AnyGivenPickApp: App {
 
   var body: some Scene {
     WindowGroup {
-      AppRootView()
+      rootContent
         .environment(appModel)
         .environment(liveActivityManager)
         .environment(notificationManager)
         .environment(Clerk.shared)
         .preferredColorScheme(.light)
     }
+  }
+
+  @ViewBuilder
+  private var rootContent: some View {
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains("-preview-picks-matrix") {
+      ScoreboardEntryMatrixDebugHost()
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-standings") {
+      StandingsDebugHost()
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-achievements") {
+      AchievementsDebugHost()
+    } else {
+      AppRootView()
+    }
+    #else
+    AppRootView()
+    #endif
   }
 }
 

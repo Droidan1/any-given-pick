@@ -46,6 +46,23 @@ struct APIClient: Sendable {
     )
   }
 
+  func fetchLivePicks(token: String, weekId: String) async throws -> [MobileLivePlayerPicks] {
+    var components = URLComponents(
+      url: baseURL.appending(path: "api/picks/live"),
+      resolvingAgainstBaseURL: false
+    )
+    components?.queryItems = [URLQueryItem(name: "weekId", value: weekId)]
+    guard let url = components?.url else { throw APIError.invalidResponse }
+
+    let envelope: MobileLivePicksEnvelope = try await authenticatedRequest(
+      url: url,
+      method: "GET",
+      token: token,
+      responseType: MobileLivePicksEnvelope.self
+    )
+    return envelope.players
+  }
+
   func fetchResults(token: String, weekId: String? = nil) async throws -> MobileWeeklyResults {
     var components = URLComponents(
       url: baseURL.appending(path: "api/mobile/v1/results"),
@@ -62,6 +79,26 @@ struct APIClient: Sendable {
       responseType: ResultsEnvelope.self
     )
     return envelope.results
+  }
+
+  func fetchStandings(token: String) async throws -> MobileStandingsSnapshot {
+    let envelope: MobileStandingsEnvelope = try await authenticatedRequest(
+      path: "api/mobile/v1/standings",
+      method: "GET",
+      token: token,
+      responseType: MobileStandingsEnvelope.self
+    )
+    return envelope.standings
+  }
+
+  func fetchAchievements(token: String) async throws -> MobilePlayerAchievements {
+    let envelope: MobileAchievementsEnvelope = try await authenticatedRequest(
+      path: "api/mobile/v1/achievements",
+      method: "GET",
+      token: token,
+      responseType: MobileAchievementsEnvelope.self
+    )
+    return envelope.achievements
   }
 
   func saveDraft(

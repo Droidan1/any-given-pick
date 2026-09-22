@@ -14,19 +14,23 @@
 		41A375539F49CE794D94CC6E /* AGPTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87D7E9343A274EF20CD248AE /* AGPTheme.swift */; };
 		483CBA3A3B6B213C19E35619 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9365E53149CE22F534749758 /* AppModel.swift */; };
 		5A6ADC169666CEFF04DF3AA2 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B030758FC7800DDD107EABA /* AppShellView.swift */; };
+		5B06DEFC0CD455A68AC331E9 /* ScoreboardEntryMatrix.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF2545437F4992782B964BD0 /* ScoreboardEntryMatrix.swift */; };
 		7A552194C544D13FAE45E9D2 /* PicksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A132899FCEFA4EEA36D29C /* PicksView.swift */; };
 		89AC0A740B031F1EC1E9A8EF /* MobileModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B337EEEDBB451BC6E00AB4 /* MobileModels.swift */; };
 		8E97BF91222D7375C16D5E73 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108932C275BE7310F12564D6 /* ProfileView.swift */; };
 		93536BF981F4AB3D0F927E63 /* WeekRaceLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2179BCD8A981A0DE60D44783 /* WeekRaceLiveActivity.swift */; };
+		93C885EED5CF526D1A00E815 /* NativeTeamCrest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4330460F631E1C0B686C0AB3 /* NativeTeamCrest.swift */; };
 		99D4DD41909C7CC5E8E3BC96 /* ResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FFF5AA4A125BA4DB2905A0D /* ResultsView.swift */; };
 		9A252F940F1CAB500025E6B0 /* AnyGivenPickApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 391D2C9932F5929DD30E1528 /* AnyGivenPickApp.swift */; };
 		A79B6FF2D751BBA5D8B4EB29 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1BBF78A6F285530B4DBDB08 /* NotificationManager.swift */; };
 		AE06893BED69A37BA9048579 /* MobileModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D198922FFE35B8C1D64AAD /* MobileModelsTests.swift */; };
+		B3395DA2837DB72FF8A7A25E /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3554A899AA865C9234B38472 /* StandingsView.swift */; };
 		BBBF18E8CB7F689ACE5BAEE8 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6CD14D5781AEA3BF1BA0753 /* APIClient.swift */; };
 		C2C20967047F4EAAF94DD6B8 /* WeekRaceAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5750423D4BD3D6E210C55A /* WeekRaceAttributes.swift */; };
 		C441A7E86293BE3D11821FD5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C6A7ECE1E778AB55298205BF /* Assets.xcassets */; };
 		D142D1626AE3B19648E7DEBF /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CE9983C39BAA697AEC99A4A /* AppConfiguration.swift */; };
 		D5F0402D352BAEC40B29CB3B /* ClerkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 08065E0CF9311719C772EC23 /* ClerkKit */; };
+		DCD853F71C2049D1DEE75B0B /* AchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3780FD2D579218E585F6C73C /* AchievementsView.swift */; };
 		E16477DF2DB116E1A524D5D0 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BB0E6EFED42B6ABB352F56 /* HomeView.swift */; };
 		E5604655FA3D52AED1CFF2AA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D22AEFD071D9D90CC32C34F /* Assets.xcassets */; };
 		E8FD86985F006286573395AB /* ClerkKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 43AF3AAFD10B4CA24AF73333 /* ClerkKitUI */; };
@@ -73,9 +77,12 @@
 		29EF169E1EBCFA88C0BE85EC /* AnyGivenPickTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnyGivenPickTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B030758FC7800DDD107EABA /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
 		34BA1EB628624EBA9E30629A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3554A899AA865C9234B38472 /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
+		3780FD2D579218E585F6C73C /* AchievementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementsView.swift; sourceTree = "<group>"; };
 		37EEC0776C66BA5521E0080E /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		3854C7BB6DFA0F778CB80CF4 /* AnyGivenPick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnyGivenPick.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		391D2C9932F5929DD30E1528 /* AnyGivenPickApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnyGivenPickApp.swift; sourceTree = "<group>"; };
+		4330460F631E1C0B686C0AB3 /* NativeTeamCrest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTeamCrest.swift; sourceTree = "<group>"; };
 		4C6D47BAB8D082728F0170A6 /* AnyGivenPickWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnyGivenPickWidgets.swift; sourceTree = "<group>"; };
 		60436C093789ABD0B0239172 /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
 		754FB947C6309A9EDBE3690C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -90,6 +97,7 @@
 		B7D198922FFE35B8C1D64AAD /* MobileModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileModelsTests.swift; sourceTree = "<group>"; };
 		B87068BDE0217B21E7E0FC50 /* Any Given Pick Widgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Any Given Pick Widgets.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6A7ECE1E778AB55298205BF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DF2545437F4992782B964BD0 /* ScoreboardEntryMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreboardEntryMatrix.swift; sourceTree = "<group>"; };
 		EF5750423D4BD3D6E210C55A /* WeekRaceAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekRaceAttributes.swift; sourceTree = "<group>"; };
 		F6CD14D5781AEA3BF1BA0753 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -111,6 +119,7 @@
 			isa = PBXGroup;
 			children = (
 				B0A132899FCEFA4EEA36D29C /* PicksView.swift */,
+				DF2545437F4992782B964BD0 /* ScoreboardEntryMatrix.swift */,
 			);
 			path = Picks;
 			sourceTree = "<group>";
@@ -160,6 +169,14 @@
 			path = Authentication;
 			sourceTree = "<group>";
 		};
+		7E38C9CF0EDCDCD68C8C022F /* Standings */ = {
+			isa = PBXGroup;
+			children = (
+				3554A899AA865C9234B38472 /* StandingsView.swift */,
+			);
+			path = Standings;
+			sourceTree = "<group>";
+		};
 		857CB6CCCAA1B9D5B1FE214F /* Models */ = {
 			isa = PBXGroup;
 			children = (
@@ -177,6 +194,14 @@
 				CF010DF512E3CDB2CBBDE46E /* Shared */,
 				D6A4C1C1E64FAB22BDE81FB8 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		927458F814742A319F03E29A /* Achievements */ = {
+			isa = PBXGroup;
+			children = (
+				3780FD2D579218E585F6C73C /* AchievementsView.swift */,
+			);
+			path = Achievements;
 			sourceTree = "<group>";
 		};
 		9A192A8E297F266197B555F1 /* AnyGivenPickTests */ = {
@@ -244,6 +269,7 @@
 			isa = PBXGroup;
 			children = (
 				87D7E9343A274EF20CD248AE /* AGPTheme.swift */,
+				4330460F631E1C0B686C0AB3 /* NativeTeamCrest.swift */,
 			);
 			path = Design;
 			sourceTree = "<group>";
@@ -259,10 +285,12 @@
 		F854B4AD7956DF1FDF4A6D84 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				927458F814742A319F03E29A /* Achievements */,
 				E56EAA2E7BBD9C0D9615EBA2 /* Home */,
 				183AFBDFC895042D045B6627 /* Picks */,
 				9B09246E5576285A687175D0 /* Profile */,
 				C787E196EC0DB5261C32F44C /* Results */,
+				7E38C9CF0EDCDCD68C8C022F /* Standings */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -412,6 +440,7 @@
 			files = (
 				41A375539F49CE794D94CC6E /* AGPTheme.swift in Sources */,
 				BBBF18E8CB7F689ACE5BAEE8 /* APIClient.swift in Sources */,
+				DCD853F71C2049D1DEE75B0B /* AchievementsView.swift in Sources */,
 				9A252F940F1CAB500025E6B0 /* AnyGivenPickApp.swift in Sources */,
 				D142D1626AE3B19648E7DEBF /* AppConfiguration.swift in Sources */,
 				483CBA3A3B6B213C19E35619 /* AppModel.swift in Sources */,
@@ -420,10 +449,13 @@
 				E16477DF2DB116E1A524D5D0 /* HomeView.swift in Sources */,
 				F1397E6EDEBEA826507C1591 /* LiveActivityManager.swift in Sources */,
 				89AC0A740B031F1EC1E9A8EF /* MobileModels.swift in Sources */,
+				93C885EED5CF526D1A00E815 /* NativeTeamCrest.swift in Sources */,
 				A79B6FF2D751BBA5D8B4EB29 /* NotificationManager.swift in Sources */,
 				7A552194C544D13FAE45E9D2 /* PicksView.swift in Sources */,
 				8E97BF91222D7375C16D5E73 /* ProfileView.swift in Sources */,
 				99D4DD41909C7CC5E8E3BC96 /* ResultsView.swift in Sources */,
+				5B06DEFC0CD455A68AC331E9 /* ScoreboardEntryMatrix.swift in Sources */,
+				B3395DA2837DB72FF8A7A25E /* StandingsView.swift in Sources */,
 				097B85B7F8800003F460BB38 /* WeekRaceAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

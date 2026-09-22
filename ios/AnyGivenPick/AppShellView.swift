@@ -1,6 +1,11 @@
 import SwiftUI
 import ClerkKit
 
+enum AppRoute: Hashable {
+  case standings
+  case achievements
+}
+
 enum AppTab: Hashable, CaseIterable {
   case home
   case picks
@@ -36,6 +41,14 @@ struct AppShellView: View {
       ForEach(AppTab.allCases, id: \.self) { tab in
         NavigationStack {
           tabContent(tab)
+            .navigationDestination(for: AppRoute.self) { route in
+              switch route {
+              case .standings:
+                StandingsView()
+              case .achievements:
+                AchievementsView()
+              }
+            }
         }
         .tabItem {
           Label(tab.title, systemImage: tab.symbol)

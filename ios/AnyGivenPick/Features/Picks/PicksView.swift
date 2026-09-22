@@ -13,7 +13,7 @@ struct PicksView: View {
         LazyVStack(spacing: 0) {
           BrandHeader(
             eyebrow: appModel.bootstrap?.currentWeek?.label ?? "Pick entry",
-            title: "Your call sheet",
+            title: headerTitle,
             message: picksMessage
           )
 
@@ -25,8 +25,9 @@ struct PicksView: View {
               title: "Commissioner review",
               message: bootstrap.user.account.reasonLabel
             )
-          } else if let week = appModel.bootstrap?.currentWeek {
-            weekContent(week)
+          } else if let bootstrap = appModel.bootstrap,
+                    let week = bootstrap.currentWeek {
+            weekContent(week, user: bootstrap.user)
           } else {
             FeatureStatusPanel(
               symbol: "calendar.badge.clock",
@@ -37,8 +38,16 @@ struct PicksView: View {
           }
         }
       }
+      .refreshable {
+        guard let weekId = appModel.bootstrap?.currentWeek?.id else { return }
+        await refreshLiveBoard(weekId: weekId)
+      }
     }
     .toolbar(.hidden, for: .navigationBar)
+  }
+
+  private var headerTitle: String {
+    appModel.bootstrap?.currentWeek?.isLocked == true ? "Calls are locked" : "Make your picks"
   }
 
   private var picksMessage: String {
@@ -46,76 +55,50 @@ struct PicksView: View {
       return "Waiting for the commissioner to publish the next slate."
     }
     if week.isLocked { return "This call sheet is locked. Follow the live results instead." }
-    return "Pick one team in every matchup, set the Monday total, then submit before \(week.deadlineLabel)."
+    return "Make every call in your highlighted row, set the tiebreaker, then submit before \(week.deadlineLabel)."
   }
 
-  private func weekContent(_ week: MobilePlayerWeek) -> some View {
+  private func weekContent(_ week: MobilePlayerWeek, user: MobileUser) -> some View {
     @Bindable var appModel = appModel
     let isOpen = !week.isLocked
-    let isComplete = appModel.draftPicks.count == week.games.count
-      && appModel.mondayPrediction != nil
+    let needsTiebreaker = week.games.contains(where: \.isMondayTiebreaker)
+    let selectedCount = validSelectedCount(for: week)
+    let isComplete = selectedCount == week.games.count
+      && (!needsTiebreaker || appModel.mondayPrediction != nil)
 
     return VStack(spacing: 0) {
-      HStack {
-        Label("\(appModel.draftPicks.count)/\(week.games.count) calls", systemImage: "checkmark.circle")
+      HStack(spacing: 12) {
+        Label("\(selectedCount)/\(week.games.count) calls", systemImage: "checkmark.circle")
         Spacer()
-        Text(week.isLocked ? "LOCKED" : "OPEN")
+        Text(week.isLocked ? "LOCKED" : "OPEN UNTIL \(week.deadlineLabel.uppercased())")
+          .multilineTextAlignment(.trailing)
           .foregroundStyle(week.isLocked ? AGPTheme.clay : AGPTheme.ink)
       }
-      .font(AGPTheme.label())
-      .padding(20)
+      .font(AGPTheme.label(12))
+      .padding(16)
       .overlay(alignment: .bottom) { Rectangle().fill(AGPTheme.sage).frame(height: 1) }
 
-      ForEach(week.games) { game in
-        GamePickCard(
-          game: game,
-          selection: appModel.draftPicks[game.id],
-          isEnabled: isOpen
-        ) { teamCode in
-          appModel.select(teamCode: teamCode, for: game.id)
-        }
+      ScoreboardEntryMatrix(
+        games: week.games,
+        players: week.livePlayerPicks,
+        currentUserId: user.id,
+        currentDisplayName: user.displayName ?? "Your picks",
+        selections: appModel.draftPicks,
+        isEnabled: isOpen && user.account.canParticipate && !appModel.isSavingEntry,
+        feedState: appModel.livePicksFeedState
+      ) { gameId, teamCode in
+        appModel.select(teamCode: teamCode, for: gameId)
+      }
+      .task(id: week.id) {
+        guard isOpen else { return }
+        await keepLiveBoardFresh(weekId: week.id)
       }
 
-      mondayTotalSection(isEnabled: isOpen, prediction: $appModel.mondayPrediction)
-
-      if !week.livePlayerPicks.isEmpty {
-        savedCallsSection(week.livePlayerPicks, gameCount: week.games.count)
+      if needsTiebreaker {
+        mondayTotalSection(isEnabled: isOpen, prediction: $appModel.mondayPrediction)
       }
 
-      VStack(spacing: 12) {
-        if let message = appModel.entryActionMessage {
-          Text(message)
-            .font(.subheadline)
-            .foregroundStyle(AGPTheme.paper200)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-
-        Button {
-          Task { await saveDraft() }
-        } label: {
-          HStack {
-            Text(appModel.isSavingEntry ? "Saving…" : "Save private draft")
-            Spacer()
-            Image(systemName: "icloud.and.arrow.up")
-          }
-        }
-        .buttonStyle(CallSheetSecondaryActionStyle())
-        .disabled(!isOpen || appModel.isSavingEntry)
-
-        Button {
-          Task { await submitOfficialCard() }
-        } label: {
-          HStack {
-            Text((week.entry?.currentVersionNumber ?? 0) > 0 ? "Update official card" : "Submit official card")
-            Spacer()
-            Image(systemName: "arrow.right")
-          }
-        }
-        .buttonStyle(CallSheetActionStyle())
-        .disabled(!isOpen || !isComplete || appModel.isSavingEntry)
-      }
-      .padding(20)
-      .background(AGPTheme.field950)
+      entryActions(isOpen: isOpen, isComplete: isComplete, week: week)
     }
   }
 
@@ -159,114 +142,101 @@ struct PicksView: View {
     .overlay(alignment: .bottom) { Rectangle().fill(AGPTheme.sage).frame(height: 1) }
   }
 
-  private func savedCallsSection(
-    _ players: [MobileLivePlayerPicks],
-    gameCount: Int
+  private func entryActions(
+    isOpen: Bool,
+    isComplete: Bool,
+    week: MobilePlayerWeek
   ) -> some View {
-    DisclosureGroup {
-      VStack(spacing: 0) {
-        ForEach(players) { player in
-          HStack {
-            Text(player.displayName)
-            Spacer()
-            Text("\(player.picks.count)/\(gameCount) saved")
-              .foregroundStyle(AGPTheme.inkSoft)
-          }
+    VStack(spacing: 12) {
+      if let message = appModel.entryActionMessage {
+        Text(message)
           .font(.subheadline)
-          .padding(.vertical, 10)
+          .foregroundStyle(AGPTheme.paper200)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      }
+
+      Button {
+        Task { await saveDraft(weekId: week.id) }
+      } label: {
+        HStack {
+          Text(appModel.isSavingEntry ? "Saving…" : "Save private draft")
+          Spacer()
+          Image(systemName: "icloud.and.arrow.up")
         }
       }
-    } label: {
-      Text("LIVE PLAYER PROGRESS")
-        .font(AGPTheme.label())
+      .buttonStyle(CallSheetSecondaryActionStyle())
+      .disabled(!isOpen || appModel.isSavingEntry)
+
+      Button {
+        Task { await submitOfficialCard(weekId: week.id) }
+      } label: {
+        HStack {
+          Text((week.entry?.currentVersionNumber ?? 0) > 0 ? "Update official card" : "Submit official card")
+          Spacer()
+          Image(systemName: "arrow.right")
+        }
+      }
+      .buttonStyle(CallSheetActionStyle())
+      .disabled(!isOpen || !isComplete || appModel.isSavingEntry)
     }
-    .tint(AGPTheme.ink)
     .padding(20)
-    .overlay(alignment: .bottom) { Rectangle().fill(AGPTheme.sage).frame(height: 1) }
+    .background(AGPTheme.field950)
   }
 
-  private func saveDraft() async {
+  private func keepLiveBoardFresh(weekId: String) async {
+    while !Task.isCancelled {
+      await refreshLiveBoard(weekId: weekId)
+      do {
+        try await Task.sleep(for: .seconds(15))
+      } catch is CancellationError {
+        return
+      } catch {
+        appModel.markLivePicksStale()
+        return
+      }
+    }
+  }
+
+  private func validSelectedCount(for week: MobilePlayerWeek) -> Int {
+    week.games.reduce(into: 0) { count, game in
+      let selection = appModel.draftPicks[game.id]
+      if selection == game.away.abbreviation || selection == game.home.abbreviation {
+        count += 1
+      }
+    }
+  }
+
+  private func refreshLiveBoard(weekId: String) async {
+    do {
+      guard let token = try await clerk.auth.getToken() else {
+        appModel.markLivePicksStale()
+        return
+      }
+      await appModel.refreshLivePicks(token: token, weekId: weekId)
+    } catch is CancellationError {
+      return
+    } catch {
+      appModel.markLivePicksStale()
+    }
+  }
+
+  private func saveDraft(weekId: String) async {
     do {
       guard let token = try await clerk.auth.getToken() else { return }
       await appModel.saveDraft(token: token)
+      await appModel.refreshLivePicks(token: token, weekId: weekId)
     } catch {
       appModel.showEntryError("Your sign-in session expired. Sign in again and retry the save.")
     }
   }
 
-  private func submitOfficialCard() async {
+  private func submitOfficialCard(weekId: String) async {
     do {
       guard let token = try await clerk.auth.getToken() else { return }
       await appModel.submitEntry(token: token)
+      await appModel.refreshLivePicks(token: token, weekId: weekId)
     } catch {
       appModel.showEntryError("Your sign-in session expired. Sign in again and retry the submission.")
     }
-  }
-}
-
-private struct GamePickCard: View {
-  let game: MobileGame
-  let selection: String?
-  let isEnabled: Bool
-  let onSelect: (String) -> Void
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      HStack {
-        Text("\(game.day.uppercased()) · \(game.time)")
-        Spacer()
-        Text(game.status.replacingOccurrences(of: "_", with: " ").uppercased())
-      }
-      .font(AGPTheme.label(13))
-      .foregroundStyle(AGPTheme.inkSoft)
-
-      HStack(spacing: 10) {
-        teamButton(game.away, moneyline: game.odds?.awayMoneyline)
-        Text("@")
-          .font(AGPTheme.display(22))
-          .foregroundStyle(AGPTheme.inkSoft)
-        teamButton(game.home, moneyline: game.odds?.homeMoneyline)
-      }
-
-      if game.isMondayTiebreaker, let total = game.odds?.overUnder {
-        Text("Monday reference total: \(total.formatted(.number.precision(.fractionLength(1))))")
-          .font(.caption)
-          .foregroundStyle(AGPTheme.clay)
-      }
-    }
-    .padding(20)
-    .overlay(alignment: .bottom) { Rectangle().fill(AGPTheme.sage).frame(height: 1) }
-  }
-
-  private func teamButton(_ team: MobileTeam, moneyline: Int?) -> some View {
-    let isSelected = selection == team.abbreviation
-    return Button {
-      onSelect(team.abbreviation)
-    } label: {
-      VStack(alignment: .leading, spacing: 5) {
-        HStack {
-          Text(team.abbreviation)
-            .font(AGPTheme.display(27))
-          Spacer()
-          if isSelected { Image(systemName: "checkmark") }
-        }
-        Text(team.name)
-          .font(.caption)
-          .lineLimit(1)
-        if let moneyline {
-          Text(moneyline > 0 ? "+\(moneyline)" : "\(moneyline)")
-            .font(AGPTheme.label(12))
-        }
-      }
-      .foregroundStyle(AGPTheme.ink)
-      .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
-      .padding(12)
-      .background(isSelected ? AGPTheme.maize : AGPTheme.paper100)
-      .overlay(Rectangle().stroke(isSelected ? AGPTheme.field950 : AGPTheme.sage, lineWidth: isSelected ? 2 : 1))
-    }
-    .buttonStyle(.plain)
-    .disabled(!isEnabled)
-    .accessibilityLabel("Pick \(team.name)\(moneyline.map { ", moneyline \($0)" } ?? "")")
-    .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 }

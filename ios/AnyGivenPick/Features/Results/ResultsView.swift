@@ -17,6 +17,8 @@ struct ResultsView: View {
             message: "Official cards reveal at the deadline and scores update from the same trusted feed as the web app."
           )
 
+          ResultsHubNavigation()
+
           resultsContent
         }
       }
@@ -97,6 +99,63 @@ struct ResultsView: View {
       await appModel.refreshResults(token: token)
     } catch {
       return
+    }
+  }
+}
+
+private struct ResultsHubNavigation: View {
+  var body: some View {
+    HStack(spacing: 0) {
+      destination(
+        route: .standings,
+        symbol: "chart.bar.fill",
+        eyebrow: "Season",
+        title: "Standings"
+      )
+
+      destination(
+        route: .achievements,
+        symbol: "medal.fill",
+        eyebrow: "Your",
+        title: "Achievements"
+      )
+    }
+    .background(AGPTheme.paper200)
+    .overlay(alignment: .bottom) { Rectangle().fill(AGPTheme.sage).frame(height: 1) }
+  }
+
+  private func destination(
+    route: AppRoute,
+    symbol: String,
+    eyebrow: String,
+    title: String
+  ) -> some View {
+    NavigationLink(value: route) {
+      HStack(spacing: 12) {
+        Image(systemName: symbol)
+          .font(.system(size: 23, weight: .bold))
+          .frame(width: 30)
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(eyebrow.uppercased())
+            .font(AGPTheme.label(10))
+            .foregroundStyle(AGPTheme.clay)
+          Text(title.uppercased())
+            .font(AGPTheme.label(16))
+        }
+
+        Spacer(minLength: 4)
+        Image(systemName: "chevron.right")
+          .font(.caption.bold())
+      }
+      .foregroundStyle(AGPTheme.ink)
+      .frame(maxWidth: .infinity, minHeight: 72)
+      .padding(.horizontal, 14)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .overlay(alignment: route == .standings ? .trailing : .leading) {
+      Rectangle().fill(AGPTheme.sage).frame(width: route == .standings ? 1 : 0)
     }
   }
 }

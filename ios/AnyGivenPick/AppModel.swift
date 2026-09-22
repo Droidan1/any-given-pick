@@ -11,6 +11,27 @@ final class AppModel {
     case failed(String)
   }
 
+  enum LivePicksFeedState: Equatable {
+    case idle
+    case refreshing
+    case live(Date)
+    case stale
+  }
+
+  enum StandingsState {
+    case idle
+    case loading
+    case loaded(MobileStandingsSnapshot)
+    case failed(String)
+  }
+
+  enum AchievementsState {
+    case idle
+    case loading
+    case loaded(MobilePlayerAchievements)
+    case failed(String)
+  }
+
   var selectedTab: AppTab = .home
   private(set) var healthState: HealthState = .idle
   private(set) var bootstrap: MobileBootstrap?
@@ -18,6 +39,9 @@ final class AppModel {
   private(set) var accountError: String?
   private(set) var entryActionMessage: String?
   private(set) var isSavingEntry = false
+  private(set) var livePicksFeedState: LivePicksFeedState = .idle
+  private(set) var standingsState: StandingsState = .idle
+  private(set) var achievementsState: AchievementsState = .idle
   var draftPicks: [String: String] = [:]
   var mondayPrediction: Int?
   var draftRevision = 0
@@ -47,6 +71,9 @@ final class AppModel {
       let response = try await apiClient.fetchBootstrap(token: token)
       bootstrap = response
       configureDraft(from: response.currentWeek)
+      if response.currentWeek != nil {
+        livePicksFeedState = .live(Date())
+      }
     } catch is CancellationError {
       return
     } catch {
@@ -69,7 +96,50 @@ final class AppModel {
     draftPicks = [:]
     mondayPrediction = nil
     draftRevision = 0
+    livePicksFeedState = .idle
+    standingsState = .idle
+    achievementsState = .idle
     selectedTab = .home
+  }
+
+  func refreshLivePicks(token: String, weekId: String) async {
+    guard bootstrap?.currentWeek?.id == weekId else { return }
+
+    livePicksFeedState = .refreshing
+    do {
+      let players = try await apiClient.fetchLivePicks(token: token, weekId: weekId)
+      guard let current = bootstrap,
+            let week = current.currentWeek,
+            week.id == weekId else { return }
+      let refreshedWeek = MobilePlayerWeek(
+        id: week.id,
+        season: week.season,
+        seasonPhase: week.seasonPhase,
+        weekNumber: week.weekNumber,
+        label: week.label,
+        entryDeadline: week.entryDeadline,
+        deadlineLabel: week.deadlineLabel,
+        isLocked: week.isLocked,
+        games: week.games,
+        entry: week.entry,
+        livePlayerPicks: players
+      )
+      bootstrap = MobileBootstrap(
+        serverNow: current.serverNow,
+        user: current.user,
+        currentWeek: refreshedWeek,
+        results: current.results
+      )
+      livePicksFeedState = .live(Date())
+    } catch is CancellationError {
+      return
+    } catch {
+      livePicksFeedState = .stale
+    }
+  }
+
+  func markLivePicksStale() {
+    livePicksFeedState = .stale
   }
 
   func select(teamCode: String, for gameId: String) {
@@ -143,6 +213,28 @@ final class AppModel {
     }
   }
 
+  func refreshStandings(token: String) async {
+    standingsState = .loading
+    do {
+      standingsState = .loaded(try await apiClient.fetchStandings(token: token))
+    } catch is CancellationError {
+      return
+    } catch {
+      standingsState = .failed(error.localizedDescription)
+    }
+  }
+
+  func refreshAchievements(token: String) async {
+    achievementsState = .loading
+    do {
+      achievementsState = .loaded(try await apiClient.fetchAchievements(token: token))
+    } catch is CancellationError {
+      return
+    } catch {
+      achievementsState = .failed(error.localizedDescription)
+    }
+  }
+
   private func configureDraft(from week: MobilePlayerWeek?) {
     draftPicks = week?.entry?.draftPicks ?? [:]
     mondayPrediction = week?.entry?.mondayPrediction
@@ -162,4 +254,39 @@ final class AppModel {
       entryActionMessage = "A newer draft from another device was restored."
     }
   }
+
+  #if DEBUG
+  func loadStandingsPreview() {
+    standingsState = .loaded(
+      MobileStandingsSnapshot(
+        status: "ready",
+        season: 2026,
+        weekOneFinalGames: 16,
+        weekOneGameCount: 16,
+        throughWeek: 4,
+        rows: [
+          MobileStandingRow(rank: 1, rankChange: 2, userId: "player-1", displayName: "Napalm", profilePhotoUrl: nil, correctPicks: 43, gradedPicks: 61, tiebreakerDiff: 7),
+          MobileStandingRow(rank: 2, rankChange: -1, userId: "player-2", displayName: "Fourth Down", profilePhotoUrl: nil, correctPicks: 41, gradedPicks: 61, tiebreakerDiff: 4),
+          MobileStandingRow(rank: 3, rankChange: nil, userId: "player-3", displayName: "Hail Mary", profilePhotoUrl: nil, correctPicks: 38, gradedPicks: 61, tiebreakerDiff: 12),
+          MobileStandingRow(rank: 4, rankChange: 1, userId: "player-4", displayName: "Red Zone", profilePhotoUrl: nil, correctPicks: 36, gradedPicks: 61, tiebreakerDiff: nil),
+        ]
+      )
+    )
+  }
+
+  func loadAchievementsPreview() {
+    achievementsState = .loaded(
+      MobilePlayerAchievements(
+        achievements: [
+          MobilePlayerAchievement(id: "first_call", symbol: "1", title: "First call", description: "Submit your first official weekly card.", earned: true, earnedOn: "2026 Week 1", progress: 1, target: 1, progressLabel: "1 of 1 official card"),
+          MobilePlayerAchievement(id: "film_room", symbol: "3", title: "Film room regular", description: "Finish three weeks with an official card on the board.", earned: true, earnedOn: "2026 Week 3", progress: 3, target: 3, progressLabel: "3 of 3 finished weeks"),
+          MobilePlayerAchievement(id: "double_digits", symbol: "10", title: "Double digits", description: "Call at least 10 winners on one official card.", earned: false, earnedOn: nil, progress: 8, target: 10, progressLabel: "8 of 10 correct calls in one week"),
+          MobilePlayerAchievement(id: "hot_route", symbol: "5×", title: "Hot route", description: "String together five correct calls in a row.", earned: false, earnedOn: nil, progress: 4, target: 5, progressLabel: "4 of 5 straight correct calls"),
+        ],
+        earnedCount: 2,
+        totalCount: 4
+      )
+    )
+  }
+  #endif
 }
