@@ -36,6 +36,11 @@ yarn-error.log*
 .impeccable/live/*.png
 .vercel
 
+# Xcode local state
+**/xcuserdata/
+**/*.xcuserstate
+**/DerivedData/
+
 # Agent-installed integration guidance (local only)
 /.agents/
 /skills-lock.json

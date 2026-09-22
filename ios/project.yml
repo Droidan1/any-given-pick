@@ -1,0 +1,102 @@
+name: AnyGivenPick
+
+options:
+  bundleIdPrefix: app.anygivenpick
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+packages:
+  Clerk:
+    url: https://github.com/clerk/clerk-ios
+    from: 1.2.0
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 225457KEGM
+
+targets:
+  AnyGivenPick:
+    type: application
+    platform: iOS
+    info:
+      path: AnyGivenPick/Info.plist
+      properties:
+        CFBundleDisplayName: Any Given Pick
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ClerkProxyURL: https://anygivenpick.app/__clerk
+        ClerkPublishableKey: pk_live_Y2xlcmsuYW55Z2l2ZW5waWNrLmFwcCQ
+        LSApplicationCategoryType: public.app-category.sports
+        NSSupportsLiveActivities: true
+        UIApplicationSupportsIndirectInputEvents: true
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    sources:
+      - path: AnyGivenPick
+      - path: Shared
+    resources:
+      - path: AnyGivenPick/Resources/Assets.xcassets
+    dependencies:
+      - target: AnyGivenPickWidgets
+        embed: true
+      - package: Clerk
+        product: ClerkKit
+      - package: Clerk
+        product: ClerkKitUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.anygivenpick.ios
+        PRODUCT_NAME: AnyGivenPick
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: false
+
+  AnyGivenPickWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: AnyGivenPickWidgets
+      - path: Shared
+    resources:
+      - path: AnyGivenPickWidgets/Resources/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.anygivenpick.ios.widgets
+        PRODUCT_NAME: Any Given Pick Widgets
+        INFOPLIST_FILE: AnyGivenPickWidgets/Info.plist
+        SKIP_INSTALL: true
+        APPLICATION_EXTENSION_API_ONLY: true
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: false
+
+  AnyGivenPickTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AnyGivenPickTests
+    dependencies:
+      - target: AnyGivenPick
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.anygivenpick.ios.tests
+        GENERATE_INFOPLIST_FILE: true
+
+schemes:
+  AnyGivenPick:
+    build:
+      targets:
+        AnyGivenPick: all
+        AnyGivenPickWidgets: all
+        AnyGivenPickTests: [test]
+    test:
+      targets:
+        - AnyGivenPickTests
+      gatherCoverageData: true
