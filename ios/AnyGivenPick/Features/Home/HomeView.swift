@@ -23,6 +23,9 @@ struct HomeView: View {
             if let week = appModel.bootstrap?.currentWeek {
               currentWeekPanel(week)
               liveRaceLink(week)
+              NavigationLink(value: AppRoute.followGames) {
+                Label("Follow a game on your Lock Screen", systemImage: "sportscourt")
+              }.buttonStyle(CallSheetSecondaryActionStyle())
             } else if appModel.bootstrap?.user.account.canParticipate == true {
               emptyWeekPanel
             }
@@ -153,6 +156,7 @@ struct HomeView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+    .simultaneousGesture(TapGesture().onEnded { appModel.liveRaceWeekId = nil })
     .disabled(appModel.bootstrap?.user.account.canParticipate != true)
     .accessibilityLabel(week.isLocked ? "Open the live week race" : "Open the live race preview. Official cards reveal after lock")
   }

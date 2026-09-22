@@ -48,6 +48,8 @@ export class APNsDeliveryError extends Error {
 export async function sendNativePush(input: {
   environment: APNsEnvironment; deviceToken: string; payload: object;
   collapseKey: string; expiresAt: Date;
+  pushType?: "alert" | "liveactivity";
+  priority?: "5" | "10";
 }): Promise<void> {
   if (!apnsConfigured(input.environment)) throw new Error("APNs is not configured.");
   const body = JSON.stringify(input.payload);
@@ -71,7 +73,8 @@ export async function sendNativePush(input: {
       const request = client.request({
         ":method": "POST", ":path": `/3/device/${input.deviceToken}`,
         authorization: `bearer ${token}`,
-        "apns-topic": "app.anygivenpick.ios", "apns-push-type": "alert", "apns-priority": "10",
+        "apns-topic": input.pushType === "liveactivity" ? "app.anygivenpick.ios.push-type.liveactivity" : "app.anygivenpick.ios",
+        "apns-push-type": input.pushType ?? "alert", "apns-priority": input.priority ?? "10",
         "apns-expiration": String(Math.floor(input.expiresAt.getTime() / 1000)),
         "apns-collapse-id": createHash("sha256").update(input.collapseKey).digest("hex"),
         "content-type": "application/json",

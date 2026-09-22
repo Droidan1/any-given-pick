@@ -440,6 +440,10 @@ export const games = pgTable(
     status: gameStatusEnum("status").notNull().default("scheduled"),
     awayScore: integer("away_score"),
     homeScore: integer("home_score"),
+    scorePeriod: integer("score_period"),
+    scoreClock: varchar("score_clock", { length: 32 }),
+    scoreDetail: varchar("score_detail", { length: 80 }),
+    scoreCheckedAt: timestamp("score_checked_at", { withTimezone: true }),
     awayMoneyline: integer("away_moneyline"),
     homeMoneyline: integer("home_moneyline"),
     overUnder: numeric("over_under", { precision: 5, scale: 1, mode: "number" }),
@@ -678,4 +682,47 @@ export const nativePushDeliveries = pgTable("native_push_deliveries", {
   check("native_push_delivery_kind_check", sql`${table.kind} in ('week_published', 'deadline_approaching', 'picks_submitted', 'results_available')`),
   check("native_push_delivery_status_check", sql`${table.status} in ('pending', 'processing', 'sent', 'failed', 'skipped')`),
   check("native_push_delivery_attempt_check", sql`${table.attemptCount} >= 0`),
+]);
+
+// Live Activity tokens are not ordinary notification device tokens. Never expose them in API responses.
+export const liveActivityDevices = pgTable("live_activity_devices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  installationId: uuid("installation_id").notNull().unique(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  clerkSessionId: text("clerk_session_id").notNull(),
+  environment: varchar("environment", { length: 16 }).notNull(),
+  pushToStartToken: text("push_to_start_token"),
+  authorized: boolean("authorized").notNull().default(false),
+  enabled: boolean("enabled").notNull().default(false),
+  deadline: boolean("deadline").notNull().default(true),
+  race: boolean("race").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("live_activity_start_token_unique").on(table.environment, table.pushToStartToken),
+  index("live_activity_device_user_idx").on(table.userId),
+  check("live_activity_environment_check", sql`${table.environment} in ('sandbox', 'production')`),
+]);
+
+export const liveActivitySessions = pgTable("live_activity_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  deviceId: uuid("device_id").notNull().references(() => liveActivityDevices.id, { onDelete: "cascade" }),
+  contestWeekId: uuid("contest_week_id").notNull().references(() => contestWeeks.id, { onDelete: "cascade" }),
+  gameId: uuid("game_id").references(() => games.id, { onDelete: "cascade" }),
+  kind: varchar("kind", { length: 16 }).notNull(),
+  sessionKey: varchar("session_key", { length: 160 }).notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("pending"),
+  activityId: varchar("activity_id", { length: 128 }),
+  updateToken: text("update_token"),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+  contentHash: varchar("content_hash", { length: 64 }),
+  failureCount: integer("failure_count").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("live_activity_session_key_unique").on(table.deviceId, table.sessionKey),
+  index("live_activity_session_work_idx").on(table.status, table.leaseUntil),
+  check("live_activity_kind_check", sql`${table.kind} in ('deadline', 'game', 'race')`),
+  check("live_activity_status_check", sql`${table.status} in ('pending', 'starting', 'active', 'ending', 'ended', 'dismissed', 'failed')`),
 ]);

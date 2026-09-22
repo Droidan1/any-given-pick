@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
+import { inspectLiveActivityHealth } from "@/lib/live-activities/health";
 import {
   evaluateScoreSyncWatchdog,
   inspectScoreSyncWatchdog,
@@ -33,16 +34,19 @@ export async function GET() {
       }
     }
     const { ready: scoreSyncReady } = await evaluateScoreSyncWatchdog(now);
+    const liveActivities = await inspectLiveActivityHealth(now);
+    const ready = scoreSyncReady && ["disabled", "ok"].includes(liveActivities);
     return Response.json(
       {
-        status: scoreSyncReady ? "ok" : "degraded",
+        status: ready ? "ok" : "degraded",
         database: "ok",
+        liveActivities,
         scoreSync: scoreSyncReady ? "ok" : "stale_or_failed",
         scoreSyncRecovery,
         checkedAt: now.toISOString(),
       },
       {
-        status: scoreSyncReady ? 200 : 503,
+        status: ready ? 200 : 503,
         headers: HEALTH_HEADERS,
       },
     );

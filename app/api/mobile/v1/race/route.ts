@@ -4,6 +4,7 @@ import { hasAdminRole } from "@/lib/auth/admin";
 import { requireAppUser } from "@/lib/auth/app-user";
 import { buildLiveWeekRace } from "@/lib/race/rules";
 import { getWeeklyResults } from "@/lib/results/service";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ const privateHeaders = {
   "Cache-Control": "private, no-store, max-age=0",
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json(
@@ -30,7 +31,10 @@ export async function GET() {
       );
     }
 
-    const results = await getWeeklyResults({ currentUserId: appUser.id });
+    const weekId = new URL(request.url).searchParams.get("weekId") ?? undefined;
+    if (weekId && !z.uuid().safeParse(weekId).success) return NextResponse.json({ error: "Invalid week." }, { status: 400, headers: privateHeaders });
+    const results = await getWeeklyResults({ currentUserId: appUser.id, weekId });
+    if (weekId && results.selectedWeek?.id !== weekId) return NextResponse.json({ error: "Week no longer available." }, { status: 404, headers: privateHeaders });
     return NextResponse.json(
       { race: buildLiveWeekRace(results) },
       { headers: privateHeaders },

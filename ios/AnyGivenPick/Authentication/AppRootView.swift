@@ -6,11 +6,14 @@ struct AppRootView: View {
   @Environment(Clerk.self) private var clerk
   @Environment(AppModel.self) private var appModel
   @Environment(NotificationManager.self) private var notifications
+  @Environment(LiveActivityManager.self) private var activities
   @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     Group {
-      if clerk.user == nil {
+      if !clerk.isLoaded {
+        accountLoadingView
+      } else if clerk.user == nil {
         NativeAuthenticationView()
       } else if appModel.bootstrap != nil {
         AppShellView()
@@ -18,9 +21,11 @@ struct AppRootView: View {
         accountLoadingView
       }
     }
-    .task(id: clerk.user?.id) {
+    .task(id: "\(clerk.isLoaded)-\(clerk.user?.id ?? "signed-out")") {
+      guard clerk.isLoaded else { return }
       guard clerk.user != nil else {
         notifications.disconnect()
+        await activities.disconnect()
         appModel.clearAuthenticatedAccount()
         return
       }
@@ -32,12 +37,38 @@ struct AppRootView: View {
     .onChange(of: notifications.pendingDestination) { _, destination in
       if destination != nil { Task { await openNotification() } }
     }
+    .onChange(of: activities.pendingDestination) { _, destination in
+      if destination != nil { Task { await openActivity() } }
+    }
   }
 
   private func connectNotifications() async {
     guard let user = clerk.user, appModel.bootstrap?.user.account.accountState == "active" else { return }
     await openNotification()
+    await openActivity()
+    if let account = appModel.bootstrap?.user {
+      await activities.connect(userId: account.id) { try await clerk.auth.getToken() }
+    }
     await notifications.connect(accountId: user.id) { try await clerk.auth.getToken() }
+  }
+
+  private func openActivity() async {
+    guard let destination = activities.pendingDestination, let account = appModel.bootstrap?.user else { return }
+    activities.pendingDestination = nil
+    guard destination.userId == account.id, let token = try? await clerk.auth.getToken() else { return }
+    appModel.navigationPaths = [:]
+    if destination.kind == .race {
+      appModel.liveRaceWeekId = destination.weekId
+      appModel.selectedTab = .home
+      appModel.navigationPaths[.home] = [.liveRace]
+    } else if destination.kind == .deadline, destination.weekId == appModel.bootstrap?.currentWeek?.id,
+      appModel.bootstrap?.currentWeek?.isLocked == false {
+      appModel.selectedTab = .picks
+    } else {
+      appModel.notificationResultsWeekId = destination.weekId
+      appModel.selectedTab = .results
+      await appModel.refreshResults(token: token)
+    }
   }
 
   private func openNotification() async {
@@ -51,6 +82,7 @@ struct AppRootView: View {
     guard appModel.bootstrap?.user.id == account.id else { return }
     let tab = destination.tab(currentWeekId: appModel.bootstrap?.currentWeek?.id)
     appModel.notificationNavigationID = UUID()
+    appModel.navigationPaths = [:]
     appModel.selectedTab = tab
     if tab == .results {
       appModel.notificationResultsWeekId = destination.weekId

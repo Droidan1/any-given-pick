@@ -34,6 +34,9 @@ targets:
         ClerkPublishableKey: pk_live_Y2xlcmsuYW55Z2l2ZW5waWNrLmFwcCQ
         LSApplicationCategoryType: public.app-category.sports
         NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: app.anygivenpick.activities
+            CFBundleURLSchemes: [anygivenpick]
         APNsEnvironment: $(APNS_ENVIRONMENT)
         UIApplicationSupportsIndirectInputEvents: true
         UILaunchScreen: {}

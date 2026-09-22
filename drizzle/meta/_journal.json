@@ -134,6 +134,13 @@
       "when": 1790105546198,
       "tag": "0018_native_iphone_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790116275845,
+      "tag": "0019_live_activity_sessions",
+      "breakpoints": true
     }
   ]
 }

@@ -23,6 +23,7 @@ struct AnyGivenPickApp: App {
         .environment(liveActivityManager)
         .environment(notificationManager)
         .environment(Clerk.shared)
+        .onOpenURL { liveActivityManager.pendingDestination = ActivityDestination(url: $0) }
         .preferredColorScheme(.light)
     }
   }
@@ -30,7 +31,11 @@ struct AnyGivenPickApp: App {
   @ViewBuilder
   private var rootContent: some View {
     #if DEBUG
-    if ProcessInfo.processInfo.arguments.contains("-preview-notifications") {
+    if ProcessInfo.processInfo.arguments.contains("-preview-live-activity-settings") {
+      NavigationStack { LiveActivitySettingsView() }.environment(LiveActivityManager.preview())
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-live-activities") {
+      LiveActivitiesDebugHost()
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-notifications") {
       NotificationSettingsDebugHost()
     } else if ProcessInfo.processInfo.arguments.contains("-preview-picks-matrix") {
       ScoreboardEntryMatrixDebugHost()

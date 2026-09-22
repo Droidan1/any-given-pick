@@ -15,10 +15,16 @@ export type EspnGameResult = {
   homeMoneyline: number | null;
   overUnder: number | null;
   oddsProvider: string | null;
+  period: number | null;
+  clock: string | null;
+  detail: string | null;
 };
 
 type EspnStatus = {
+  period?: unknown;
+  displayClock?: unknown;
   type?: {
+    shortDetail?: unknown;
     name?: unknown;
     state?: unknown;
     completed?: unknown;
@@ -109,7 +115,8 @@ export function normalizeEspnScores(events: EspnScoreEvent[]): EspnGameResult[] 
     const home = competitors.find((competitor) => competitor.homeAway === "home");
     if (!away || !home) return [];
 
-    const status = gameStatus(competition.status ?? event.status);
+    const providerStatus = competition.status ?? event.status;
+    const status = gameStatus(providerStatus);
     const odds = Array.isArray(competition.odds)
       ? competition.odds[0] as EspnOdds | undefined
       : undefined;
@@ -122,6 +129,10 @@ export function normalizeEspnScores(events: EspnScoreEvent[]): EspnGameResult[] 
       homeMoneyline: americanOdds(odds?.moneyline?.home?.close?.odds),
       overUnder: gameTotal(odds?.overUnder),
       oddsProvider: providerName(odds),
+      period: typeof providerStatus?.period === "number" && Number.isInteger(providerStatus.period)
+        && providerStatus.period >= 0 ? providerStatus.period : null,
+      clock: typeof providerStatus?.displayClock === "string" ? providerStatus.displayClock.slice(0, 32) : null,
+      detail: typeof providerStatus?.type?.shortDetail === "string" ? providerStatus.type.shortDetail.slice(0, 80) : null,
     }];
   });
 }

@@ -4,7 +4,7 @@ import Observation
 
 @MainActor
 @Observable
-final class LiveActivityManager {
+final class DemoLiveActivityManager {
   private(set) var statusMessage = "No demo is running."
   private(set) var hasActiveActivity = false
   private var updateStep = 0
@@ -77,4 +77,3 @@ final class LiveActivityManager {
     statusMessage = "The demo Live Activity ended."
   }
 }
-

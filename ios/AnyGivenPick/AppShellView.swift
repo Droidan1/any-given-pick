@@ -6,6 +6,8 @@ enum AppRoute: Hashable {
   case standings
   case achievements
   case notifications
+  case liveActivities
+  case followGames
 }
 
 enum AppTab: Hashable, CaseIterable {
@@ -41,7 +43,7 @@ struct AppShellView: View {
 
     TabView(selection: $appModel.selectedTab) {
       ForEach(AppTab.allCases, id: \.self) { tab in
-        NavigationStack {
+        NavigationStack(path: Binding(get: { appModel.navigationPaths[tab] ?? [] }, set: { appModel.navigationPaths[tab] = $0 })) {
           tabContent(tab)
             .navigationDestination(for: AppRoute.self) { route in
               switch route {
@@ -53,6 +55,10 @@ struct AppShellView: View {
                 AchievementsView()
               case .notifications:
                 NotificationSettingsView()
+              case .liveActivities:
+                LiveActivitySettingsView()
+              case .followGames:
+                FollowGamesView()
               }
             }
         }

@@ -127,6 +127,10 @@ export async function syncRecentEspnScores(now = new Date()): Promise<ScoreSyncS
             status: result.status,
             awayScore: result.awayScore,
             homeScore: result.homeScore,
+            scorePeriod: result.period,
+            scoreClock: result.clock,
+            scoreDetail: result.detail,
+            scoreCheckedAt: now,
             ...(hasPostedOdds ? {
               awayMoneyline: nextAwayMoneyline,
               homeMoneyline: nextHomeMoneyline,

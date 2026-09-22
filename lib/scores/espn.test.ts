@@ -44,6 +44,12 @@ function event(input: {
 }
 
 describe("ESPN score normalization", () => {
+  it("reads the provider clock as a snapshot, including halftime and overtime descriptions", () => {
+    const input = event({ id: "clock", state: "in", name: "STATUS_IN_PROGRESS", completed: false });
+    const competition = (input.competitions as Array<{ status: object }>)[0];
+    competition.status = { period: 5, displayClock: "05:42", type: { state: "in", shortDetail: "05:42 - OT" } };
+    expect(normalizeEspnScores([input])[0]).toMatchObject({ period: 5, clock: "05:42", detail: "05:42 - OT" });
+  });
   it("reads a completed game and keeps home and away scores aligned", () => {
     expect(normalizeEspnScores([event({
       id: "401772510",
@@ -61,6 +67,9 @@ describe("ESPN score normalization", () => {
       homeMoneyline: null,
       overUnder: null,
       oddsProvider: null,
+      period: null,
+      clock: null,
+      detail: null,
     }]);
   });
 

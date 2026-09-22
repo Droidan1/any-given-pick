@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/live-activities",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/scores",
       "schedule": "25 12 * * *"
     },

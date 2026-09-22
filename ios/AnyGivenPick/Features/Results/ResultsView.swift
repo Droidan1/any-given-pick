@@ -18,6 +18,9 @@ struct ResultsView: View {
           )
 
           ResultsHubNavigation()
+          NavigationLink(value: AppRoute.followGames) {
+            Label("Follow a game on your Lock Screen", systemImage: "sportscourt")
+          }.buttonStyle(CallSheetSecondaryActionStyle()).padding(20)
 
           resultsContent
         }

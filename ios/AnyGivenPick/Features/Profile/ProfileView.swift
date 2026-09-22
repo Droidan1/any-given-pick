@@ -28,25 +28,15 @@ struct ProfileView: View {
             title: "Live Activity",
             message: liveActivityManager.statusMessage
           ) {
-            Button {
-              Task { await liveActivityManager.startDemo() }
-            } label: {
+            NavigationLink(value: AppRoute.liveActivities) {
               HStack {
-                Text(liveActivityManager.hasActiveActivity ? "Update demo activity" : "Start demo activity")
+                Text("Live Activity settings")
                 Spacer()
                 Image(systemName: "bolt.fill")
               }
             }
             .buttonStyle(CallSheetActionStyle())
 
-            if liveActivityManager.hasActiveActivity {
-              Button("End Live Activity") {
-                Task { await liveActivityManager.endDemo() }
-              }
-              .font(AGPTheme.label())
-              .foregroundStyle(AGPTheme.clay)
-              .frame(minHeight: 44)
-            }
           }
 
           VStack(alignment: .leading, spacing: 12) {
@@ -93,6 +83,7 @@ struct ProfileView: View {
               Task {
                 defer { isSigningOut = false }
                 await notificationManager.unregisterBeforeSignOut()
+                await liveActivityManager.unregisterBeforeSignOut()
                 do { try await clerk.auth.signOut() }
                 catch { signOutError = "Sign-out could not finish. Check your connection and try again." }
               }

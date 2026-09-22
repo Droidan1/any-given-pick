@@ -40,8 +40,10 @@ final class AppModel {
   }
 
   var selectedTab: AppTab = .home
+  var navigationPaths: [AppTab: [AppRoute]] = [:]
   var notificationNavigationID = UUID()
   var notificationResultsWeekId: String?
+  var liveRaceWeekId: String?
   private(set) var isLoadingResults = false
   private(set) var resultsError: String?
   private(set) var healthState: HealthState = .idle
@@ -103,6 +105,8 @@ final class AppModel {
   }
 
   func clearAuthenticatedAccount() {
+    navigationPaths = [:]
+    liveRaceWeekId = nil
     bootstrap = nil
     accountError = nil
     entryActionMessage = nil
@@ -259,7 +263,11 @@ final class AppModel {
     }
 
     do {
-      liveRaceState = .loaded(try await apiClient.fetchLiveRace(token: token))
+      let accountId = bootstrap?.user.id
+      let weekId = liveRaceWeekId
+      let race = try await apiClient.fetchLiveRace(token: token, weekId: weekId)
+      guard bootstrap?.user.id == accountId, liveRaceWeekId == weekId else { return }
+      liveRaceState = .loaded(race)
     } catch is CancellationError {
       return
     } catch {

@@ -42,6 +42,12 @@ afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); vi.clearAllMocks(); })
 
 const input = { environment: "sandbox" as const, deviceToken: "a".repeat(64), payload: { aps: { alert: "Test" } }, collapseKey: "event-id", expiresAt: new Date("2026-09-25T00:00:00Z") };
 describe("APNs transport", () => {
+  it("uses the ActivityKit topic and low-priority updates without altering ordinary alerts", async () => {
+    await sendNativePush({ ...input, pushType: "liveactivity", priority: "5" });
+    expect(headers["apns-topic"]).toBe("app.anygivenpick.ios.push-type.liveactivity");
+    expect(headers["apns-push-type"]).toBe("liveactivity");
+    expect(headers["apns-priority"]).toBe("5");
+  });
   it("signs a valid ES256 JWT and sends the correct topic/environment/expiry", async () => {
     await sendNativePush(input);
     expect(mock.connect).toHaveBeenCalledWith("https://api.sandbox.push.apple.com");

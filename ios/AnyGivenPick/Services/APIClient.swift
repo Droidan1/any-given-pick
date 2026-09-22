@@ -46,6 +46,25 @@ struct APIClient: Sendable {
     )
   }
 
+  func liveActivitySettings(token: String, installationId: String) async throws -> LiveActivitySettings {
+    var url = URLComponents(url: baseURL.appending(path: "api/mobile/v1/live-activities/device"), resolvingAgainstBaseURL: false)!
+    url.queryItems = [URLQueryItem(name: "installationId", value: installationId)]
+    return try await authenticatedRequest(url: url.url!, method: "GET", token: token, responseType: LiveActivitySettings.self)
+  }
+  func registerLiveActivities(token: String, input: LiveActivityRegistration) async throws -> LiveActivitySettings {
+    try await authenticatedRequest(path: "api/mobile/v1/live-activities/device", method: "PUT", token: token, body: input, responseType: LiveActivitySettings.self)
+  }
+  func removeLiveActivities(token: String, installationId: String) async throws -> LiveActivityOK {
+    try await authenticatedRequest(path: "api/mobile/v1/live-activities/device", method: "DELETE", token: token,
+      body: LiveActivityCommand(installationId: installationId), responseType: LiveActivityOK.self)
+  }
+  func followLiveGame(token: String, input: LiveActivityCommand) async throws -> LiveActivitySeed {
+    try await authenticatedRequest(path: "api/mobile/v1/live-activities/session", method: "POST", token: token, body: input, responseType: LiveActivitySeed.self)
+  }
+  func updateLiveActivity(token: String, input: LiveActivityCommand, stop: Bool = false) async throws -> LiveActivityOK {
+    try await authenticatedRequest(path: "api/mobile/v1/live-activities/session", method: stop ? "DELETE" : "PUT", token: token, body: input, responseType: LiveActivityOK.self)
+  }
+
   func fetchLivePicks(token: String, weekId: String) async throws -> [MobileLivePlayerPicks] {
     var components = URLComponents(
       url: baseURL.appending(path: "api/picks/live"),
@@ -81,9 +100,11 @@ struct APIClient: Sendable {
     return envelope.results
   }
 
-  func fetchLiveRace(token: String) async throws -> MobileLiveRace {
+  func fetchLiveRace(token: String, weekId: String? = nil) async throws -> MobileLiveRace {
+    var url = URLComponents(url: baseURL.appending(path: "api/mobile/v1/race"), resolvingAgainstBaseURL: false)!
+    if let weekId { url.queryItems = [URLQueryItem(name: "weekId", value: weekId)] }
     let envelope: MobileLiveRaceEnvelope = try await authenticatedRequest(
-      path: "api/mobile/v1/race",
+      url: url.url!,
       method: "GET",
       token: token,
       responseType: MobileLiveRaceEnvelope.self
