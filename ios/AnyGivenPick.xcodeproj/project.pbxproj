@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A0A0A0A0A0A0A0A0A0A0A001 /* LiveRaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0B0B0B0B0B0B0B0B0B0B002 /* LiveRaceView.swift */; };
 		097B85B7F8800003F460BB38 /* WeekRaceAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5750423D4BD3D6E210C55A /* WeekRaceAttributes.swift */; };
 		1B7D1AA8FF3FD1E54A0CB586 /* AnyGivenPickWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C6D47BAB8D082728F0170A6 /* AnyGivenPickWidgets.swift */; };
 		2D0D84D420A26042EF7674ED /* HealthStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D11044919F40B0205956554 /* HealthStatusTests.swift */; };
@@ -70,6 +71,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B0B0B0B0B0B0B0B0B0B0B002 /* LiveRaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRaceView.swift; sourceTree = "<group>"; };
 		108932C275BE7310F12564D6 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		1D11044919F40B0205956554 /* HealthStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthStatusTests.swift; sourceTree = "<group>"; };
 		1D22AEFD071D9D90CC32C34F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -115,6 +117,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C0C0C0C0C0C0C0C0C0C0C003 /* LiveRace */ = {
+			isa = PBXGroup;
+			children = (
+				B0B0B0B0B0B0B0B0B0B0B002 /* LiveRaceView.swift */,
+			);
+			path = LiveRace;
+			sourceTree = "<group>";
+		};
 		183AFBDFC895042D045B6627 /* Picks */ = {
 			isa = PBXGroup;
 			children = (
@@ -287,6 +297,7 @@
 			children = (
 				927458F814742A319F03E29A /* Achievements */,
 				E56EAA2E7BBD9C0D9615EBA2 /* Home */,
+				C0C0C0C0C0C0C0C0C0C0C003 /* LiveRace */,
 				183AFBDFC895042D045B6627 /* Picks */,
 				9B09246E5576285A687175D0 /* Profile */,
 				C787E196EC0DB5261C32F44C /* Results */,
@@ -447,6 +458,7 @@
 				41205106C1C16DBA805FF49C /* AppRootView.swift in Sources */,
 				5A6ADC169666CEFF04DF3AA2 /* AppShellView.swift in Sources */,
 				E16477DF2DB116E1A524D5D0 /* HomeView.swift in Sources */,
+				A0A0A0A0A0A0A0A0A0A0A001 /* LiveRaceView.swift in Sources */,
 				F1397E6EDEBEA826507C1591 /* LiveActivityManager.swift in Sources */,
 				89AC0A740B031F1EC1E9A8EF /* MobileModels.swift in Sources */,
 				93C885EED5CF526D1A00E815 /* NativeTeamCrest.swift in Sources */,

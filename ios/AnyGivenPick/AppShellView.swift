@@ -2,6 +2,7 @@ import SwiftUI
 import ClerkKit
 
 enum AppRoute: Hashable {
+  case liveRace
   case standings
   case achievements
 }
@@ -43,6 +44,8 @@ struct AppShellView: View {
           tabContent(tab)
             .navigationDestination(for: AppRoute.self) { route in
               switch route {
+              case .liveRace:
+                LiveRaceView()
               case .standings:
                 StandingsView()
               case .achievements:

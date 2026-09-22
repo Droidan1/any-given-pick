@@ -22,6 +22,7 @@ struct HomeView: View {
 
             if let week = appModel.bootstrap?.currentWeek {
               currentWeekPanel(week)
+              liveRaceLink(week)
             } else if appModel.bootstrap?.user.account.canParticipate == true {
               emptyWeekPanel
             }
@@ -116,6 +117,44 @@ struct HomeView: View {
       .buttonStyle(CallSheetActionStyle())
       .disabled(appModel.bootstrap?.user.account.canParticipate != true)
     }
+  }
+
+  private func liveRaceLink(_ week: MobilePlayerWeek) -> some View {
+    NavigationLink(value: AppRoute.liveRace) {
+      HStack(spacing: 16) {
+        Image(systemName: "flag.checkered.2.crossed")
+          .font(.system(size: 25, weight: .bold))
+          .foregroundStyle(AGPTheme.field950)
+          .frame(width: 54, height: 54)
+          .background(AGPTheme.maize)
+
+        VStack(alignment: .leading, spacing: 4) {
+          Text(week.isLocked ? "LIVE NOW" : "OPENS AFTER LOCK")
+            .font(AGPTheme.label(10))
+            .foregroundStyle(week.isLocked ? AGPTheme.maize : AGPTheme.paper200)
+          Text("LIVE RACE")
+            .font(AGPTheme.display(27))
+            .foregroundStyle(AGPTheme.paper100)
+          Text(week.isLocked ? "See the projected leader and every swing call." : "Preview the race page before official cards are revealed.")
+            .font(.caption)
+            .foregroundStyle(AGPTheme.paper200)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+
+        Spacer(minLength: 4)
+
+        Image(systemName: "chevron.right")
+          .font(.headline.bold())
+          .foregroundStyle(AGPTheme.maize)
+      }
+      .frame(maxWidth: .infinity, minHeight: 90, alignment: .leading)
+      .padding(16)
+      .background(AGPTheme.field950)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .disabled(appModel.bootstrap?.user.account.canParticipate != true)
+    .accessibilityLabel(week.isLocked ? "Open the live week race" : "Open the live race preview. Official cards reveal after lock")
   }
 
   private var emptyWeekPanel: some View {

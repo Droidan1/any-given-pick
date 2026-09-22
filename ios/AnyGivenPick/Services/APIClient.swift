@@ -81,6 +81,16 @@ struct APIClient: Sendable {
     return envelope.results
   }
 
+  func fetchLiveRace(token: String) async throws -> MobileLiveRace {
+    let envelope: MobileLiveRaceEnvelope = try await authenticatedRequest(
+      path: "api/mobile/v1/race",
+      method: "GET",
+      token: token,
+      responseType: MobileLiveRaceEnvelope.self
+    )
+    return envelope.race
+  }
+
   func fetchStandings(token: String) async throws -> MobileStandingsSnapshot {
     let envelope: MobileStandingsEnvelope = try await authenticatedRequest(
       path: "api/mobile/v1/standings",

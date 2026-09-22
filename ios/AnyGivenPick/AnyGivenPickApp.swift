@@ -32,6 +32,8 @@ struct AnyGivenPickApp: App {
     #if DEBUG
     if ProcessInfo.processInfo.arguments.contains("-preview-picks-matrix") {
       ScoreboardEntryMatrixDebugHost()
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-live-race") {
+      LiveRaceDebugHost()
     } else if ProcessInfo.processInfo.arguments.contains("-preview-standings") {
       StandingsDebugHost()
     } else if ProcessInfo.processInfo.arguments.contains("-preview-achievements") {

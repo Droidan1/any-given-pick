@@ -18,6 +18,13 @@ final class AppModel {
     case stale
   }
 
+  enum LiveRaceState {
+    case idle
+    case loading
+    case loaded(MobileLiveRace)
+    case failed(String)
+  }
+
   enum StandingsState {
     case idle
     case loading
@@ -40,6 +47,7 @@ final class AppModel {
   private(set) var entryActionMessage: String?
   private(set) var isSavingEntry = false
   private(set) var livePicksFeedState: LivePicksFeedState = .idle
+  private(set) var liveRaceState: LiveRaceState = .idle
   private(set) var standingsState: StandingsState = .idle
   private(set) var achievementsState: AchievementsState = .idle
   var draftPicks: [String: String] = [:]
@@ -97,6 +105,7 @@ final class AppModel {
     mondayPrediction = nil
     draftRevision = 0
     livePicksFeedState = .idle
+    liveRaceState = .idle
     standingsState = .idle
     achievementsState = .idle
     selectedTab = .home
@@ -213,6 +222,26 @@ final class AppModel {
     }
   }
 
+  func refreshLiveRace(token: String) async {
+    let hadLoadedRace: Bool
+    if case .loaded = liveRaceState {
+      hadLoadedRace = true
+    } else {
+      hadLoadedRace = false
+      liveRaceState = .loading
+    }
+
+    do {
+      liveRaceState = .loaded(try await apiClient.fetchLiveRace(token: token))
+    } catch is CancellationError {
+      return
+    } catch {
+      if !hadLoadedRace {
+        liveRaceState = .failed(error.localizedDescription)
+      }
+    }
+  }
+
   func refreshStandings(token: String) async {
     standingsState = .loading
     do {
@@ -256,6 +285,29 @@ final class AppModel {
   }
 
   #if DEBUG
+  func loadLiveRacePreview() {
+    liveRaceState = .loaded(
+      MobileLiveRace(
+        status: "ready",
+        week: MobileResultsWeek(id: "week-3", season: 2026, seasonPhase: "regular", weekNumber: 3, label: "Week 3", entryDeadline: "2026-09-24T22:00:00.000Z"),
+        serverNow: "2026-09-25T01:30:00.000Z",
+        finalCount: 5,
+        liveCount: 3,
+        waitingCount: 8,
+        gamesToFeature: [
+          MobileLiveRaceGame(id: "game-1", kickoffAt: "2026-09-25T00:15:00.000Z", awayTeamCode: "IND", awayTeamName: "Indianapolis Colts", homeTeamCode: "HOU", homeTeamName: "Houston Texans", awayScore: 20, homeScore: 17, status: "in_progress", isMondayTiebreaker: false, displayStatus: "Live"),
+          MobileLiveRaceGame(id: "game-2", kickoffAt: "2026-09-25T00:20:00.000Z", awayTeamCode: "PIT", awayTeamName: "Pittsburgh Steelers", homeTeamCode: "CLE", homeTeamName: "Cleveland Browns", awayScore: 13, homeScore: 10, status: "in_progress", isMondayTiebreaker: false, displayStatus: "Live"),
+          MobileLiveRaceGame(id: "game-3", kickoffAt: "2026-09-28T00:20:00.000Z", awayTeamCode: "DAL", awayTeamName: "Dallas Cowboys", homeTeamCode: "NYG", homeTeamName: "New York Giants", awayScore: nil, homeScore: nil, status: "scheduled", isMondayTiebreaker: false, displayStatus: "Upcoming"),
+        ],
+        players: [
+          MobileLiveRacePlayer(userId: "player-1", displayName: "Napalm", profilePhotoUrl: nil, isCurrentUser: true, rank: 1, baselineRank: 2, rankChange: 1, correct: 5, incorrect: 1, live: 2, pending: 8, projectedCorrect: 7, maxCorrect: 15, mondayPrediction: 47, tiebreakerDiff: nil, livePickCodes: ["IND", "PIT"], unresolvedPickCodes: ["IND", "PIT", "DAL"], pathLabel: "Projected first", pathCopy: "Napalm holds the projected lead. Open calls: IND, PIT, and DAL."),
+          MobileLiveRacePlayer(userId: "player-2", displayName: "Fourth Down", profilePhotoUrl: nil, isCurrentUser: false, rank: 2, baselineRank: 1, rankChange: -1, correct: 6, incorrect: 0, live: 1, pending: 8, projectedCorrect: 6, maxCorrect: 15, mondayPrediction: 44, tiebreakerDiff: nil, livePickCodes: ["HOU"], unresolvedPickCodes: ["HOU", "PIT", "NYG"], pathLabel: "2 swing calls", pathCopy: "Fourth Down is 1 projected call back. Key differences: HOU and NYG."),
+          MobileLiveRacePlayer(userId: "player-3", displayName: "Hail Mary", profilePhotoUrl: nil, isCurrentUser: false, rank: 3, baselineRank: 3, rankChange: 0, correct: 4, incorrect: 2, live: 2, pending: 8, projectedCorrect: 6, maxCorrect: 14, mondayPrediction: 51, tiebreakerDiff: nil, livePickCodes: ["IND", "CLE"], unresolvedPickCodes: ["IND", "CLE", "DAL"], pathLabel: "1 swing call", pathCopy: "Hail Mary is 1 projected call back. Key difference: CLE."),
+        ]
+      )
+    )
+  }
+
   func loadStandingsPreview() {
     standingsState = .loaded(
       MobileStandingsSnapshot(

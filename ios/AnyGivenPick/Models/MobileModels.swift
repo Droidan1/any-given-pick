@@ -173,6 +173,59 @@ struct MobilePickDistribution: Decodable, Sendable, Identifiable {
   var id: String { gameId }
 }
 
+struct MobileLiveRaceEnvelope: Decodable, Sendable {
+  let race: MobileLiveRace
+}
+
+struct MobileLiveRace: Decodable, Sendable {
+  let status: String
+  let week: MobileResultsWeek?
+  let serverNow: String
+  let finalCount: Int
+  let liveCount: Int
+  let waitingCount: Int
+  let gamesToFeature: [MobileLiveRaceGame]
+  let players: [MobileLiveRacePlayer]
+}
+
+struct MobileLiveRaceGame: Decodable, Sendable, Identifiable {
+  let id: String
+  let kickoffAt: String
+  let awayTeamCode: String
+  let awayTeamName: String
+  let homeTeamCode: String
+  let homeTeamName: String
+  let awayScore: Int?
+  let homeScore: Int?
+  let status: String
+  let isMondayTiebreaker: Bool
+  let displayStatus: String
+}
+
+struct MobileLiveRacePlayer: Decodable, Sendable, Identifiable {
+  let userId: String
+  let displayName: String
+  let profilePhotoUrl: String?
+  let isCurrentUser: Bool
+  let rank: Int
+  let baselineRank: Int
+  let rankChange: Int
+  let correct: Int
+  let incorrect: Int
+  let live: Int
+  let pending: Int
+  let projectedCorrect: Int
+  let maxCorrect: Int
+  let mondayPrediction: Int
+  let tiebreakerDiff: Int?
+  let livePickCodes: [String]
+  let unresolvedPickCodes: [String]
+  let pathLabel: String
+  let pathCopy: String
+
+  var id: String { userId }
+}
+
 struct MobileStandingsEnvelope: Decodable, Sendable {
   let standings: MobileStandingsSnapshot
 }

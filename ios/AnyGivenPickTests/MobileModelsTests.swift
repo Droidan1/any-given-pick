@@ -164,6 +164,71 @@ final class MobileModelsTests: XCTestCase {
     XCTAssertEqual(envelope.standings.rows.first?.correctPicks, 31)
   }
 
+  func testDecodesLiveRaceEnvelope() throws {
+    let data = Data(
+      """
+      {
+        "race": {
+          "status": "ready",
+          "week": {
+            "id": "week-3",
+            "season": 2026,
+            "seasonPhase": "regular",
+            "weekNumber": 3,
+            "label": "Week 3",
+            "entryDeadline": "2026-09-24T22:00:00.000Z"
+          },
+          "serverNow": "2026-09-25T01:30:00.000Z",
+          "finalCount": 5,
+          "liveCount": 3,
+          "waitingCount": 8,
+          "gamesToFeature": [{
+            "id": "game-1",
+            "kickoffAt": "2026-09-25T00:15:00.000Z",
+            "awayTeamCode": "IND",
+            "awayTeamName": "Indianapolis Colts",
+            "homeTeamCode": "HOU",
+            "homeTeamName": "Houston Texans",
+            "awayScore": 20,
+            "homeScore": 17,
+            "status": "in_progress",
+            "isMondayTiebreaker": false,
+            "displayStatus": "Live"
+          }],
+          "players": [{
+            "userId": "user-1",
+            "displayName": "Napalm",
+            "profilePhotoUrl": null,
+            "isCurrentUser": true,
+            "rank": 1,
+            "baselineRank": 2,
+            "rankChange": 1,
+            "correct": 5,
+            "incorrect": 1,
+            "live": 2,
+            "pending": 8,
+            "projectedCorrect": 7,
+            "maxCorrect": 15,
+            "mondayPrediction": 47,
+            "tiebreakerDiff": null,
+            "livePickCodes": ["IND", "PIT"],
+            "unresolvedPickCodes": ["IND", "PIT", "DAL"],
+            "pathLabel": "Projected first",
+            "pathCopy": "Napalm holds the projected lead."
+          }]
+        }
+      }
+      """.utf8
+    )
+
+    let envelope = try JSONDecoder().decode(MobileLiveRaceEnvelope.self, from: data)
+
+    XCTAssertEqual(envelope.race.liveCount, 3)
+    XCTAssertEqual(envelope.race.gamesToFeature.first?.awayTeamCode, "IND")
+    XCTAssertEqual(envelope.race.players.first?.projectedCorrect, 7)
+    XCTAssertTrue(envelope.race.players.first?.isCurrentUser == true)
+  }
+
   func testDecodesAchievementsEnvelope() throws {
     let data = Data(
       """

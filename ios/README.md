@@ -47,6 +47,6 @@ Do not place a Clerk secret key in the iOS project. The checked-in value is the 
 ## Production roadmap
 
 - Native activity/archive and editable profile parity
-- Native live-race view
+- Dedicated native Live Race page from Home, backed by the same projection rules as the web app
 - APNs registration and server-driven notifications
 - Score-sync-driven Live Activity updates
