@@ -43,6 +43,23 @@ For the first release, verify the no-send diagnostic, public health, and protect
 
 ## Verification checklist
 
+### Private Test now (Xcode sandbox only)
+
+After deploying the backend and reinstalling the updated app from Xcode, an active admin can open **Profile → Live Activity settings → Refresh connection → Test now**. Other players and production-APNs builds do not see this tool; the server independently checks admin role, account state, installation ownership, and sandbox environment. No new migration or credential is needed beyond 0019 and the existing sandbox key.
+
+- Enable Live Activities and the matching deadline/race preference. Choose one test at a time. All cards display **PRIVATE TEST** and sample values; compact/minimal Dynamic Island views use a test-tube symbol. Tapping a test opens settings, not a real entry.
+- **Test card deadline / Test daily race:** queues a remote start twenty seconds ahead. Lock the phone; the normal minute worker should attempt the start on its next eligible pass (usually within two minutes). This tests the scheduler → APNs → device path without changing the real 30-minute / 10-minute eligibility windows.
+- **Test followed game:** starts via foreground ActivityKit just like Follow game, then uses the same server update/end path. Sample scores change on worker passes; they never come from or write to real games.
+- Each test requests an end about five minutes after its planned start. Apple/network delivery may lag. Stop test is available sooner. If the network or worker is unavailable, the card can remain stale until end delivery or Apple's system lifetime limit; manually dismiss it if necessary.
+- Refresh test status for queue/registration/failure state. “Start requested” means the phone has not returned its update token. “Registered on iPhone” does **not** prove visible UI or receipt of every update. Verify a start, changed sample value, and removal on the physical Lock Screen.
+- Idempotency keys and a per-device transaction lock prevent repeated taps creating duplicates. One working private test per device and twelve test requests per admin/hour are allowed. Test history appears for one hour; ordinary two-day session cleanup still applies.
+- Samples are stored only as prefixed Live Activity sessions, with a read-only reference to an existing published/locked/final week for the existing foreign key. Tests never write contest weeks, games, submissions, results, or other players' registrations. Admin removal, account access loss, opt-out, and environment changes prevent new test starts; an update token allows an end request.
+- Debug launch argument `-preview-live-activity-tests` renders the real settings layout with a disconnected sample model. It does not queue or send tests. Test at narrow phone widths and larger accessibility text sizes.
+
+These checks prove delivery plumbing when observed on device, **not** the real business-time triggers; keep the policy boundary tests below.
+
+### Full release checks
+
 - Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`.
 - Generate the project with `cd ios && xcodegen generate`; build both targets and run `AnyGivenPickTests` on a simulator.
 - Debug launch argument `-preview-live-activities` displays all three actual shared card layouts using example data, without making activity API requests. `-preview-live-activity-settings` opens the settings preview directly. Inspect a narrow phone and accessibility text sizes. Inspect Dynamic Island and actual Lock Screen on device as well.

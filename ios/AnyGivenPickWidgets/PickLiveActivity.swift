@@ -15,12 +15,12 @@ struct PickLiveActivity: Widget {
           PickActivityCard(attributes: context.attributes, state: context.state, stale: context.isStale)
         }
       } compactLeading: {
-        Image(systemName: context.attributes.kind == .deadline ? "timer" : context.attributes.kind == .game ? "sportscourt" : "flag.checkered")
+        Image(systemName: context.attributes.isTest == true ? "testtube.2" : context.attributes.kind == .deadline ? "timer" : context.attributes.kind == .game ? "sportscourt" : "flag.checkered")
           .foregroundStyle(ActivityColors.maize)
       } compactTrailing: {
         compact(context)
       } minimal: {
-        Image(systemName: context.isStale ? "clock.badge.exclamationmark" : "checkmark")
+        Image(systemName: context.attributes.isTest == true ? "testtube.2" : context.isStale ? "clock.badge.exclamationmark" : "checkmark")
           .foregroundStyle(ActivityColors.maize)
       }
       .keylineTint(ActivityColors.maize).widgetURL(context.attributes.destinationURL)

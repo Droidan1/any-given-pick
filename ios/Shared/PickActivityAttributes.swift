@@ -33,12 +33,14 @@ struct PickActivityAttributes: ActivityAttributes, Sendable {
   let weekLabel: String
   let kind: Kind
   let gameId: String
+  var isTest: Bool? = nil
 
   var destinationURL: URL? {
     var url = URLComponents()
     url.scheme = "anygivenpick"
     url.host = "activity"
     url.queryItems = [URLQueryItem(name: "kind", value: kind.rawValue), URLQueryItem(name: "week", value: weekId), URLQueryItem(name: "user", value: userId)]
+    if isTest == true { url.queryItems?.append(URLQueryItem(name: "test", value: "1")) }
     return url.url
   }
 }
@@ -47,6 +49,7 @@ struct ActivityDestination: Equatable {
   let kind: PickActivityAttributes.Kind
   let weekId: String
   let userId: String
+  let isTest: Bool
   init?(url: URL) {
     guard url.scheme == "anygivenpick", url.host == "activity", let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
     let items = parts.queryItems ?? []
@@ -54,7 +57,7 @@ struct ActivityDestination: Equatable {
     guard let kind = value("kind").flatMap(PickActivityAttributes.Kind.init(rawValue:)),
       let week = value("week"), UUID(uuidString: week) != nil,
       let user = value("user"), UUID(uuidString: user) != nil else { return nil }
-    self.kind = kind; weekId = week; userId = user
+    self.kind = kind; weekId = week; userId = user; isTest = value("test") == "1"
   }
 }
 

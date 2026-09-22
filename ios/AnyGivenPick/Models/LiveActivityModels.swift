@@ -10,13 +10,31 @@ struct LiveActivitySessionSummary: Codable, Identifiable, Sendable {
   let kind: String
   let gameId: String?
   let status: String
+  var isTest: Bool? = nil
+  var failureCount: Int? = nil
   var id: String { sessionId }
+  var isRunning: Bool { ["pending", "starting", "active", "ending"].contains(status) }
+  var title: String { kind == "deadline" ? "Card deadline" : kind == "race" ? "Daily race" : "Followed game" }
+  var testStatus: String {
+    if (failureCount ?? 0) > 0 && isRunning { return "Delivery retry pending. Refresh shortly." }
+    switch status {
+    case "pending": return "Queued — lock your iPhone"
+    case "starting": return "Start requested — waiting for iPhone registration"
+    case "active": return "Registered on iPhone — check the Lock Screen"
+    case "ending": return "Ending — waiting for delivery"
+    case "ended": return "Test finished"
+    case "dismissed": return "Test stopped"
+    case "failed": return "Delivery failed — refresh, then try again"
+    default: return "Refresh to check the test"
+    }
+  }
 }
 struct LiveActivitySettings: Codable, Sendable {
   let registered: Bool
   let deliveryConfigured: Bool
   let preferences: LiveActivityPreferences
   let sessions: [LiveActivitySessionSummary]
+  var canTest: Bool? = nil
 }
 struct LiveActivityRegistration: Encodable {
   let installationId: String
@@ -48,3 +66,14 @@ struct LiveActivitySeed: Decodable {
   let state: PickActivityAttributes.ContentState
 }
 struct LiveActivityOK: Decodable { let ok: Bool }
+struct LiveActivityTestCommand: Encodable {
+  let installationId: String
+  let kind: PickActivityAttributes.Kind
+  let requestId: String
+}
+struct LiveActivityTestResponse: Decodable {
+  let sessionId: String
+  let mode: String
+  let endsAt: String
+  let seed: LiveActivitySeed?
+}

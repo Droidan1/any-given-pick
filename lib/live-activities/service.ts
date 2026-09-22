@@ -1,7 +1,8 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { clerkClient } from "@clerk/nextjs/server";
-import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { hasAdminRole } from "@/lib/auth/admin";
 import { getDb } from "@/lib/db";
 import { contestEntries, contestWeeks, games, users, liveActivityDevices as devices, liveActivitySessions as sessions } from "@/lib/db/schema";
 import { formatWeekName } from "@/lib/admin/schedule-import";
@@ -11,6 +12,7 @@ import { buildLiveWeekRace } from "@/lib/race/rules";
 import { refreshScoreSyncIfDueWithHealth } from "@/lib/scores/health";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 import { activityPayload, canFollow, deadlineWindow, emptyState, raceWindows, MINUTE, SESSION_MS, type ActivityAttributes, type ActivityKind, type ActivityState } from "./policy";
+import { isPrivateTest, privateTestContent, PRIVATE_TEST_DURATION, PRIVATE_TEST_PREFIX } from "./private-test";
 
 export const liveActivitiesEnabled = () => process.env.LIVE_ACTIVITIES_ENABLED === "true";
 export class LiveActivityInputError extends Error {}
@@ -32,8 +34,47 @@ export async function stopDevice(device: Device) {
 }
 
 export async function sessionList(deviceId: string) {
-  return getDb().select({ sessionId: sessions.id, kind: sessions.kind, gameId: sessions.gameId, status: sessions.status })
-    .from(sessions).where(and(eq(sessions.deviceId, deviceId), inArray(sessions.status, workingStatuses)));
+  return getDb().select({ sessionId: sessions.id, kind: sessions.kind, gameId: sessions.gameId, status: sessions.status,
+    isTest: sql<boolean>`${sessions.sessionKey} like 'private-test:%'`, failureCount: sessions.failureCount })
+    .from(sessions).where(and(eq(sessions.deviceId, deviceId), or(inArray(sessions.status, workingStatuses),
+      and(sql`${sessions.sessionKey} like 'private-test:%'`, sql`${sessions.endsAt} > now() - interval '1 hour'`))))
+    .orderBy(desc(sessions.startsAt)).limit(50);
+}
+
+/** Only called after admin authorization. Idempotent requests and a device lock prevent duplicate tests. */
+export async function startPrivateTest(device: Device, kind: ActivityKind, requestId: string, now = new Date()) {
+  if (device.environment !== "sandbox") throw new LiveActivityInputError("Private tests require an Xcode sandbox build.");
+  const db = getDb();
+  const session = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${device.id}))`);
+    const [fresh] = await tx.select().from(devices).where(and(eq(devices.id, device.id), eq(devices.userId, device.userId))).for("update");
+    if (!fresh || fresh.clerkSessionId !== device.clerkSessionId || fresh.environment !== "sandbox"
+      || !fresh.enabled || !fresh.authorized) throw new LiveActivityInputError("Reconnect and enable Live Activities first.");
+    if ((kind === "deadline" && !fresh.deadline) || (kind === "race" && !fresh.race)) throw new LiveActivityInputError("Enable this activity's preference first.");
+    if (!apnsConfigured("sandbox")) throw new LiveActivityInputError("Sandbox push delivery is not configured.");
+    if (kind !== "game" && !fresh.pushToStartToken) throw new LiveActivityInputError("Refresh the connection to register Apple's automatic-start token.");
+    const key = `${PRIVATE_TEST_PREFIX}${requestId}`;
+    const [existing] = await tx.select().from(sessions).where(and(eq(sessions.deviceId, device.id), eq(sessions.sessionKey, key)));
+    if (existing) {
+      if (existing.kind !== kind) throw new LiveActivityInputError("This request was already used for another test.");
+      if (existing.endsAt <= now || !["pending", "starting", "active"].includes(existing.status)) throw new LiveActivityInputError("This test has ended. Refresh and start a new test.");
+      return existing;
+    }
+    const [running] = await tx.select({ id: sessions.id }).from(sessions).where(and(eq(sessions.deviceId, device.id),
+      sql`${sessions.sessionKey} like 'private-test:%'`, inArray(sessions.status, workingStatuses)));
+    if (running) throw new LiveActivityInputError("Stop the current private test before starting another.");
+    // The existing foreign key requires a week; it is only a reference. No contest rows are written.
+    const [week] = await tx.select({ id: contestWeeks.id }).from(contestWeeks).where(inArray(contestWeeks.status, ["published", "locked", "final"]))
+      .orderBy(desc(contestWeeks.entryDeadline)).limit(1);
+    if (!week) throw new LiveActivityInputError("Publish a week before testing Live Activities.");
+    const startsAt = new Date(now.getTime() + (kind === "game" ? 0 : 20_000));
+    const [created] = await tx.insert(sessions).values({ deviceId: device.id, contestWeekId: week.id, kind, sessionKey: key,
+      startsAt, endsAt: new Date(startsAt.getTime() + PRIVATE_TEST_DURATION), updatedAt: now }).returning();
+    return created;
+  });
+  const content = privateTestContent(session, device, now);
+  return { sessionId: session.id, mode: kind === "game" ? "local" : "remote", endsAt: session.endsAt.toISOString(),
+    seed: kind === "game" ? { attributes: content.attributes, state: content.state } : null };
 }
 
 /** Foreground-only game starts: the caller receives a seed and ActivityKit produces its update token. */
@@ -63,6 +104,7 @@ export async function followGame(device: Device, gameId: string, now = new Date(
 }
 
 async function buildContent(session: Session, device: Device, now: Date) {
+  if (isPrivateTest(session.sessionKey)) return privateTestContent(session, device, now);
   const db = getDb();
   const [week] = await db.select().from(contestWeeks).where(eq(contestWeeks.id, session.contestWeekId)).limit(1);
   if (!week || week.status === "draft") return null;
@@ -138,6 +180,7 @@ async function queueAutomatic(now: Date) {
 async function claim(now: Date) {
   return getDb().transaction(async (tx) => {
     const [session] = await tx.select().from(sessions).where(and(inArray(sessions.status, workingStatuses),
+      or(lte(sessions.startsAt, now), eq(sessions.status, "ending")),
       or(isNull(sessions.leaseUntil), lt(sessions.leaseUntil, now)),
       // Pending manual follows are created locally; never send a second remote start.
       or(sql`${sessions.kind} <> 'game'`, sql`${sessions.status} <> 'pending'`, lt(sessions.updatedAt, new Date(now.getTime() - 5 * MINUTE))),
@@ -166,7 +209,9 @@ async function deliver(session: Session, now: Date) {
   }
   if (!authorized) { await stopDevice(device); device.enabled = false; }
   const content = await buildContent(session, device, now);
-  const shouldEnd = !content || content.shouldEnd || !authorized;
+  // Test privilege is checked again by the worker, not trusted from the client or queue.
+  const testAllowed = !isPrivateTest(session.sessionKey) || (device.environment === "sandbox" && await hasAdminRole(device.userId));
+  const shouldEnd = !content || content.shouldEnd || !authorized || !testAllowed;
   if ((session.kind === "game" && session.status === "pending") || (shouldEnd && !session.updateToken)) {
     await db.update(sessions).set({ status: "ended", updateToken: null, leaseUntil: null, updatedAt: now }).where(eq(sessions.id, session.id));
     return;
@@ -181,6 +226,11 @@ async function deliver(session: Session, now: Date) {
   // Re-read ownership/preferences just before sending; settings changes invalidate queued work.
   const fresh = await ownedDevice(device.installationId, device.userId);
   if (!fresh || fresh.clerkSessionId !== device.clerkSessionId) return;
+  // Never route even an end for a sandbox test to a production APNs token.
+  if (isPrivateTest(session.sessionKey) && fresh.environment !== "sandbox") {
+    await db.update(sessions).set({ status: "ended", updateToken: null, leaseUntil: null, updatedAt: now }).where(eq(sessions.id, session.id));
+    return;
+  }
   const [latest] = await db.select().from(sessions).where(eq(sessions.id, session.id)).limit(1);
   if (!latest || ["ended", "dismissed", "failed"].includes(latest.status)) return;
   if (latest.status === "ending" || !fresh.enabled || !fresh.authorized

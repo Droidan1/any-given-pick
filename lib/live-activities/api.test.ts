@@ -1,19 +1,67 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), user: vi.fn(), rate: vi.fn(), enabled: vi.fn(), owned: vi.fn(), follow: vi.fn(), stop: vi.fn(), db: vi.fn(), list: vi.fn() }));
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), user: vi.fn(), rate: vi.fn(), enabled: vi.fn(), owned: vi.fn(), follow: vi.fn(), stop: vi.fn(), db: vi.fn(), list: vi.fn(), admin: vi.fn(), test: vi.fn() }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/auth/app-user", () => ({ requireAppUser: mocks.user }));
+vi.mock("@/lib/auth/admin", () => ({ hasAdminRole: mocks.admin }));
 vi.mock("@/lib/security/rate-limit", () => ({ consumeRateLimit: mocks.rate }));
 vi.mock("@/lib/db", () => ({ getDb: mocks.db }));
 vi.mock("@/lib/native-push/apns", () => ({ apnsConfigured: () => true }));
-vi.mock("./service", () => ({ liveActivitiesEnabled: mocks.enabled, ownedDevice: mocks.owned, followGame: mocks.follow, stopDevice: mocks.stop, sessionList: mocks.list, LiveActivityInputError: class extends Error {} }));
+vi.mock("./service", () => ({ liveActivitiesEnabled: mocks.enabled, ownedDevice: mocks.owned, followGame: mocks.follow, startPrivateTest: mocks.test, stopDevice: mocks.stop, sessionList: mocks.list, LiveActivityInputError: class extends Error {} }));
 import { activityHandler } from "./api";
 const installationId = "00000000-0000-4000-8000-000000000001";
 const gameId = "00000000-0000-4000-8000-000000000002";
-const call = (resource: "device" | "session", method: string, body?: unknown) => activityHandler(resource)(new Request(`https://example.test/api/mobile/v1/live-activities/${resource}?installationId=${installationId}`, { method, ...(body ? { body: JSON.stringify(body) } : {}) }));
+const call = (resource: "device" | "session" | "test", method: string, body?: unknown) => activityHandler(resource)(new Request(`https://example.test/api/mobile/v1/live-activities/${resource}?installationId=${installationId}`, { method, ...(body ? { body: JSON.stringify(body) } : {}) }));
 beforeEach(() => {
   vi.clearAllMocks(); mocks.auth.mockResolvedValue({ userId: "clerk-a", sessionId: "session-a" });
   mocks.user.mockResolvedValue({ id: "app-a", accountState: "active" }); mocks.enabled.mockReturnValue(true);
   mocks.rate.mockResolvedValue({ allowed: true }); mocks.db.mockReturnValue({}); mocks.owned.mockResolvedValue(undefined); mocks.list.mockResolvedValue([]);
+  mocks.admin.mockResolvedValue(false);
+});
+
+describe("Private Test now boundary", () => {
+  const input = { installationId, kind: "race", requestId: gameId };
+  it("rejects signed-out, inactive, and non-admin users", async () => {
+    mocks.auth.mockResolvedValue({}); expect((await call("test", "POST", input)).status).toBe(401);
+    mocks.auth.mockResolvedValue({ userId: "clerk-a", sessionId: "session-a" });
+    expect((await call("test", "POST", input)).status).toBe(403);
+    mocks.admin.mockResolvedValue(true); mocks.user.mockResolvedValue({ id: "app-a", accountState: "suspended" });
+    expect((await call("test", "POST", input)).status).toBe(403);
+    expect(mocks.test).not.toHaveBeenCalled();
+  });
+  it("never tests an unowned or production installation", async () => {
+    mocks.admin.mockResolvedValue(true);
+    expect((await call("test", "POST", input)).status).toBe(403);
+    mocks.owned.mockResolvedValue({ environment: "production" });
+    expect((await call("test", "POST", input)).status).toBe(403);
+    expect(mocks.owned).toHaveBeenCalledWith(installationId, "app-a");
+    expect(mocks.test).not.toHaveBeenCalled();
+  });
+  it("rejects client-supplied recipients, tokens, scores, and deadlines", async () => {
+    mocks.admin.mockResolvedValue(true);
+    for (const extra of [{ userId: "victim" }, { deviceToken: "ab".repeat(32) }, { score: 30 }, { deadline: "tomorrow" }]) {
+      expect((await call("test", "POST", { ...input, ...extra })).status).toBe(400);
+    }
+    expect(mocks.test).not.toHaveBeenCalled();
+  });
+  it("applies a separate private-test limit and passes only validated data", async () => {
+    const device = { id: "d", environment: "sandbox" };
+    mocks.admin.mockResolvedValue(true); mocks.owned.mockResolvedValue(device);
+    mocks.rate.mockResolvedValueOnce({ allowed: true }).mockResolvedValueOnce({ allowed: false });
+    expect((await call("test", "POST", input)).status).toBe(429);
+    expect(mocks.test).not.toHaveBeenCalled();
+    mocks.test.mockResolvedValue({ mode: "remote", sessionId: gameId });
+    const response = await call("test", "POST", input);
+    expect(response.status).toBe(200); expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(mocks.test).toHaveBeenCalledWith(device, "race", gameId);
+  });
+  it("only exposes test controls to a sandbox admin; legacy clients still get normal settings", async () => {
+    mocks.owned.mockResolvedValue({ id: "d", environment: "sandbox" });
+    expect(await (await call("device", "GET")).json()).toMatchObject({ canTest: false, registered: true });
+    mocks.admin.mockResolvedValue(true);
+    expect(await (await call("device", "GET")).json()).toMatchObject({ canTest: true });
+    mocks.owned.mockResolvedValue({ id: "d", environment: "production" });
+    expect(await (await call("device", "GET")).json()).toMatchObject({ canTest: false });
+  });
 });
 describe("Live Activity API security", () => {
   it("rejects unauthenticated access before reading data", async () => {

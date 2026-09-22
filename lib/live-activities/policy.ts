@@ -81,6 +81,7 @@ export type ActivityState = {
 };
 export type ActivityAttributes = {
   sessionId: string; userId: string; weekId: string; weekLabel: string; kind: ActivityKind; gameId: string;
+  isTest?: boolean;
 };
 export function emptyState(now: Date): ActivityState {
   const timestamp = Math.floor(now.getTime() / 1000);

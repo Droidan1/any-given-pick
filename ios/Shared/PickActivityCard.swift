@@ -34,7 +34,7 @@ struct PickActivityCard: View {
               .accessibilityLabel("Time remaining until your card locks")
           } else { Text("LOCKED").font(.headline.bold()) }
         }
-        Text("Tap to finish and submit").font(.caption)
+        Text(attributes.isTest == true ? "Sample picks only · Tap for test controls" : "Tap to finish and submit").font(.caption)
       case .game:
         HStack {
           team(state.awayCode, score: state.awayScore)
@@ -48,7 +48,7 @@ struct PickActivityCard: View {
           if state.gameStatus == "scheduled" { Text(state.deadlineDate, style: .time).font(.caption) }
           else { Text(state.clock.isEmpty ? state.detail : state.clock).font(.caption) }
           Spacer()
-          Text("Following game").font(.caption)
+          Text(attributes.isTest == true ? "Sample scores" : "Following game").font(.caption)
         }
       case .race:
         HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -58,7 +58,7 @@ struct PickActivityCard: View {
           Spacer(minLength: 0)
           metric("\(state.remaining)", label: "TO GO")
         }
-        Text(state.behind == 0 ? "Level with the projected lead · \(state.playerCount) players" : "\(state.behind) picks off the projected lead · \(state.playerCount) players")
+        Text(attributes.isTest == true ? "Sample standings only · Tap for test controls" : state.behind == 0 ? "Level with the projected lead · \(state.playerCount) players" : "\(state.behind) picks off the projected lead · \(state.playerCount) players")
           .font(.caption).lineLimit(2)
       }
       if stale {

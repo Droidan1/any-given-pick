@@ -20,6 +20,17 @@ struct LiveActivitySettingsView: View {
       Section("This iPhone") {
         setting("Enable Live Activities", detail: "You can turn these off at any time.", key: \.enabled)
       }.disabled(!activities.registered || !activities.authorized || activities.busy)
+      if activities.canTest {
+        Section {
+          NavigationLink {
+            LiveActivityPrivateTestView()
+          } label: {
+            Label("Test now", systemImage: "testtube.2").font(.headline)
+          }.frame(minHeight: 44).accessibilityIdentifier("live-activity-private-tests")
+        } header: { Text("Private admin tools") } footer: {
+          Text("Only on your Xcode sandbox build. Test all three activities with sample data.")
+        }
+      }
       Section {
         setting("Card deadline", detail: "Starts 30 minutes before lock if you haven't submitted. Ends when you submit or the card locks.", key: \.deadline)
         setting("Daily week race", detail: "Starts 10 minutes before the first kickoff on each game day, for your official card. A fresh session covers long days.", key: \.race)
@@ -32,8 +43,8 @@ struct LiveActivitySettingsView: View {
         NavigationLink(value: AppRoute.followGames) { Label("Follow a game", systemImage: "sportscourt") }.frame(minHeight: 44)
       }
       Section("Active on this iPhone") {
-        if activities.sessions.isEmpty { Text("No activities running yet.").foregroundStyle(.secondary) }
-        ForEach(activities.sessions) { session in
+        if activities.sessions.filter({ $0.isTest != true }).isEmpty { Text("No activities running yet.").foregroundStyle(.secondary) }
+        ForEach(activities.sessions.filter { $0.isTest != true }) { session in
           HStack {
             Text(session.kind == "deadline" ? "Card deadline" : session.kind == "race" ? "Daily race" : "Followed game")
             Spacer()
@@ -57,6 +68,76 @@ struct LiveActivitySettingsView: View {
     }
   }
 }
+
+struct LiveActivityPrivateTestView: View {
+  @Environment(LiveActivityManager.self) private var activities
+  var body: some View {
+    Form {
+      Section {
+        Label("PRIVATE TEST", systemImage: "lock.shield").font(AGPTheme.label(22))
+        Text(activities.testMessage).fixedSize(horizontal: false, vertical: true)
+          .accessibilityIdentifier("live-activity-test-status")
+        Text(activities.statusMessage).font(.subheadline).foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+        Button("Refresh test status") { Task { await activities.refresh() } }.frame(minHeight: 44).disabled(activities.busy)
+        if activities.busy { ProgressView("Contacting server…") }
+      } footer: { Text("One test at a time. Admin access, Live Activities, and the matching preference must be enabled. Delivery timing depends on Apple and the network.") }
+      .listRowBackground(AGPTheme.paper200)
+      if activities.canTest {
+        Section("Choose a 5-minute test") {
+          testButton(.deadline, title: "Test card deadline", detail: "Scheduled push start, countdown, and sample saved-pick updates.", symbol: "timer")
+          testButton(.game, title: "Test followed game", detail: "Starts when tapped. Server pushes sample score updates.", symbol: "sportscourt")
+          testButton(.race, title: "Test daily race", detail: "Scheduled push start with changing sample ranks and scores.", symbol: "flag.checkered")
+        }
+        Section("Recent private tests") {
+          if activities.tests.isEmpty { Text("No private tests yet.").foregroundStyle(.secondary) }
+          ForEach(activities.tests) { session in
+            VStack(alignment: .leading, spacing: 8) {
+              Text(session.title).font(.headline)
+              Text(session.testStatus).font(.subheadline).foregroundStyle(.secondary)
+              if session.isRunning {
+                Button("Stop test", role: .destructive) { Task { await activities.stop(sessionId: session.sessionId); await activities.refresh() } }
+                  .frame(minHeight: 44).disabled(activities.busy)
+                  .accessibilityLabel("Stop \(session.title) test")
+              }
+            }.padding(.vertical, 4)
+          }
+        }
+      } else {
+        Section { Text("Private tests are available only to an active admin using an Xcode sandbox build. Refresh your connection to check access.") }
+      }
+      Section("What this proves") {
+        Text("Watch the Lock Screen for a start, a changed sample value, and an end. Server acceptance alone does not prove the iPhone displayed it.")
+        Text("These are delivery tests. Real 30-minute deadline and 10-minute game-day eligibility rules are unchanged.")
+      }
+    }
+    .scrollContentBackground(.hidden).background(AGPTheme.paper100).tint(AGPTheme.field950)
+    .navigationTitle("Test now").navigationBarTitleDisplayMode(.inline)
+    .task { await activities.refresh() }
+    .refreshable { await activities.refresh() }
+  }
+  private func testButton(_ kind: PickActivityAttributes.Kind, title: String, detail: String, symbol: String) -> some View {
+    Button { Task { await activities.testNow(kind) } } label: {
+      VStack(alignment: .leading, spacing: 6) {
+        Label(title, systemImage: symbol).font(.headline)
+        Text(detail).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+      }.padding(.vertical, 8).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    }
+    .accessibilityIdentifier("test-live-activity-\(kind.rawValue)")
+    .disabled(activities.busy || activities.hasRunningTest || !activities.preferences.enabled || !activities.authorized || !activities.deliveryConfigured
+      || (kind == .deadline && (!activities.preferences.deadline || !activities.supportsAutomaticStarts))
+      || (kind == .race && (!activities.preferences.race || !activities.supportsAutomaticStarts)))
+  }
+}
+
+#if DEBUG
+#Preview("Private tests") {
+  NavigationStack { LiveActivityPrivateTestView() }.environment(LiveActivityManager.preview())
+}
+#Preview("Private tests - Large text") {
+  NavigationStack { LiveActivityPrivateTestView() }.environment(LiveActivityManager.preview()).environment(\.dynamicTypeSize, .accessibility3)
+}
+#endif
 
 struct FollowGamesView: View {
   @Environment(AppModel.self) private var appModel

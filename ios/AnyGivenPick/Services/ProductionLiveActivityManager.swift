@@ -10,6 +10,8 @@ final class LiveActivityManager {
   private(set) var busy = false
   private(set) var registered = false
   private(set) var deliveryConfigured = false
+  private(set) var canTest = false
+  private(set) var testMessage = "Choose one test, then lock your iPhone. No real picks, scores, or deadlines will change."
   private(set) var authorized = ActivityAuthorizationInfo().areActivitiesEnabled
   var pendingDestination: ActivityDestination?
   var supportsAutomaticStarts: Bool { if #available(iOS 17.2, *) { true } else { false } }
@@ -23,6 +25,9 @@ final class LiveActivityManager {
   private var tasks: [Task<Void, Never>] = []
   private var activityTasks: [String: [Task<Void, Never>]] = [:]
   private var needsRegistration = false
+  private var pendingTest: (kind: PickActivityAttributes.Kind, requestId: String)?
+  var tests: [LiveActivitySessionSummary] { sessions.filter { $0.isTest == true } }
+  var hasRunningTest: Bool { tests.contains { $0.isRunning } }
 
   init(api: APIClient = .production, observe: Bool = true) {
     self.api = api
@@ -59,6 +64,7 @@ final class LiveActivityManager {
     if self.userId != userId {
       generation = UUID(); self.userId = userId; loaded = false; registered = false
       preferences = .init(); sessions = []
+      canTest = false; pendingTest = nil
       await endLocal(exceptUser: userId)
     }
     self.tokenProvider = tokenProvider
@@ -86,6 +92,7 @@ final class LiveActivityManager {
         environment: environment, pushToStartToken: startToken, authorized: authorized, preferences: preferences))
       guard generation == requestGeneration else { return }
       registered = settings.registered; deliveryConfigured = settings.deliveryConfigured; sessions = settings.sessions
+      canTest = settings.canTest == true
       statusMessage = !authorized ? "Live Activities are disabled in iPhone Settings."
         : !preferences.enabled ? "Live Activities are off on this iPhone."
         : !deliveryConfigured ? "Saved. Apple push delivery still needs server configuration."
@@ -107,6 +114,49 @@ final class LiveActivityManager {
   func save(_ value: LiveActivityPreferences) async {
     guard !busy, loaded else { return }
     preferences = value; await refresh()
+  }
+  func testNow(_ kind: PickActivityAttributes.Kind) async {
+    guard canTest, !busy, !hasRunningTest, authorized, preferences.enabled, let tokenProvider, let userId else { return }
+    busy = true
+    let requestGeneration = generation
+    // Preserve this key after an uncertain network response; a retry cannot queue a second test.
+    let request = pendingTest?.kind == kind ? pendingTest! : (kind: kind, requestId: UUID().uuidString)
+    pendingTest = request
+    defer {
+      busy = false
+      if needsRegistration { needsRegistration = false; Task { await refresh() } }
+    }
+    do {
+      guard let token = try await tokenProvider(), generation == requestGeneration else { return }
+      let result = try await api.testLiveActivity(token: token, input: .init(installationId: installationId, kind: kind, requestId: request.requestId))
+      guard generation == requestGeneration else { return }
+      if result.mode == "local" {
+        guard let seed = result.seed, seed.attributes.userId == userId, seed.attributes.isTest == true else { throw APIError.invalidResponse }
+        if !Activity<PickActivityAttributes>.activities.contains(where: { $0.attributes.sessionId == result.sessionId }) {
+          do {
+            let activity = try Activity.request(attributes: seed.attributes,
+              content: ActivityContent(state: seed.state, staleDate: seed.state.staleDate), pushType: .token)
+            observeActivity(activity)
+            if let pushToken = activity.pushToken { await upload(activity, token: pushToken) }
+          } catch {
+            _ = try? await api.updateLiveActivity(token: token, input: .init(installationId: installationId, sessionId: result.sessionId), stop: true)
+            throw error
+          }
+        }
+        testMessage = "Sample game started. Lock your iPhone to watch server score updates. It ends after about 5 minutes."
+      } else {
+        testMessage = "Test queued. Lock your iPhone now. The scheduler can start it after 20 seconds, usually within 2 minutes. Sample values update until it ends after about 5 minutes."
+      }
+      pendingTest = nil
+      let settings = try await api.liveActivitySettings(token: token, installationId: installationId)
+      guard generation == requestGeneration else { return }
+      sessions = settings.sessions; canTest = settings.canTest == true
+    } catch {
+      if generation == requestGeneration {
+        if case APIError.server(_, let code) = error, (400..<500).contains(code) { pendingTest = nil }
+        testMessage = "\(error.localizedDescription) Refresh the connection before retrying."
+      }
+    }
   }
   func follow(gameId: String) async {
     guard !busy, authorized, preferences.enabled, let tokenProvider, let userId else { return }
@@ -185,6 +235,7 @@ final class LiveActivityManager {
   func disconnect() async {
     generation = UUID(); userId = nil; tokenProvider = nil; loaded = false; registered = false; sessions = []; preferences = .init()
     pendingDestination = nil; await endLocal()
+    canTest = false; pendingTest = nil
   }
   private func endLocal(exceptUser: String? = nil) async {
     for activity in Activity<PickActivityAttributes>.activities where activity.attributes.userId != exceptUser { await Self.endActivity(id: activity.id) }
@@ -202,6 +253,7 @@ final class LiveActivityManager {
     let model = LiveActivityManager(observe: false)
     model.loaded = true; model.registered = true; model.deliveryConfigured = true; model.authorized = true
     model.preferences.enabled = true; model.statusMessage = "Preview only. No notifications will be sent."
+    model.canTest = true
     return model
   }
   #endif

@@ -2,15 +2,17 @@ import { auth } from "@clerk/nextjs/server";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAppUser } from "@/lib/auth/app-user";
+import { hasAdminRole } from "@/lib/auth/admin";
 import { getDb } from "@/lib/db";
 import { liveActivityDevices as devices, liveActivitySessions as sessions } from "@/lib/db/schema";
 import { apnsConfigured, type APNsEnvironment } from "@/lib/native-push/apns";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { activityUpdateSchema, defaultPreferences, followSchema, installationSchema, registrationSchema, stopSchema } from "./policy";
-import { followGame, liveActivitiesEnabled, ownedDevice, sessionList, stopDevice, LiveActivityInputError } from "./service";
+import { followGame, liveActivitiesEnabled, ownedDevice, sessionList, startPrivateTest, stopDevice, LiveActivityInputError } from "./service";
+import { privateTestAllowed, privateTestSchema } from "./private-test";
 
 const json = (body: object, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
-export function activityHandler(resource: "device" | "session") {
+export function activityHandler(resource: "device" | "session" | "test") {
   return async (request: Request) => {
     const { userId, sessionId } = await auth();
     if (!userId || !sessionId) return json({ error: "Authentication required." }, 401);
@@ -25,6 +27,7 @@ export function activityHandler(resource: "device" | "session") {
         if (!parsed.success) return json({ error: "Invalid installation." }, 400);
         const device = await ownedDevice(parsed.data.installationId, user.id);
         return json({ registered: Boolean(device), deliveryConfigured: device ? apnsConfigured(device.environment as APNsEnvironment) : false,
+          canTest: privateTestAllowed(user.accountState, device?.environment === "sandbox" && await hasAdminRole(user.id), device?.environment),
           preferences: device ? { enabled: device.enabled, deadline: device.deadline, race: device.race } : defaultPreferences,
           sessions: device ? await sessionList(device.id) : [] });
       }
@@ -41,6 +44,17 @@ export function activityHandler(resource: "device" | "session") {
         return json({ ok: true });
       }
       if (user.accountState !== "active") return json({ error: "An approved account is required." }, 403);
+      if (resource === "test") {
+        if (!(await hasAdminRole(user.id))) return json({ error: "Private tests are restricted to administrators." }, 403);
+        const parsed = privateTestSchema.safeParse(input);
+        if (!parsed.success) return json({ error: "Invalid private test request." }, 400);
+        const device = await ownedDevice(parsed.data.installationId, user.id);
+        if (!device || !privateTestAllowed(user.accountState, true, device.environment)) return json({ error: "Use your own registered Xcode sandbox build." }, 403);
+        const testRate = await consumeRateLimit({ scope: "live_activity_private_test", identifier: user.id, limit: 12, windowMs: 60 * 60 * 1000 });
+        if (!testRate.allowed) return json({ error: "Private test limit reached. Try again in an hour." }, 429);
+        try { return json(await startPrivateTest(device, parsed.data.kind, parsed.data.requestId)); }
+        catch (error) { return json({ error: error instanceof LiveActivityInputError ? error.message : "Unable to start the private test." }, error instanceof LiveActivityInputError ? 409 : 503); }
+      }
       if (resource === "device" && request.method === "PUT") {
         const parsed = registrationSchema.safeParse(input);
         if (!parsed.success) return json({ error: "Invalid Live Activity settings." }, 400);
@@ -62,7 +76,9 @@ export function activityHandler(resource: "device" | "session") {
           }
         });
         const device = await ownedDevice(installationId, user.id);
-        return json({ registered: true, deliveryConfigured: apnsConfigured(environment), preferences, sessions: device ? await sessionList(device.id) : [] });
+        return json({ registered: true, deliveryConfigured: apnsConfigured(environment),
+          canTest: privateTestAllowed(user.accountState, environment === "sandbox" && await hasAdminRole(user.id), environment),
+          preferences, sessions: device ? await sessionList(device.id) : [] });
       }
       const parsed = request.method === "POST" ? followSchema.safeParse(input)
         : request.method === "PUT" ? activityUpdateSchema.safeParse(input) : stopSchema.safeParse(input);

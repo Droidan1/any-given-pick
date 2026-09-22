@@ -57,7 +57,10 @@ struct AppRootView: View {
     activities.pendingDestination = nil
     guard destination.userId == account.id, let token = try? await clerk.auth.getToken() else { return }
     appModel.navigationPaths = [:]
-    if destination.kind == .race {
+    if destination.isTest {
+      appModel.selectedTab = .profile
+      appModel.navigationPaths[.profile] = [.liveActivities]
+    } else if destination.kind == .race {
       appModel.liveRaceWeekId = destination.weekId
       appModel.selectedTab = .home
       appModel.navigationPaths[.home] = [.liveRace]

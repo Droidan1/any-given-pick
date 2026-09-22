@@ -61,6 +61,9 @@ struct APIClient: Sendable {
   func followLiveGame(token: String, input: LiveActivityCommand) async throws -> LiveActivitySeed {
     try await authenticatedRequest(path: "api/mobile/v1/live-activities/session", method: "POST", token: token, body: input, responseType: LiveActivitySeed.self)
   }
+  func testLiveActivity(token: String, input: LiveActivityTestCommand) async throws -> LiveActivityTestResponse {
+    try await authenticatedRequest(path: "api/mobile/v1/live-activities/test", method: "POST", token: token, body: input, responseType: LiveActivityTestResponse.self)
+  }
   func updateLiveActivity(token: String, input: LiveActivityCommand, stop: Bool = false) async throws -> LiveActivityOK {
     try await authenticatedRequest(path: "api/mobile/v1/live-activities/session", method: stop ? "DELETE" : "PUT", token: token, body: input, responseType: LiveActivityOK.self)
   }

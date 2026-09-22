@@ -38,5 +38,24 @@ final class LiveActivityTests: XCTestCase {
     XCTAssertFalse(model.preferences.deadline); XCTAssertTrue(model.preferences.race)
     await model.disconnect()
     XCTAssertFalse(model.preferences.enabled); XCTAssertFalse(model.registered)
+    XCTAssertFalse(model.canTest)
+  }
+  func testPrivateTestDestinationAndBackwardCompatibleSettings() throws {
+    var attributes = PickActivityAttributes.example(.race)
+    XCTAssertFalse(try XCTUnwrap(ActivityDestination(url: attributes.destinationURL!)).isTest)
+    attributes.isTest = true
+    let destination = try XCTUnwrap(ActivityDestination(url: attributes.destinationURL!))
+    XCTAssertTrue(destination.isTest); XCTAssertEqual(destination.userId, attributes.userId)
+    let old = Data(#"{"registered":true,"deliveryConfigured":true,"preferences":{"enabled":true,"deadline":true,"race":true},"sessions":[]}"#.utf8)
+    XCTAssertNil(try JSONDecoder().decode(LiveActivitySettings.self, from: old).canTest)
+    let session = Data(#"{"sessionId":"s","kind":"race","gameId":null,"status":"starting","isTest":true,"failureCount":0}"#.utf8)
+    let decoded = try JSONDecoder().decode(LiveActivitySessionSummary.self, from: session)
+    XCTAssertTrue(decoded.isRunning); XCTAssertEqual(decoded.isTest, true)
+    XCTAssertTrue(decoded.testStatus.contains("waiting for iPhone"))
+  }
+  func testPrivateTestCommandContainsNoRecipientsOrPayload() throws {
+    let input = LiveActivityTestCommand(installationId: UUID().uuidString, kind: .deadline, requestId: UUID().uuidString)
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(input)) as? [String: Any])
+    XCTAssertEqual(Set(json.keys), ["installationId", "kind", "requestId"])
   }
 }
