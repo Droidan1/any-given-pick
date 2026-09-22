@@ -5,6 +5,8 @@ import SwiftUI
 struct AppRootView: View {
   @Environment(Clerk.self) private var clerk
   @Environment(AppModel.self) private var appModel
+  @Environment(NotificationManager.self) private var notifications
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     Group {
@@ -18,10 +20,41 @@ struct AppRootView: View {
     }
     .task(id: clerk.user?.id) {
       guard clerk.user != nil else {
+        notifications.disconnect()
         appModel.clearAuthenticatedAccount()
         return
       }
       await loadAccount()
+    }
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { await connectNotifications() } }
+    }
+    .onChange(of: notifications.pendingDestination) { _, destination in
+      if destination != nil { Task { await openNotification() } }
+    }
+  }
+
+  private func connectNotifications() async {
+    guard let user = clerk.user, appModel.bootstrap?.user.account.accountState == "active" else { return }
+    await openNotification()
+    await notifications.connect(accountId: user.id) { try await clerk.auth.getToken() }
+  }
+
+  private func openNotification() async {
+    guard let destination = notifications.pendingDestination, let account = appModel.bootstrap?.user else { return }
+    notifications.pendingDestination = nil
+    guard destination.userId == account.id else { return }
+    if destination.kind != "results_available", appModel.bootstrap?.currentWeek?.id != destination.weekId,
+      let token = try? await clerk.auth.getToken() {
+      await appModel.refreshWeekForNotification(token: token, weekId: destination.weekId)
+    }
+    guard appModel.bootstrap?.user.id == account.id else { return }
+    let tab = destination.tab(currentWeekId: appModel.bootstrap?.currentWeek?.id)
+    appModel.notificationNavigationID = UUID()
+    appModel.selectedTab = tab
+    if tab == .results {
+      appModel.notificationResultsWeekId = destination.weekId
+      if let token = try? await clerk.auth.getToken() { await appModel.refreshResults(token: token) }
     }
   }
 
@@ -58,6 +91,7 @@ struct AppRootView: View {
     do {
       guard let token = try await clerk.auth.getToken() else { return }
       await appModel.loadAuthenticatedAccount(token: token)
+      await connectNotifications()
     } catch {
       appModel.showAccountError("Your sign-in session could not be verified. Please try again.")
     }

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <PublicInfoShell
-      eyebrow="Privacy notice · Effective August 20, 2026"
+      eyebrow="Privacy notice · Effective September 22, 2026"
       title="Your data has one job."
       summary="We collect the information described below to run an age-restricted pick’em beta. We do not sell personal data or use it for targeted advertising."
     >
@@ -23,6 +23,7 @@ export default function PrivacyPage() {
           <li><strong>Contest activity:</strong> drafts, official entry versions, selections, tiebreakers, receipts, scores, and results.</li>
           <li><strong>Email notifications:</strong> your reminder choices and delivery receipts for contest reminders and account-approval messages. The app resolves your verified address from Clerk only when sending and does not copy the address into Postgres delivery records.</li>
           <li><strong>Push notifications:</strong> if you opt in on a device, the app stores that browser’s encrypted push endpoint, public encryption keys, limited browser identification, and delivery receipts. The endpoint is used only to deliver the four contest alerts described in Profile.</li>
+          <li><strong>iPhone alerts:</strong> if enabled in the native app, we store an installation identifier, Apple device token and delivery environment, your sign-in session identifier, alert preferences, and delivery status. These are used for the same four contest alerts. Sign-out unregisters the device; account deletion removes its native registrations and delivery records.</li>
           <li><strong>Operations:</strong> account-access and eligibility audit events, rate-limit counters keyed by a one-way hash, and error records designed not to contain birth dates, photos, email addresses, or pick selections.</li>
         </ul>
       </section>
@@ -33,7 +34,7 @@ export default function PrivacyPage() {
       </section>
       <section>
         <h2>Service providers</h2>
-        <p>Vercel hosts the app, Neon hosts Postgres data, Clerk manages authentication and profile photos, ESPN supplies public schedule and score data, Resend delivers account-status messages and email, and your browser’s push service delivers opted-in device alerts. Providers process data only for their service role.</p>
+        <p>Vercel hosts the app, Neon hosts Postgres data, Clerk manages authentication and profile photos, ESPN supplies public schedule and score data, Resend delivers account-status messages and email, and your browser’s push service or Apple Push Notification service delivers opted-in device alerts. Providers process data only for their service role.</p>
       </section>
       <section>
         <h2>Retention and deletion</h2>
@@ -43,6 +44,7 @@ export default function PrivacyPage() {
       </section>
       <section>
         <h2>Your choices and requests</h2>
+        <p>In the native iPhone app, use Profile → Notification settings to choose alert categories or turn off alerts on that iPhone. You can also change notification permission in iPhone Settings. iPhone preferences do not change your email or web push preferences.</p>
         <p>You may decline the optional profile photo. You can turn optional email categories on or off and enable or disable Web Push for each device from <Link href="/profile#email-reminders">Profile → Notifications</Link>. Disabling push unsubscribes that browser; account deletion removes all remaining device endpoints. Approval-request and approval-confirmation messages are transactional account notices and are not controlled by those reminder settings. You may request access, correction, a portable summary, deletion, or an appeal by emailing <a href="mailto:brian@Droidan1.dev?subject=Any%20Given%20Pick%20privacy%20request">brian@Droidan1.dev</a>. We accept authenticated privacy requests for beta users regardless of whether a particular privacy statute applies.</p>
       </section>
       <section>

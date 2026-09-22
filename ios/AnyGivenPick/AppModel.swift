@@ -40,6 +40,10 @@ final class AppModel {
   }
 
   var selectedTab: AppTab = .home
+  var notificationNavigationID = UUID()
+  var notificationResultsWeekId: String?
+  private(set) var isLoadingResults = false
+  private(set) var resultsError: String?
   private(set) var healthState: HealthState = .idle
   private(set) var bootstrap: MobileBootstrap?
   private(set) var isLoadingAccount = false
@@ -55,6 +59,7 @@ final class AppModel {
   var draftRevision = 0
 
   private let apiClient: APIClient
+  private var resultsRequestID = UUID()
 
   init(apiClient: APIClient = .production) {
     self.apiClient = apiClient
@@ -109,6 +114,11 @@ final class AppModel {
     standingsState = .idle
     achievementsState = .idle
     selectedTab = .home
+    notificationResultsWeekId = nil
+    resultsRequestID = UUID()
+    resultsError = nil
+    isLoadingResults = false
+    notificationNavigationID = UUID()
   }
 
   func refreshLivePicks(token: String, weekId: String) async {
@@ -204,21 +214,38 @@ final class AppModel {
     }
   }
 
-  func refreshResults(token: String) async {
-    guard var current = bootstrap else { return }
+  func refreshWeekForNotification(token: String, weekId: String) async {
+    guard let current = bootstrap else { return }
     do {
-      let results = try await apiClient.fetchResults(token: token)
-      current = MobileBootstrap(
+      let refreshed = try await apiClient.fetchBootstrap(token: token)
+      guard refreshed.user.id == current.user.id,
+        bootstrap?.user.id == current.user.id,
+        refreshed.currentWeek?.id == weekId, bootstrap?.currentWeek?.id != weekId else { return }
+      bootstrap = refreshed
+      configureDraft(from: refreshed.currentWeek)
+    } catch { /* Results remains the safe fallback for a no-longer-current week. */ }
+  }
+
+  func refreshResults(token: String) async {
+    guard let userId = bootstrap?.user.id else { return }
+    let requestID = UUID()
+    resultsRequestID = requestID
+    isLoadingResults = true
+    resultsError = nil
+    defer { if resultsRequestID == requestID { isLoadingResults = false } }
+    do {
+      let results = try await apiClient.fetchResults(token: token, weekId: notificationResultsWeekId)
+      guard resultsRequestID == requestID, let current = bootstrap, current.user.id == userId else { return }
+      bootstrap = MobileBootstrap(
         serverNow: current.serverNow,
         user: current.user,
         currentWeek: current.currentWeek,
         results: results
       )
-      bootstrap = current
     } catch is CancellationError {
       return
     } catch {
-      accountError = error.localizedDescription
+      if resultsRequestID == requestID { resultsError = error.localizedDescription }
     }
   }
 

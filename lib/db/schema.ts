@@ -148,6 +148,27 @@ export const pushSubscriptions = pgTable(
   ],
 );
 
+export const nativePushDevices = pgTable("native_push_devices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  installationId: uuid("installation_id").notNull(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  clerkSessionId: varchar("clerk_session_id", { length: 128 }).notNull(),
+  deviceToken: varchar("device_token", { length: 200 }).notNull(),
+  environment: varchar("environment", { length: 16 }).notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  weekPublished: boolean("week_published").notNull().default(true),
+  deadlineApproaching: boolean("deadline_approaching").notNull().default(true),
+  picksSubmitted: boolean("picks_submitted").notNull().default(true),
+  resultsAvailable: boolean("results_available").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("native_push_installation_unique").on(table.installationId),
+  uniqueIndex("native_push_token_environment_unique").on(table.deviceToken, table.environment),
+  index("native_push_user_idx").on(table.userId),
+  check("native_push_environment_check", sql`${table.environment} in ('sandbox', 'production')`),
+]);
+
 export const displayNameHistory = pgTable(
   "display_name_history",
   {
@@ -634,3 +655,27 @@ export const pushDeliveries = pgTable(
     check("push_deliveries_attempt_count_nonnegative", sql`${table.attemptCount} >= 0`),
   ],
 );
+
+export const nativePushDeliveries = pgTable("native_push_deliveries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  deviceId: uuid("device_id").notNull().references(() => nativePushDevices.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contestWeekId: uuid("contest_week_id").notNull().references(() => contestWeeks.id, { onDelete: "cascade" }),
+  entryVersionId: uuid("entry_version_id").references(() => entryVersions.id, { onDelete: "set null" }),
+  kind: varchar("kind", { length: 48 }).notNull(),
+  dedupeKey: varchar("dedupe_key", { length: 240 }).notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("pending"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("native_push_delivery_dedupe_unique").on(table.dedupeKey),
+  index("native_push_delivery_pending_idx").on(table.status, table.nextAttemptAt),
+  check("native_push_delivery_kind_check", sql`${table.kind} in ('week_published', 'deadline_approaching', 'picks_submitted', 'results_available')`),
+  check("native_push_delivery_status_check", sql`${table.status} in ('pending', 'processing', 'sent', 'failed', 'skipped')`),
+  check("native_push_delivery_attempt_check", sql`${table.attemptCount} >= 0`),
+]);

@@ -42,11 +42,68 @@ Do not place a Clerk secret key in the iOS project. The checked-in value is the 
 - Live saved picks for every active player, real team marks, moneylines, and Monday over/under reference
 - Native revealed results and player scorecards
 - Native season standings and player achievement pages
-- Production health check, local notification test, and demo Live Activity
+- Dedicated native Live Race page from Home
+- Native iPhone push settings, authenticated device registration, and week-aware notification taps (requires APNs setup below)
+- Production health check and demo Live Activity
 
 ## Production roadmap
 
 - Native activity/archive and editable profile parity
-- Dedicated native Live Race page from Home, backed by the same projection rules as the web app
-- APNs registration and server-driven notifications
 - Score-sync-driven Live Activity updates
+
+## Enable real iPhone notifications
+
+This replaces the local test notification. The four alerts are new weekly card,
+deadline approaching (only if no official submission), picks submitted, and final
+results. Preferences are per iPhone, independent of email and web push.
+
+1. Apply `drizzle/0018_native_iphone_notifications.sql` through the project's
+   normal Drizzle migration workflow **before deploying** this backend version.
+2. In Apple Developer, enable **Push Notifications** for `app.anygivenpick.ios`.
+   Ensure your Apple Developer team supports push and refresh Xcode's automatic
+   provisioning profile. The app target includes the required entitlement.
+3. Create APNs signing keys for this topic/environment. Configure server-only
+   `APNS_TEAM_ID`, `APNS_SANDBOX_KEY_ID`, and `APNS_SANDBOX_PRIVATE_KEY` for Xcode
+   Debug testing. Put the complete `.p8` PEM in the private-key variable; literal
+   `\n` escapes are also accepted. Never add the key to Xcode, Git, or chat.
+4. For TestFlight/App Store builds also configure `APNS_PRODUCTION_KEY_ID` and
+   `APNS_PRODUCTION_PRIVATE_KEY`. Use environment-scoped Apple keys. Set
+   `APNS_ENABLED=true` only after migration/setup; redeploy the backend.
+5. Build/install on your iPhone and open **Profile → Notification settings →
+   Enable iPhone alerts**. Accept the system permission prompt. Confirm the
+   screen says alerts are on, not that server setup is pending.
+
+Debug sends to the APNs sandbox; Release is configured for production signing.
+If installing a development-signed Release build, override both
+`APNS_ENVIRONMENT=sandbox` and `APNS_ENTITLEMENT_ENVIRONMENT=development`.
+The `APNsEnvironment` Info.plist value must match the signed `aps-environment`.
+
+Publication and submission trigger immediate queue attempts. The existing
+notification cron handles deadline reminders, settled results, missed submission
+events, and retries; its current daily cadence is retained. This does not promise
+minute-by-minute reminder or result delivery. Native alert workers are disabled
+without `APNS_ENABLED=true`; email/web push continue as before.
+
+Delivery rechecks account state, current preference, deadline/submission state,
+and the registered Clerk session. Sign-out unregisters the phone; expired or
+revoked sessions stop delivery even if offline deregistration failed. Anonymizing
+an account removes its native devices and delivery rows. No tokens or private
+keys are included in operational logs. APNs acceptance is not proof the person
+saw an alert (Focus mode, connectivity, and OS policies can delay delivery).
+
+### Physical-device acceptance checklist
+
+- Enable/deny permissions; change preferences; relaunch and verify persistence.
+- Publish a test week with an approved, opted-in test account; receive exactly
+  one alert on that device. Do not publish test data to the public production board.
+- Submit/update a card; each official version gets one confirmation. A submitted
+  card must not receive a pending deadline reminder.
+- Finalize a test slate, run the authenticated notification job, and tap results;
+  verify the correct week opens, including when launched from a closed app.
+- Retry the same event; check dedupe, then sign out/switch accounts and confirm
+  the old account gets no new device alerts.
+- Test sandbox and production separately. Simulator UI and unit tests alone do
+  not verify real APNs delivery on Brian's iPhone.
+
+References: [APNs registration](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns),
+[APNs token authentication](https://developer.apple.com/documentation/usernotifications/establishing-a-token-based-connection-to-apns).

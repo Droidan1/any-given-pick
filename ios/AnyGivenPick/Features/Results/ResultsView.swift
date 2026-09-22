@@ -31,7 +31,15 @@ struct ResultsView: View {
 
   @ViewBuilder
   private var resultsContent: some View {
-    if let results = appModel.bootstrap?.results {
+    if appModel.isLoadingResults {
+      ProgressView("Loading this week's results…").padding(32)
+    } else if let error = appModel.resultsError {
+      VStack(spacing: 16) {
+        Text(error).foregroundStyle(AGPTheme.ink)
+        Button("Try again") { Task { await refreshResults() } }
+          .buttonStyle(CallSheetActionStyle())
+      }.padding(20)
+    } else if let results = appModel.bootstrap?.results {
       switch results.revealStatus {
       case "no_week":
         FeatureStatusPanel(

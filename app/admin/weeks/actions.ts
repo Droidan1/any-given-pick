@@ -25,6 +25,7 @@ import {
   queueAvailableResultsPushes,
 } from "@/lib/push/player-notifications";
 import { runEspnScoreSyncWithHealth } from "@/lib/scores/health";
+import { queueNativeWeekPublished, runNativePushCycle } from "@/lib/native-push/player-notifications";
 import { validatePublishableSlate } from "@/lib/admin/week-publish-policy";
 import {
   gameRecoveryDecision,
@@ -69,6 +70,7 @@ function queueResultsNotifications() {
       await Promise.all([
         queueAvailableResultsEmails().then(() => processQueuedPlayerEmails()),
         queueAvailableResultsPushes().then(() => processQueuedPlayerPushes()),
+        runNativePushCycle(),
       ]);
     } catch (error) {
       await reportOperationalIssue({
@@ -300,6 +302,7 @@ export async function publishWeek(weekId: string): Promise<AdminActionResult> {
         await Promise.all([
           queueAndProcessWeekPublishedEmails(result.weekId),
           queueAndProcessWeekPublishedPushes(result.weekId),
+          queueNativeWeekPublished(result.weekId),
         ]);
       } catch (error) {
         await reportOperationalIssue({

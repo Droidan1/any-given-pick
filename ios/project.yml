@@ -34,6 +34,7 @@ targets:
         ClerkPublishableKey: pk_live_Y2xlcmsuYW55Z2l2ZW5waWNrLmFwcCQ
         LSApplicationCategoryType: public.app-category.sports
         NSSupportsLiveActivities: true
+        APNsEnvironment: $(APNS_ENVIRONMENT)
         UIApplicationSupportsIndirectInputEvents: true
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
@@ -58,6 +59,14 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: false
+        CODE_SIGN_ENTITLEMENTS: AnyGivenPick/AnyGivenPick.entitlements
+      configs:
+        Debug:
+          APNS_ENVIRONMENT: sandbox
+          APNS_ENTITLEMENT_ENVIRONMENT: development
+        Release:
+          APNS_ENVIRONMENT: production
+          APNS_ENTITLEMENT_ENVIRONMENT: production
 
   AnyGivenPickWidgets:
     type: app-extension

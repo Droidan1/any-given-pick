@@ -5,6 +5,7 @@ enum AppRoute: Hashable {
   case liveRace
   case standings
   case achievements
+  case notifications
 }
 
 enum AppTab: Hashable, CaseIterable {
@@ -50,12 +51,15 @@ struct AppShellView: View {
                 StandingsView()
               case .achievements:
                 AchievementsView()
+              case .notifications:
+                NotificationSettingsView()
               }
             }
         }
         .tabItem {
           Label(tab.title, systemImage: tab.symbol)
         }
+        .id("\(tab.title)-\(appModel.notificationNavigationID)")
         .tag(tab)
       }
     }

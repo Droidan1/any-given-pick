@@ -2,6 +2,35 @@ import XCTest
 @testable import AnyGivenPick
 
 final class MobileModelsTests: XCTestCase {
+  func testDecodesNativeNotificationPreferences() throws {
+    let data = Data("""
+      {"registered":true,"deliveryConfigured":false,"preferences":{"enabled":true,"weekPublished":true,"deadlineApproaching":false,"picksSubmitted":true,"resultsAvailable":true}}
+      """.utf8)
+    let settings = try JSONDecoder().decode(NativeNotificationSettings.self, from: data)
+    XCTAssertTrue(settings.registered)
+    XCTAssertFalse(settings.deliveryConfigured)
+    XCTAssertFalse(settings.preferences.deadlineApproaching)
+  }
+
+  func testNotificationRoutesToMatchingWeek() {
+    let week = "2d1972af-b99e-4f8c-b6c3-5340a02c641f"
+    let user = "3d1972af-b99e-4f8c-b6c3-5340a02c641f"
+    for kind in ["week_published", "deadline_approaching", "picks_submitted"] {
+      let route = NativeNotificationDestination(userInfo: ["kind": kind, "weekId": week, "userId": user])
+      XCTAssertEqual(route?.tab(currentWeekId: week), .picks)
+      XCTAssertEqual(route?.tab(currentWeekId: "old-week"), .results)
+    }
+    let route = NativeNotificationDestination(userInfo: ["kind": "results_available", "weekId": week, "userId": user])
+    XCTAssertEqual(route?.tab(currentWeekId: week), .results)
+    XCTAssertEqual(route?.userId, user)
+  }
+
+  func testRejectsUnknownOrMalformedNotificationRoutes() {
+    XCTAssertNil(NativeNotificationDestination(userInfo: ["url": "https://unknown.example"]))
+    XCTAssertNil(NativeNotificationDestination(userInfo: ["kind": "results_available", "weekId": "not-an-id", "userId": "not-an-id"]))
+    XCTAssertNil(NativeNotificationDestination(userInfo: ["kind": "admin", "weekId": UUID().uuidString, "userId": UUID().uuidString]))
+  }
+
   func testDecodesAuthenticatedBootstrapPayload() throws {
     let data = Data(
       """

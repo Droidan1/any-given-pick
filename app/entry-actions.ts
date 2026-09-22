@@ -26,6 +26,7 @@ import type {
 } from "@/lib/entries/types";
 import { queueAndProcessSubmissionConfirmation } from "@/lib/email/player-notifications";
 import { queueAndProcessSubmissionPush } from "@/lib/push/player-notifications";
+import { queueNativeSubmission } from "@/lib/native-push/player-notifications";
 import { reportOperationalIssue } from "@/lib/monitoring/operational-alerts";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 
@@ -464,6 +465,7 @@ export async function submitEntry(
           await Promise.all([
             queueAndProcessSubmissionConfirmation(notificationInput),
             queueAndProcessSubmissionPush(notificationInput),
+            queueNativeSubmission(notificationInput),
           ]);
         } catch (error) {
           await reportOperationalIssue({

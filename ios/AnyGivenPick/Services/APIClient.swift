@@ -91,6 +91,21 @@ struct APIClient: Sendable {
     return envelope.race
   }
 
+  func fetchNotificationSettings(token: String, installationId: String, environment: String) async throws -> NativeNotificationSettings {
+    var components = URLComponents(url: baseURL.appending(path: "api/mobile/v1/notifications/device"), resolvingAgainstBaseURL: false)!
+    components.queryItems = [URLQueryItem(name: "installationId", value: installationId), URLQueryItem(name: "environment", value: environment)]
+    return try await authenticatedRequest(url: components.url!, method: "GET", token: token, responseType: NativeNotificationSettings.self)
+  }
+
+  func registerNotificationDevice(token: String, input: NativeDeviceRegistration) async throws -> NativeNotificationSettings {
+    try await authenticatedRequest(path: "api/mobile/v1/notifications/device", method: "PUT", token: token, body: input, responseType: NativeNotificationSettings.self)
+  }
+
+  func removeNotificationDevice(token: String, installationId: String) async throws -> NativeDeviceRemovalResult {
+    try await authenticatedRequest(path: "api/mobile/v1/notifications/device", method: "DELETE", token: token,
+      body: NativeDeviceRemoval(installationId: installationId), responseType: NativeDeviceRemovalResult.self)
+  }
+
   func fetchStandings(token: String) async throws -> MobileStandingsSnapshot {
     let envelope: MobileStandingsEnvelope = try await authenticatedRequest(
       path: "api/mobile/v1/standings",
