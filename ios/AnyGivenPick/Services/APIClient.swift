@@ -51,6 +51,14 @@ struct APIClient: Sendable {
     url.queryItems = [URLQueryItem(name: "installationId", value: installationId)]
     return try await authenticatedRequest(url: url.url!, method: "GET", token: token, responseType: LiveActivitySettings.self)
   }
+
+  // All games and the signed-in player's entry, without reloading the results leaderboard or matrix.
+  func fetchHome(token: String, weekId: String? = nil) async throws -> MobileBootstrap {
+    var url = URLComponents(url: baseURL.appending(path: "api/mobile/v1/bootstrap"), resolvingAgainstBaseURL: false)!
+    url.queryItems = [URLQueryItem(name: "view", value: "home")]
+    if let weekId { url.queryItems?.append(URLQueryItem(name: "weekId", value: weekId)) }
+    return try await authenticatedRequest(url: url.url!, method: "GET", token: token, responseType: MobileBootstrap.self)
+  }
   func registerLiveActivities(token: String, input: LiveActivityRegistration) async throws -> LiveActivitySettings {
     try await authenticatedRequest(path: "api/mobile/v1/live-activities/device", method: "PUT", token: token, body: input, responseType: LiveActivitySettings.self)
   }

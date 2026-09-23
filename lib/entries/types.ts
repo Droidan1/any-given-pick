@@ -8,6 +8,10 @@ export type PlayerGame = {
   home: { abbreviation: string; name: string };
   awayScore: number | null;
   homeScore: number | null;
+  scorePeriod?: number | null;
+  scoreClock?: string | null;
+  scoreDetail?: string | null;
+  scoreCheckedAt?: string | null;
   isMondayTiebreaker: boolean;
   odds: {
     awayMoneyline: number | null;

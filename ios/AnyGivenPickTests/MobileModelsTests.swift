@@ -2,6 +2,127 @@ import XCTest
 @testable import AnyGivenPick
 
 final class MobileModelsTests: XCTestCase {
+  func testHomeCountdownLocksAtDeadlineWithoutNegativeTime() throws {
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+    let week = try XCTUnwrap(HomePreviewFixture.bootstrap("draft", now: now).currentWeek)
+    let deadline = try XCTUnwrap(HomeWeekState.date(week.entryDeadline))
+    let open = HomeWeekState(week: week, picks: [:], prediction: nil, now: deadline.addingTimeInterval(-20))
+    XCTAssertFalse(open.locked)
+    XCTAssertEqual(open.countdown, "Locks in under a minute")
+    let locked = HomeWeekState(week: week, picks: [:], prediction: nil, now: deadline)
+    XCTAssertTrue(locked.locked)
+    XCTAssertEqual(locked.countdown, "Card locked")
+  }
+  func testHomeCountsOnlyValidCurrentWeekPicks() throws {
+    let week = try XCTUnwrap(HomePreviewFixture.bootstrap().currentWeek)
+    var picks = week.entry!.draftPicks
+    picks["old-game"] = "IND"
+    picks[week.games[0].id] = "NOT-A-TEAM"
+    let state = HomeWeekState(week: week, picks: picks, prediction: nil, now: Date())
+    XCTAssertEqual(state.selectedCount, 13)
+    XCTAssertEqual(state.missingCount, 3)
+    XCTAssertTrue(state.needsPrediction)
+  }
+  func testHomeGradesOnlyOfficialPicksNotUnsavedSelections() throws {
+    let week = try XCTUnwrap(HomePreviewFixture.bootstrap("locked").currentWeek)
+    let wrongDraft = Dictionary(uniqueKeysWithValues: week.games.map { ($0.id, $0.home.abbreviation) })
+    let state = HomeWeekState(week: week, picks: wrongDraft, prediction: nil, now: Date())
+    XCTAssertTrue(state.hasOfficial)
+    XCTAssertEqual(state.correct, 7)
+    XCTAssertEqual(state.incorrect, 3)
+    XCTAssertEqual(state.remaining, 6)
+    let noEntry = try XCTUnwrap(HomePreviewFixture.bootstrap("no-official").currentWeek)
+    XCTAssertFalse(HomeWeekState(week: noEntry, picks: wrongDraft, prediction: nil, now: Date()).hasOfficial)
+  }
+  func testLiveScoresAreNotFinalOutcomes() throws {
+    let week = try XCTUnwrap(HomePreviewFixture.bootstrap("locked").currentWeek)
+    let live = week.games[0]
+    XCTAssertEqual(live.outcome(for: "IND"), "Leading")
+    XCTAssertEqual(live.outcome(for: "HOU"), "Trailing")
+    XCTAssertEqual(live.outcome(for: nil), "No official pick")
+    XCTAssertEqual(live.statusLabel, "Q3 · 4:12")
+    XCTAssertEqual(week.games[15].outcome(for: "DEN"), "Pending")
+  }
+  @MainActor func testHomeRefreshPreservesDirtyDraftAndRevision() throws {
+    let model = AppModel()
+    model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
+    model.select(teamCode: "HOU", for: "game-0")
+    model.mondayPrediction = 51
+    XCTAssertTrue(model.hasUnsavedDraft)
+    model.acceptAccount(HomePreviewFixture.bootstrap("submitted"), compact: true)
+    XCTAssertEqual(model.draftPicks["game-0"], "HOU")
+    XCTAssertEqual(model.mondayPrediction, 51)
+    XCTAssertEqual(model.draftRevision, 3)
+    XCTAssertTrue(model.hasUnsavedDraft)
+    XCTAssertEqual(model.bootstrap?.currentWeek?.entry?.currentVersionNumber, 2)
+  }
+  @MainActor func testCleanDraftCanRefreshAndLogoutClearsState() {
+    let model = AppModel()
+    model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
+    XCTAssertFalse(model.hasUnsavedDraft)
+    model.acceptAccount(HomePreviewFixture.bootstrap("submitted"), compact: true)
+    XCTAssertEqual(model.draftPicks.count, 16)
+    XCTAssertEqual(model.mondayPrediction, 45)
+    XCTAssertFalse(model.hasUnsavedDraft)
+    model.clearAuthenticatedAccount()
+    XCTAssertNil(model.bootstrap)
+    XCTAssertNil(model.liveGamesWeek)
+    XCTAssertTrue(model.draftPicks.isEmpty)
+  }
+  @MainActor func testHomeNetworkFailureKeepsDataAndBacksOff() async {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [HomeUnavailableURLProtocol.self]
+    let session = URLSession(configuration: configuration)
+    defer { session.invalidateAndCancel() }
+    let model = AppModel(apiClient: APIClient(baseURL: URL(string: "https://home-test.invalid")!, session: session))
+    model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
+    model.select(teamCode: "HOU", for: "game-0")
+    XCTAssertEqual(model.homeRefreshDelay, 30)
+    await model.refreshHome(token: "test-token")
+    XCTAssertEqual(model.bootstrap?.currentWeek?.games.count, 16)
+    XCTAssertEqual(model.draftPicks["game-0"], "HOU")
+    XCTAssertNotNil(model.homeFeedError)
+    XCTAssertFalse(model.isRefreshingHome)
+    XCTAssertEqual(model.homeRefreshDelay, 60)
+    await model.refreshHome(token: "test-token")
+    XCTAssertEqual(model.homeRefreshDelay, 120)
+    model.clearAuthenticatedAccount()
+    XCTAssertNil(model.homeFeedError)
+    XCTAssertEqual(model.homeRefreshDelay, 30)
+  }
+  @MainActor func testDifferentAccountCannotInheritUnsavedDraft() {
+    let model = AppModel()
+    let original = HomePreviewFixture.bootstrap("draft")
+    model.acceptAccount(original)
+    model.select(teamCode: "HOU", for: "game-0")
+    let next = MobileBootstrap(serverNow: original.serverNow,
+      user: MobileUser(id: "different-player", displayName: "Different player", isAdmin: false, account: original.user.account),
+      currentWeek: nil, results: nil)
+    model.acceptAccount(next, compact: true)
+    XCTAssertTrue(model.draftPicks.isEmpty)
+    XCTAssertNil(model.mondayPrediction)
+    XCTAssertFalse(model.hasUnsavedDraft)
+  }
+  @MainActor func testPublishedWeekChangeWaitsForExplicitConfirmation() async {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [HomeNewWeekURLProtocol.self]
+    let session = URLSession(configuration: configuration)
+    defer { session.invalidateAndCancel() }
+    let model = AppModel(apiClient: APIClient(baseURL: URL(string: "https://home-test.invalid")!, session: session))
+    model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
+    model.select(teamCode: "HOU", for: "game-0")
+    await model.refreshHome(token: "test-token")
+    XCTAssertEqual(model.bootstrap?.currentWeek?.id, "preview-week")
+    XCTAssertEqual(model.draftPicks["game-0"], "HOU")
+    XCTAssertEqual(model.pendingHomeWeek?.currentWeek?.id, "next-week")
+    let serverTimeBeforeSwitch = model.estimatedServerNow
+    model.switchToPendingHomeWeek()
+    XCTAssertEqual(model.bootstrap?.currentWeek?.id, "next-week")
+    XCTAssertTrue(model.draftPicks.isEmpty)
+    XCTAssertNil(model.pendingHomeWeek)
+    XCTAssertNil(model.homeFeedError)
+    XCTAssertLessThan(abs(model.estimatedServerNow.timeIntervalSince(serverTimeBeforeSwitch)), 1)
+  }
   func testDecodesNativeNotificationPreferences() throws {
     let data = Data("""
       {"registered":true,"deliveryConfigured":false,"preferences":{"enabled":true,"weekPublished":true,"deadlineApproaching":false,"picksSubmitted":true,"resultsAvailable":true}}
@@ -287,4 +408,31 @@ final class MobileModelsTests: XCTestCase {
     XCTAssertEqual(envelope.achievements.achievements.first?.title, "First call")
     XCTAssertTrue(envelope.achievements.achievements.first?.earned == true)
   }
+}
+
+private final class HomeUnavailableURLProtocol: URLProtocol, @unchecked Sendable {
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+  override func startLoading() {
+    client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 503, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: Data("{}".utf8))
+    client?.urlProtocolDidFinishLoading(self)
+  }
+  override func stopLoading() {}
+}
+
+private final class HomeNewWeekURLProtocol: URLProtocol, @unchecked Sendable {
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+  override func startLoading() {
+    let data = Data("""
+      {"serverNow":"2026-01-01T00:00:00Z","user":{"id":"preview-player","displayName":"Napalm","isAdmin":false,
+        "account":{"displayName":"Napalm","accountState":"active","verifiedAuth":true,"ageEligible":true,"overallResult":"eligible","reason":"eligible","reasonLabel":"Eligible","profileComplete":true}},
+        "currentWeek":{"id":"next-week","season":2026,"seasonPhase":"regular","weekNumber":4,"label":"Week 4","entryDeadline":"2026-10-01T22:00:00Z","deadlineLabel":"Thursday","isLocked":false,"games":[],"entry":null,"livePlayerPicks":[]},"results":null}
+      """.utf8)
+    client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: data)
+    client?.urlProtocolDidFinishLoading(self)
+  }
+  override func stopLoading() {}
 }

@@ -54,6 +54,10 @@ struct MobileGame: Decodable, Sendable, Identifiable {
   let homeScore: Int?
   let isMondayTiebreaker: Bool
   let odds: MobileOdds?
+  var scorePeriod: Int? = nil
+  var scoreClock: String? = nil
+  var scoreDetail: String? = nil
+  var scoreCheckedAt: String? = nil
 }
 
 struct MobileTeam: Decodable, Sendable {

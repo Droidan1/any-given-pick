@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { formatWeekName } from "@/lib/admin/schedule-import";
 import { getDb } from "@/lib/db";
 import { contestEntries, contestWeeks, entryVersionPicks, entryVersions, games, profiles, users } from "@/lib/db/schema";
@@ -74,20 +74,22 @@ export async function getLivePlayerPicks(weekId: string): Promise<LivePlayerPick
 
 export async function getCurrentPlayerWeek(
   userId: string,
-  input: { includeLivePicks?: boolean } = {},
+  input: { includeLivePicks?: boolean; weekId?: string } = {},
 ): Promise<PlayerWeek | null> {
   const db = getDb();
   const [week] = await db
     .select()
     .from(contestWeeks)
-    .where(eq(contestWeeks.status, "published"))
+    .where(input.weekId
+      ? and(eq(contestWeeks.id, input.weekId), inArray(contestWeeks.status, ["published", "locked", "final"]))
+      : eq(contestWeeks.status, "published"))
     .orderBy(desc(contestWeeks.publishedAt), desc(contestWeeks.updatedAt))
     .limit(1);
 
   if (!week) return null;
 
   const now = new Date();
-  const isLocked = now >= week.entryDeadline;
+  const isLocked = week.status === "locked" || week.status === "final" || now >= week.entryDeadline;
 
   const [gameRows, entryRows, officialVersionRows, officialPickRows, livePlayerPicks] = await Promise.all([
     db
@@ -168,6 +170,10 @@ export async function getCurrentPlayerWeek(
       home: { abbreviation: game.homeTeamCode, name: game.homeTeamName },
       awayScore: game.awayScore,
       homeScore: game.homeScore,
+      scorePeriod: game.scorePeriod,
+      scoreClock: game.scoreClock,
+      scoreDetail: game.scoreDetail,
+      scoreCheckedAt: game.scoreCheckedAt?.toISOString() ?? null,
       isMondayTiebreaker: game.isMondayTiebreaker,
       odds: game.oddsProvider && game.oddsUpdatedAt
         ? {

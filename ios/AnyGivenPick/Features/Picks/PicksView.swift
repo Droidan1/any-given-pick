@@ -4,11 +4,13 @@ import SwiftUI
 struct PicksView: View {
   @Environment(Clerk.self) private var clerk
   @Environment(AppModel.self) private var appModel
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     ZStack {
       CallSheetBackground()
 
+      TimelineView(.animation(minimumInterval: 1, paused: scenePhase != .active || appModel.selectedTab != .picks)) { _ in
       ScrollView {
         LazyVStack(spacing: 0) {
           BrandHeader(
@@ -42,25 +44,26 @@ struct PicksView: View {
         guard let weekId = appModel.bootstrap?.currentWeek?.id else { return }
         await refreshLiveBoard(weekId: weekId)
       }
+      }
     }
     .toolbar(.hidden, for: .navigationBar)
   }
 
   private var headerTitle: String {
-    appModel.bootstrap?.currentWeek?.isLocked == true ? "Calls are locked" : "Make your picks"
+    appModel.bootstrap?.currentWeek.map { appModel.isLocked($0) } == true ? "Calls are locked" : "Make your picks"
   }
 
   private var picksMessage: String {
     guard let week = appModel.bootstrap?.currentWeek else {
       return "Waiting for the commissioner to publish the next slate."
     }
-    if week.isLocked { return "This call sheet is locked. Follow the live results instead." }
+    if appModel.isLocked(week) { return "This call sheet is locked. Follow the live results instead." }
     return "Make every call in your highlighted row, set the tiebreaker, then submit before \(week.deadlineLabel)."
   }
 
   private func weekContent(_ week: MobilePlayerWeek, user: MobileUser) -> some View {
     @Bindable var appModel = appModel
-    let isOpen = !week.isLocked
+    let isOpen = !appModel.isLocked(week)
     let needsTiebreaker = week.games.contains(where: \.isMondayTiebreaker)
     let selectedCount = validSelectedCount(for: week)
     let isComplete = selectedCount == week.games.count
@@ -70,9 +73,9 @@ struct PicksView: View {
       HStack(spacing: 12) {
         Label("\(selectedCount)/\(week.games.count) calls", systemImage: "checkmark.circle")
         Spacer()
-        Text(week.isLocked ? "LOCKED" : "OPEN UNTIL \(week.deadlineLabel.uppercased())")
+        Text(!isOpen ? "LOCKED" : "OPEN UNTIL \(week.deadlineLabel.uppercased())")
           .multilineTextAlignment(.trailing)
-          .foregroundStyle(week.isLocked ? AGPTheme.clay : AGPTheme.ink)
+          .foregroundStyle(!isOpen ? AGPTheme.clay : AGPTheme.ink)
       }
       .font(AGPTheme.label(12))
       .padding(16)

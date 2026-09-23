@@ -31,7 +31,9 @@ struct AnyGivenPickApp: App {
   @ViewBuilder
   private var rootContent: some View {
     #if DEBUG
-    if ProcessInfo.processInfo.arguments.contains("-preview-live-activity-tests") {
+    if ProcessInfo.processInfo.arguments.contains("-preview-home") {
+      HomeDebugHost()
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-live-activity-tests") {
       NavigationStack { LiveActivityPrivateTestView() }.environment(LiveActivityManager.preview())
     } else if ProcessInfo.processInfo.arguments.contains("-preview-live-activity-settings") {
       NavigationStack { LiveActivitySettingsView() }.environment(LiveActivityManager.preview())

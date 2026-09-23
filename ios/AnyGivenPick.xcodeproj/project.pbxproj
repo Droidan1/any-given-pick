@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AF1000000000000000000001 /* HomeWeekState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1000000000000000000002 /* HomeWeekState.swift */; };
+		AF1000000000000000000003 /* LiveGamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1000000000000000000004 /* LiveGamesView.swift */; };
 		097B85B7F8800003F460BB38 /* WeekRaceAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5750423D4BD3D6E210C55A /* WeekRaceAttributes.swift */; };
 		09A9CE5BD1C84660A466A82E /* LiveRaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10D0C57ADF33FE6E605983C0 /* LiveRaceView.swift */; };
 		1B7D1AA8FF3FD1E54A0CB586 /* AnyGivenPickWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C6D47BAB8D082728F0170A6 /* AnyGivenPickWidgets.swift */; };
@@ -80,6 +82,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AF1000000000000000000002 /* HomeWeekState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWeekState.swift; sourceTree = "<group>"; };
+		AF1000000000000000000004 /* LiveGamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveGamesView.swift; sourceTree = "<group>"; };
 		108932C275BE7310F12564D6 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		10D0C57ADF33FE6E605983C0 /* LiveRaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRaceView.swift; sourceTree = "<group>"; };
 		1D11044919F40B0205956554 /* HealthStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthStatusTests.swift; sourceTree = "<group>"; };
@@ -211,6 +215,7 @@
 			children = (
 				A1B8300947ACCA8E34060943 /* LiveActivityModels.swift */,
 				91B337EEEDBB451BC6E00AB4 /* MobileModels.swift */,
+				AF1000000000000000000002 /* HomeWeekState.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -313,6 +318,7 @@
 			isa = PBXGroup;
 			children = (
 				98BB0E6EFED42B6ABB352F56 /* HomeView.swift */,
+				AF1000000000000000000004 /* LiveGamesView.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -486,6 +492,8 @@
 				41205106C1C16DBA805FF49C /* AppRootView.swift in Sources */,
 				5A6ADC169666CEFF04DF3AA2 /* AppShellView.swift in Sources */,
 				E16477DF2DB116E1A524D5D0 /* HomeView.swift in Sources */,
+				AF1000000000000000000001 /* HomeWeekState.swift in Sources */,
+				AF1000000000000000000003 /* LiveGamesView.swift in Sources */,
 				F1397E6EDEBEA826507C1591 /* LiveActivityManager.swift in Sources */,
 				A85FB9DBF7AD23C0A10E030F /* LiveActivityModels.swift in Sources */,
 				E4412E5E2F2AE3DBF64860FF /* LiveActivitySettingsView.swift in Sources */,
