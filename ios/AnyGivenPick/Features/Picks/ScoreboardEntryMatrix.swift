@@ -8,15 +8,20 @@ struct ScoreboardEntryMatrix: View {
   let selections: [String: String]
   let isEnabled: Bool
   let feedState: AppModel.LivePicksFeedState
+  var isLocked = false
+  @Binding var prediction: Int?
+  @Binding var visibleGameId: String?
   let onSelect: (String, String) -> Void
 
-  private enum Metrics {
-    static let playerColumnWidth: CGFloat = 122
-    static let gameColumnWidth: CGFloat = 142
-    static let headerHeight: CGFloat = 146
-    static let userRowHeight: CGFloat = 122
-    static let playerRowHeight: CGFloat = 62
-  }
+  @ScaledMetric(relativeTo: .body) private var gameWidth = 164.0
+  @ScaledMetric(relativeTo: .body) private var headerHeight = 124.0
+  @ScaledMetric(relativeTo: .body) private var pickHeight = 100.0
+  @ScaledMetric(relativeTo: .body) private var totalHeight = 72.0
+  @ScaledMetric(relativeTo: .body) private var playerHeight = 64.0
+  @Environment(\.dynamicTypeSize) private var typeSize
+  @FocusState private var editingTotal: Bool
+  private var playerWidth: CGFloat { typeSize.isAccessibilitySize ? 136 : 104 }
+  private var userHeight: CGFloat { pickHeight + (games.contains(where: \.isMondayTiebreaker) ? totalHeight : 0) }
 
   private var otherPlayers: [MobileLivePlayerPicks] {
     players.filter { $0.userId != currentUserId }
@@ -32,36 +37,39 @@ struct ScoreboardEntryMatrix: View {
   }
 
   private var boardHeight: CGFloat {
-    Metrics.headerHeight
-      + Metrics.userRowHeight
-      + (CGFloat(otherPlayers.count) * Metrics.playerRowHeight)
+    headerHeight + userHeight + (CGFloat(otherPlayers.count) * playerHeight)
   }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       toolbar
 
+      GeometryReader { geometry in
       HStack(alignment: .top, spacing: 0) {
         playerColumn
 
         ScrollView(.horizontal) {
           LazyHStack(alignment: .top, spacing: 0) {
             ForEach(games) { game in
-              gameColumn(game)
+              gameColumn(game, width: min(gameWidth, max(164, geometry.size.width - playerWidth)))
+                .id(game.id)
             }
           }
           .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $visibleGameId, anchor: .leading)
         .scrollIndicators(.visible)
         .accessibilityLabel("Games. Swipe left or right to review every matchup.")
+      }
       }
       .frame(height: boardHeight, alignment: .top)
       .overlay(Rectangle().stroke(AGPTheme.sage, lineWidth: 1))
 
       HStack(spacing: 8) {
         Image(systemName: "arrow.left.and.right")
-        Text("Swipe across the games. Your yellow row is the only editable row.")
+        Text(isLocked ? "Your row shows your official card. Other rows show saved picks."
+          : "Swipe across games. Only your yellow row can be edited.")
       }
       .font(.caption)
       .foregroundStyle(AGPTheme.inkSoft)
@@ -74,16 +82,16 @@ struct ScoreboardEntryMatrix: View {
   private var toolbar: some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack(alignment: .firstTextBaseline) {
-        Text("LIVE PICKS SCOREBOARD")
-          .font(AGPTheme.display(24))
+        Text("SAVED PICKS BOARD")
+          .font(.headline.weight(.bold).width(.condensed))
           .foregroundStyle(AGPTheme.paper100)
 
         Spacer()
 
-        FeedStateBadge(state: feedState)
+        if !isLocked { FeedStateBadge(state: feedState) }
       }
 
-      Text("Make every call in your row and compare it with each player’s latest saved card.")
+      Text("Game \((games.firstIndex { $0.id == visibleGameId } ?? 0) + 1) of \(games.count) · swipe for more")
         .font(.caption)
         .foregroundStyle(AGPTheme.paper200)
         .fixedSize(horizontal: false, vertical: true)
@@ -94,14 +102,14 @@ struct ScoreboardEntryMatrix: View {
 
   private var playerColumn: some View {
     VStack(spacing: 0) {
-      boardCell(height: Metrics.headerHeight, background: AGPTheme.field900) {
+      boardCell(height: headerHeight, background: AGPTheme.field900) {
         VStack(alignment: .leading, spacing: 7) {
           Text("PLAYERS")
-            .font(AGPTheme.label(13))
+            .font(.caption.weight(.bold))
             .tracking(1)
             .foregroundStyle(AGPTheme.maize)
           Text("\(games.count) GAMES")
-            .font(AGPTheme.display(22))
+            .font(.headline.weight(.bold).width(.condensed))
             .foregroundStyle(AGPTheme.paper100)
           Text("Live saved cards")
             .font(.caption2)
@@ -111,17 +119,17 @@ struct ScoreboardEntryMatrix: View {
         .padding(12)
       }
 
-      boardCell(height: Metrics.userRowHeight, background: AGPTheme.maize) {
+      boardCell(height: userHeight, background: AGPTheme.maize) {
         VStack(alignment: .leading, spacing: 7) {
           Text(currentDisplayName)
-            .font(AGPTheme.display(20))
+            .font(.headline.weight(.bold).width(.condensed))
             .foregroundStyle(AGPTheme.field950)
             .lineLimit(2)
           Text("YOU · \(selectedCount)/\(games.count)")
-            .font(AGPTheme.label(12))
+            .font(.caption.weight(.bold))
             .foregroundStyle(AGPTheme.field800)
-          Label("EDITABLE", systemImage: "pencil")
-            .font(AGPTheme.label(10))
+          Label(isLocked ? (selections.isEmpty ? "NO ENTRY" : "OFFICIAL") : "YOUR ROW", systemImage: isLocked ? "lock.fill" : "pencil")
+            .font(.caption2.weight(.bold))
             .foregroundStyle(AGPTheme.clay)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -129,10 +137,10 @@ struct ScoreboardEntryMatrix: View {
       }
 
       ForEach(otherPlayers) { player in
-        boardCell(height: Metrics.playerRowHeight, background: AGPTheme.paper100) {
+        boardCell(height: playerHeight, background: AGPTheme.paper100) {
           VStack(alignment: .leading, spacing: 3) {
             Text(player.displayName)
-              .font(AGPTheme.label(14))
+              .font(.subheadline.weight(.semibold).width(.condensed))
               .foregroundStyle(AGPTheme.ink)
               .lineLimit(1)
             Text("\(savedPickCount(player))/\(games.count) saved")
@@ -144,49 +152,51 @@ struct ScoreboardEntryMatrix: View {
         }
       }
     }
-    .frame(width: Metrics.playerColumnWidth)
+    .frame(width: playerWidth)
     .zIndex(1)
   }
 
-  private func gameColumn(_ game: MobileGame) -> some View {
+  private func gameColumn(_ game: MobileGame, width: CGFloat) -> some View {
     VStack(spacing: 0) {
       gameHeader(game)
       yourPickCell(game)
       ForEach(otherPlayers) { player in
         savedPickCell(player.picks[game.id], game: game)
+          .accessibilityElement(children: .ignore)
+          .accessibilityLabel("\(player.displayName), \(game.away.name) at \(game.home.name), saved pick: \(player.picks[game.id] ?? "not picked")")
       }
     }
-    .frame(width: Metrics.gameColumnWidth)
+    .frame(width: width)
   }
 
   private func gameHeader(_ game: MobileGame) -> some View {
-    boardCell(height: Metrics.headerHeight, background: AGPTheme.paper200) {
-      VStack(spacing: 6) {
+    boardCell(height: headerHeight, background: AGPTheme.paper200) {
+      VStack(spacing: 4) {
         HStack(spacing: 5) {
           teamHeader(game.away)
           Text("@")
-            .font(AGPTheme.label(11))
+            .font(.caption2.weight(.bold))
             .foregroundStyle(AGPTheme.inkSoft)
           teamHeader(game.home)
         }
 
         Text("\(game.day.uppercased()) · \(game.time)")
-          .font(AGPTheme.label(10))
+          .font(.caption2.weight(.semibold))
           .foregroundStyle(AGPTheme.inkSoft)
           .lineLimit(1)
 
-        HStack(spacing: 7) {
-          oddsLabel(game.away.abbreviation, value: game.odds?.awayMoneyline)
-          oddsLabel(game.home.abbreviation, value: game.odds?.homeMoneyline)
-        }
-
         if game.isMondayTiebreaker, let total = game.odds?.overUnder {
           Text("O/U \(total.formatted(.number.precision(.fractionLength(1))))")
-            .font(AGPTheme.label(10))
+            .font(.caption2.weight(.semibold))
             .foregroundStyle(AGPTheme.clay)
         } else {
-          Text(" ").font(AGPTheme.label(10))
+          Text(" ").font(.caption2)
         }
+        Text(oddsSource(game))
+          .font(.caption2)
+          .foregroundStyle(AGPTheme.inkSoft)
+          .multilineTextAlignment(.center)
+          .lineLimit(2)
       }
       .padding(.horizontal, 7)
     }
@@ -196,26 +206,71 @@ struct ScoreboardEntryMatrix: View {
     VStack(spacing: 2) {
       NativeTeamCrest(code: team.abbreviation, size: 30)
       Text(team.abbreviation)
-        .font(AGPTheme.label(11))
+        .font(.caption.weight(.bold))
         .foregroundStyle(AGPTheme.ink)
     }
     .frame(maxWidth: .infinity)
   }
 
-  private func oddsLabel(_ code: String, value: Int?) -> some View {
-    Text("\(code) \(moneyline(value))")
-      .font(AGPTheme.label(9))
-      .foregroundStyle(AGPTheme.ink)
-      .lineLimit(1)
-  }
-
   private func yourPickCell(_ game: MobileGame) -> some View {
     let selection = selections[game.id]
-    return boardCell(height: Metrics.userRowHeight, background: AGPTheme.maize.opacity(0.22)) {
+    return boardCell(height: userHeight, background: AGPTheme.maize.opacity(0.22)) {
       VStack(spacing: 0) {
         pickButton(game.away, game: game, selection: selection, moneyline: game.odds?.awayMoneyline)
         Rectangle().fill(AGPTheme.sage).frame(height: 1)
         pickButton(game.home, game: game, selection: selection, moneyline: game.odds?.homeMoneyline)
+        if games.contains(where: \.isMondayTiebreaker) {
+          Group {
+            if game.isMondayTiebreaker { mondayTotal }
+            else {
+              Text(selection == nil ? "Choose a team above" : "Your call: \(selection!)")
+                .font(.caption)
+                .foregroundStyle(AGPTheme.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(8)
+            }
+          }
+          .frame(height: totalHeight)
+        }
+      }
+    }
+  }
+
+  private var mondayTotal: some View {
+    VStack(spacing: 6) {
+      Text("MONDAY TOTAL")
+        .font(.caption.weight(.bold).width(.condensed))
+      HStack(spacing: 0) {
+        Button { prediction = max(0, (prediction ?? 46) - 1) } label: {
+          Image(systemName: "minus").frame(minWidth: 44, minHeight: 44)
+        }.accessibilityLabel("Decrease Monday total")
+        TextField("—", text: Binding(get: { prediction.map(String.init) ?? "" }, set: { value in
+          if value.isEmpty { prediction = nil }
+          else if let total = Int(value), (0...200).contains(total) { prediction = total }
+        }))
+        .keyboardType(.numberPad)
+        .focused($editingTotal)
+        .multilineTextAlignment(.center)
+        .font(.title3.bold())
+        .frame(minHeight: 44)
+        .background(AGPTheme.paper100)
+        .accessibilityLabel("Monday combined points prediction")
+        .accessibilityValue(prediction.map(String.init) ?? "Not set")
+        .accessibilityIdentifier("monday-total-input")
+        Button { prediction = min(200, (prediction ?? 44) + 1) } label: {
+          Image(systemName: "plus").frame(minWidth: 44, minHeight: 44)
+        }.accessibilityLabel("Increase Monday total")
+      }
+      .buttonStyle(.plain)
+      .disabled(!isEnabled)
+      .overlay(Rectangle().stroke(AGPTheme.sage, lineWidth: 1))
+    }
+    .foregroundStyle(AGPTheme.ink)
+    .padding(.horizontal, 5)
+    .toolbar {
+      ToolbarItemGroup(placement: .keyboard) {
+        Spacer()
+        Button("Done") { editingTotal = false }
       }
     }
   }
@@ -234,9 +289,9 @@ struct ScoreboardEntryMatrix: View {
         NativeTeamCrest(code: team.abbreviation, size: 28)
         VStack(alignment: .leading, spacing: 1) {
           Text(team.abbreviation)
-            .font(AGPTheme.display(19))
+            .font(.headline.weight(.bold).width(.condensed))
           Text("ML \(self.moneyline(moneyline))")
-            .font(AGPTheme.label(9))
+            .font(.caption2)
         }
         Spacer(minLength: 0)
         if isSelected {
@@ -246,12 +301,13 @@ struct ScoreboardEntryMatrix: View {
       }
       .foregroundStyle(AGPTheme.field950)
       .padding(.horizontal, 8)
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .frame(maxWidth: .infinity)
+      .frame(height: (pickHeight - 1) / 2)
       .background(isSelected ? AGPTheme.maize : AGPTheme.paper100.opacity(0.72))
     }
     .buttonStyle(.plain)
     .disabled(!isEnabled)
-    .accessibilityLabel("Pick \(team.name). Moneyline \(self.moneyline(moneyline)).")
+    .accessibilityLabel("Your row, \(game.away.name) at \(game.home.name). Pick \(team.name). Moneyline \(self.moneyline(moneyline)).")
     .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 
@@ -262,13 +318,13 @@ struct ScoreboardEntryMatrix: View {
       nil
     }
 
-    return boardCell(height: Metrics.playerRowHeight, background: AGPTheme.paper100) {
+    return boardCell(height: playerHeight, background: AGPTheme.paper100) {
       Group {
         if let validCode {
           HStack(spacing: 7) {
             NativeTeamCrest(code: validCode, size: 28)
             Text(validCode)
-              .font(AGPTheme.display(18))
+              .font(.headline.weight(.bold).width(.condensed))
               .foregroundStyle(AGPTheme.ink)
           }
         } else {
@@ -306,6 +362,12 @@ struct ScoreboardEntryMatrix: View {
     guard let value else { return "—" }
     return value > 0 ? "+\(value)" : String(value)
   }
+
+  private func oddsSource(_ game: MobileGame) -> String {
+    guard let odds = game.odds else { return "Odds unavailable" }
+    guard let date = HomeWeekState.date(odds.updatedAt) else { return "\(odds.provider) · time unavailable" }
+    return "\(odds.provider)\n\(date.formatted(date: .numeric, time: .shortened))"
+  }
 }
 
 private struct FeedStateBadge: View {
@@ -317,7 +379,7 @@ private struct FeedStateBadge: View {
         .fill(color)
         .frame(width: 7, height: 7)
       Text(label)
-        .font(AGPTheme.label(10))
+        .font(.caption2.weight(.bold))
         .tracking(0.5)
     }
     .foregroundStyle(AGPTheme.paper100)
@@ -336,7 +398,7 @@ private struct FeedStateBadge: View {
   private var color: Color {
     switch state {
     case .idle, .refreshing: AGPTheme.maize
-    case .live: Color.green
+    case .live: AGPTheme.paper100
     case .stale: AGPTheme.clay
     }
   }
@@ -353,6 +415,8 @@ private struct FeedStateBadge: View {
 
 #if DEBUG
 struct ScoreboardEntryMatrixDebugHost: View {
+  @State private var prediction: Int?
+  @State private var visibleGameId: String?
   @State private var selections = [
     "game-1": "IND",
     "game-2": "GB",
@@ -375,7 +439,9 @@ struct ScoreboardEntryMatrixDebugHost: View {
             currentDisplayName: "Napalm",
             selections: selections,
             isEnabled: true,
-            feedState: .live(.now)
+            feedState: .live(.now),
+            prediction: $prediction,
+            visibleGameId: $visibleGameId
           ) { gameId, teamCode in
             selections[gameId] = teamCode
           }

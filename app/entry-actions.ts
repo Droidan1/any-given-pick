@@ -361,6 +361,27 @@ export async function submitEntry(
         return { ok: false, code: "not_open", message: "This entry can no longer be edited." };
       }
 
+      // Submission is also a draft write. Require the same cross-device conflict
+      // decision as Save; idempotent submission retries were handled above.
+      if (existing && draftWriteDecision({
+        baseRevision: parsed.data.baseDraftRevision,
+        currentRevision: existing.draftRevision,
+        payloadMatches: draftsMatch(existing.draftPicks, validated.picks,
+          existing.draftMondayPrediction, parsed.data.mondayPrediction),
+      }).kind === "conflict") {
+        return {
+          ok: false,
+          code: "draft_conflict",
+          message: "A newer draft was saved on another device. Choose which version to keep before submitting.",
+          serverDraft: {
+            picks: existing.draftPicks,
+            mondayPrediction: existing.draftMondayPrediction,
+            draftRevision: existing.draftRevision,
+            updatedAt: existing.updatedAt.toISOString(),
+          },
+        };
+      }
+
       const [entry] = existing
         ? [existing]
         : await transaction

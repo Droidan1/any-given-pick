@@ -46,6 +46,36 @@ Do not place a Clerk secret key in the iOS project. The checked-in value is the 
 - Native iPhone push settings, authenticated device registration, and week-aware notification taps (requires APNs setup below)
 - Production health check and demo Live Activity
 
+## Native Picks flow and acceptance
+
+- Players stay fixed on the left while games scroll horizontally. Only the yellow YOU row is editable; other rows show saved picks before lock.
+- Real team crests and choice moneylines remain visible. The designated Monday game's O/U and combined-points input stay in that game's column.
+- Safe-area actions above the tabs guide missing picks/total → snapshot review → explicit official submission → versioned server receipt.
+- Saving shares a draft; it is not official. The entire card locks at the weekly deadline, when your row shows only the official card.
+- Unsaved changes recover locally by backend/account/week. Cross-device conflicts require an explicit choice; identical uncertain submission retries retain their key even after the server revision advances.
+- Shared-board polling runs only while Picks is active, foregrounded, and unlocked. Refreshes preserve local work.
+
+### Local verification
+
+From the repository root, select an available simulator ID:
+
+```sh
+xcodebuild -project ios/AnyGivenPick.xcodeproj -scheme AnyGivenPick -showdestinations
+xcodebuild -project ios/AnyGivenPick.xcodeproj -scheme AnyGivenPick -destination 'platform=iOS Simulator,id=SIMULATOR_UDID' CODE_SIGNING_ALLOWED=NO test
+npm test
+```
+
+DEBUG launch arguments: `-preview-picks -picks-mode draft`; also `submitted`, `locked`, `no-official`, `empty`, `no-week`, or `blocked`. Add `-picks-narrow` for 320pt or `-picks-large-type` for accessibility3. Review and submit interactively to exercise the simulated receipt; fixture actions do not send production entries.
+
+September 23, 2026 validation: simulator build, 32 native tests, 230 web/server tests, and standard/320pt/large-text/review/receipt/locked fixture checks passed. This is not physical-device or production verification.
+
+### Remaining signed-device acceptance
+
+- Deploy the updated shared entry-action conflict guard before treating the full release as live. The native client targets `https://anygivenpick.app` through the existing mobile entry routes and `/api/picks/live`.
+- Install a signed build and verify sign-in, approved-account access, shared-board synchronization, and official receipt persistence using an authorized test card.
+- Verify offline/relaunch recovery, both conflict choices, interrupted-response retry, and account/week isolation.
+- Check keyboard dismissal, VoiceOver, large text, tab-safe actions, and whole-card locking on the iPhone. No production changes or physical install were performed during this validation.
+
 ## Production roadmap
 
 - Native activity/archive and editable profile parity

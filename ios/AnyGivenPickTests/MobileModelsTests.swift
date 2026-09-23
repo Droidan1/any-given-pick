@@ -2,6 +2,147 @@ import XCTest
 @testable import AnyGivenPick
 
 final class MobileModelsTests: XCTestCase {
+  @MainActor func testDraftRecoveryIsScopedAndLogoutRemovesCurrentDraft() throws {
+    let name = "picks-test-\(UUID())"
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+    defer { defaults.removePersistentDomain(forName: name) }
+    let store = EntryDraftStore(defaults: defaults)
+    let original = HomePreviewFixture.bootstrap("draft")
+    let model = AppModel(draftStore: store)
+    model.acceptAccount(original)
+    model.select(teamCode: "HOU", for: "game-0")
+    model.mondayPrediction = 51
+    let relaunched = AppModel(draftStore: store)
+    relaunched.acceptAccount(original)
+    XCTAssertEqual(relaunched.draftPicks["game-0"], "HOU")
+    XCTAssertEqual(relaunched.mondayPrediction, 51)
+    XCTAssertTrue(relaunched.hasUnsavedDraft)
+    let other = MobileBootstrap(serverNow: original.serverNow,
+      user: MobileUser(id: "other", displayName: "Other", isAdmin: false, account: original.user.account),
+      currentWeek: original.currentWeek, results: nil)
+    let otherModel = AppModel(draftStore: store)
+    otherModel.acceptAccount(other)
+    XCTAssertEqual(otherModel.draftPicks["game-0"], "IND")
+    XCTAssertNil(otherModel.mondayPrediction)
+    relaunched.clearAuthenticatedAccount()
+    let signedInAgain = AppModel(draftStore: store)
+    signedInAgain.acceptAccount(original)
+    XCTAssertEqual(signedInAgain.draftPicks["game-0"], "IND")
+  }
+
+  @MainActor func testConflictPreservesLocalUntilExplicitDecision() throws {
+    let model = AppModel(draftStore: nil)
+    model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
+    model.select(teamCode: "HOU", for: "game-0")
+    let server = MobileServerDraft(picks: ["game-0": "IND"], mondayPrediction: 44, draftRevision: 7, updatedAt: "now")
+    model.applyEntryResult(MobileEntryActionResult(ok: false, code: "draft_conflict", message: "Conflict",
+      syncedAt: nil, draftRevision: nil, serverDraft: server, receipt: nil))
+    XCTAssertEqual(model.draftPicks["game-0"], "HOU")
+    XCTAssertEqual(model.draftRevision, 3)
+    XCTAssertNotNil(model.draftConflict)
+    XCTAssertNil(model.makeEntryReview())
+    model.resolveDraftConflict(keepMine: true)
+    XCTAssertEqual(model.draftPicks["game-0"], "HOU")
+    XCTAssertEqual(model.draftRevision, 7)
+    XCTAssertTrue(model.hasUnsavedDraft)
+    model.applyEntryResult(MobileEntryActionResult(ok: false, code: "draft_conflict", message: "Conflict",
+      syncedAt: nil, draftRevision: nil, serverDraft: server, receipt: nil))
+    model.resolveDraftConflict(keepMine: false)
+    XCTAssertEqual(model.draftPicks, server.picks)
+    XCTAssertEqual(model.mondayPrediction, 44)
+    XCTAssertFalse(model.hasUnsavedDraft)
+  }
+
+  @MainActor func testReviewRequiresCompleteUnchangedEligibleUnlockedCard() throws {
+    let model = AppModel(draftStore: nil)
+    model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
+    XCTAssertNil(model.makeEntryReview())
+    model.acceptAccount(HomePreviewFixture.bootstrap("submitted"))
+    let review = try XCTUnwrap(model.makeEntryReview())
+    XCTAssertTrue(model.reviewIsCurrent(review))
+    model.select(teamCode: "HOU", for: "game-0")
+    XCTAssertFalse(model.reviewIsCurrent(review))
+    model.mondayPrediction = 201
+    XCTAssertNil(model.makeEntryReview())
+    model.acceptAccount(HomePreviewFixture.bootstrap("locked"))
+    XCTAssertNil(model.makeEntryReview())
+    let before = model.draftPicks
+    model.select(teamCode: "IND", for: "game-0")
+    XCTAssertEqual(model.draftPicks, before)
+    let blocked = AppModel(draftStore: nil)
+    blocked.acceptAccount(HomePreviewFixture.bootstrap("blocked"))
+    XCTAssertNil(blocked.makeEntryReview())
+  }
+
+  @MainActor func testSubmissionKeySurvivesRelaunchButChangesWithReviewedPayload() throws {
+    let name = "picks-test-\(UUID())"
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+    defer { defaults.removePersistentDomain(forName: name) }
+    let store = EntryDraftStore(defaults: defaults)
+    let response = HomePreviewFixture.bootstrap("submitted")
+    let first = AppModel(draftStore: store)
+    first.acceptAccount(response)
+    let review = try XCTUnwrap(first.makeEntryReview())
+    let key = first.submissionAttempt(for: review).key
+    XCTAssertEqual(key, first.submissionAttempt(for: review).key)
+    let second = AppModel(draftStore: store)
+    second.acceptAccount(response)
+    XCTAssertEqual(key, second.submissionAttempt(for: try XCTUnwrap(second.makeEntryReview())).key)
+    second.mondayPrediction = 52
+    XCTAssertNotEqual(key, second.submissionAttempt(for: try XCTUnwrap(second.makeEntryReview())).key)
+  }
+
+  @MainActor func testLostResponseKeepsSubmissionKeyAfterServerRevisionAdvances() throws {
+    let name = "picks-test-\(UUID())"
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+    defer { defaults.removePersistentDomain(forName: name) }
+    let store = EntryDraftStore(defaults: defaults)
+    let response = HomePreviewFixture.bootstrap("submitted")
+    let first = AppModel(draftStore: store)
+    first.acceptAccount(response)
+    first.select(teamCode: "HOU", for: "game-0")
+    first.mondayPrediction = 51
+    let review = try XCTUnwrap(first.makeEntryReview())
+    let pendingKey = first.submissionAttempt(for: review).key
+    let week = try XCTUnwrap(response.currentWeek)
+    let entry = try XCTUnwrap(week.entry)
+    // The server committed these values, but this phone never received its response.
+    let committed = MobileEntry(id: entry.id, status: "submitted", draftPicks: review.picks,
+      draftRevision: review.revision + 1, officialPicks: review.picks,
+      mondayPrediction: review.prediction, officialMondayPrediction: review.prediction,
+      currentVersionNumber: entry.currentVersionNumber + 1,
+      submittedAt: response.serverNow, updatedAt: response.serverNow)
+    let advancedWeek = MobilePlayerWeek(id: week.id, season: week.season, seasonPhase: week.seasonPhase,
+      weekNumber: week.weekNumber, label: week.label, entryDeadline: week.entryDeadline,
+      deadlineLabel: week.deadlineLabel, isLocked: false, games: week.games,
+      entry: committed, livePlayerPicks: week.livePlayerPicks)
+    let relaunched = AppModel(draftStore: store)
+    relaunched.acceptAccount(MobileBootstrap(serverNow: response.serverNow, user: response.user,
+      currentWeek: advancedWeek, results: response.results))
+    let retry = try XCTUnwrap(relaunched.makeEntryReview())
+    XCTAssertEqual(retry.revision, review.revision + 1)
+    XCTAssertEqual(relaunched.submissionAttempt(for: retry).key, pendingKey)
+    XCTAssertEqual(relaunched.draftStatus, "Official card received")
+    relaunched.mondayPrediction = 52
+    XCTAssertNotEqual(relaunched.submissionAttempt(for: try XCTUnwrap(relaunched.makeEntryReview())).key, pendingKey)
+  }
+
+  @MainActor func testOfficialReceiptSurvivesFollowupRefreshFailure() async throws {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [EntryReceiptURLProtocol.self]
+    let session = URLSession(configuration: configuration)
+    defer { session.invalidateAndCancel() }
+    let model = AppModel(apiClient: APIClient(baseURL: URL(string: "https://entry-test.invalid")!, session: session), draftStore: nil)
+    model.acceptAccount(HomePreviewFixture.bootstrap("submitted"))
+    let review = try XCTUnwrap(model.makeEntryReview())
+    let success = await model.submitEntry(token: "test-token", review: review)
+    XCTAssertTrue(success)
+    XCTAssertEqual(model.bootstrap?.currentWeek?.entry?.currentVersionNumber, 4)
+    XCTAssertEqual(model.entryReceipt?.versionNumber, 4)
+    XCTAssertTrue(model.entryActionMessage?.contains("receipt is safe") == true)
+    XCTAssertFalse(model.isSavingEntry)
+  }
+
   func testHomeCountdownLocksAtDeadlineWithoutNegativeTime() throws {
     let now = Date(timeIntervalSince1970: 1_800_000_000)
     let week = try XCTUnwrap(HomePreviewFixture.bootstrap("draft", now: now).currentWeek)
@@ -44,7 +185,7 @@ final class MobileModelsTests: XCTestCase {
     XCTAssertEqual(week.games[15].outcome(for: "DEN"), "Pending")
   }
   @MainActor func testHomeRefreshPreservesDirtyDraftAndRevision() throws {
-    let model = AppModel()
+    let model = AppModel(draftStore: nil)
     model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
     model.select(teamCode: "HOU", for: "game-0")
     model.mondayPrediction = 51
@@ -57,7 +198,7 @@ final class MobileModelsTests: XCTestCase {
     XCTAssertEqual(model.bootstrap?.currentWeek?.entry?.currentVersionNumber, 2)
   }
   @MainActor func testCleanDraftCanRefreshAndLogoutClearsState() {
-    let model = AppModel()
+    let model = AppModel(draftStore: nil)
     model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
     XCTAssertFalse(model.hasUnsavedDraft)
     model.acceptAccount(HomePreviewFixture.bootstrap("submitted"), compact: true)
@@ -74,7 +215,7 @@ final class MobileModelsTests: XCTestCase {
     configuration.protocolClasses = [HomeUnavailableURLProtocol.self]
     let session = URLSession(configuration: configuration)
     defer { session.invalidateAndCancel() }
-    let model = AppModel(apiClient: APIClient(baseURL: URL(string: "https://home-test.invalid")!, session: session))
+    let model = AppModel(apiClient: APIClient(baseURL: URL(string: "https://home-test.invalid")!, session: session), draftStore: nil)
     model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
     model.select(teamCode: "HOU", for: "game-0")
     XCTAssertEqual(model.homeRefreshDelay, 30)
@@ -91,7 +232,7 @@ final class MobileModelsTests: XCTestCase {
     XCTAssertEqual(model.homeRefreshDelay, 30)
   }
   @MainActor func testDifferentAccountCannotInheritUnsavedDraft() {
-    let model = AppModel()
+    let model = AppModel(draftStore: nil)
     let original = HomePreviewFixture.bootstrap("draft")
     model.acceptAccount(original)
     model.select(teamCode: "HOU", for: "game-0")
@@ -108,7 +249,7 @@ final class MobileModelsTests: XCTestCase {
     configuration.protocolClasses = [HomeNewWeekURLProtocol.self]
     let session = URLSession(configuration: configuration)
     defer { session.invalidateAndCancel() }
-    let model = AppModel(apiClient: APIClient(baseURL: URL(string: "https://home-test.invalid")!, session: session))
+    let model = AppModel(apiClient: APIClient(baseURL: URL(string: "https://home-test.invalid")!, session: session), draftStore: nil)
     model.acceptAccount(HomePreviewFixture.bootstrap("draft"))
     model.select(teamCode: "HOU", for: "game-0")
     await model.refreshHome(token: "test-token")
@@ -408,6 +549,24 @@ final class MobileModelsTests: XCTestCase {
     XCTAssertEqual(envelope.achievements.achievements.first?.title, "First call")
     XCTAssertTrue(envelope.achievements.achievements.first?.earned == true)
   }
+}
+
+private final class EntryReceiptURLProtocol: URLProtocol, @unchecked Sendable {
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+  override func startLoading() {
+    let isSubmission = request.httpMethod == "POST"
+    let picks = HomePreviewFixture.bootstrap("submitted").currentWeek!.entry!.officialPicks
+    let object: [String: Any] = ["result": ["ok": true, "code": "submitted", "message": "Received",
+      "receipt": ["versionNumber": 4, "committedAt": Date().ISO8601Format(), "action": "edit",
+        "officialPicks": picks, "mondayPrediction": 45, "draftRevision": 4]]]
+    let data = (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
+    client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: isSubmission ? 200 : 503, httpVersion: nil,
+      headerFields: ["Content-Type": "application/json"])!, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: isSubmission ? data : Data("{}".utf8))
+    client?.urlProtocolDidFinishLoading(self)
+  }
+  override func stopLoading() {}
 }
 
 private final class HomeUnavailableURLProtocol: URLProtocol, @unchecked Sendable {
