@@ -630,7 +630,8 @@ final class AppModel {
       MobileLivePlayerPicks(userId: "sample-\(index)", displayName: name,
         picks: Dictionary(uniqueKeysWithValues: week.games.enumerated().map { offset, game in
           (game.id, (offset + index).isMultiple(of: 2) ? game.away.abbreviation : game.home.abbreviation)
-        }), updatedAt: current.serverNow)
+        }), updatedAt: current.serverNow, mondayPrediction: index == 2 ? nil : 45 + index * 3,
+        cardState: week.isLocked ? "official" : "saved")
     }
     bootstrap = MobileBootstrap(serverNow: current.serverNow, user: current.user,
       currentWeek: week.withPlayers(players), results: current.results)
@@ -666,6 +667,7 @@ final class AppModel {
   }
 
   func loadLiveRacePreview() {
+    isPreview = true
     liveRaceState = .loaded(
       MobileLiveRace(
         status: "ready",
@@ -683,7 +685,9 @@ final class AppModel {
           MobileLiveRacePlayer(userId: "player-1", displayName: "Napalm", profilePhotoUrl: nil, isCurrentUser: true, rank: 1, baselineRank: 2, rankChange: 1, correct: 5, incorrect: 1, live: 2, pending: 8, projectedCorrect: 7, maxCorrect: 15, mondayPrediction: 47, tiebreakerDiff: nil, livePickCodes: ["IND", "PIT"], unresolvedPickCodes: ["IND", "PIT", "DAL"], pathLabel: "Projected first", pathCopy: "Napalm holds the projected lead. Open calls: IND, PIT, and DAL."),
           MobileLiveRacePlayer(userId: "player-2", displayName: "Fourth Down", profilePhotoUrl: nil, isCurrentUser: false, rank: 2, baselineRank: 1, rankChange: -1, correct: 6, incorrect: 0, live: 1, pending: 8, projectedCorrect: 6, maxCorrect: 15, mondayPrediction: 44, tiebreakerDiff: nil, livePickCodes: ["HOU"], unresolvedPickCodes: ["HOU", "PIT", "NYG"], pathLabel: "2 swing calls", pathCopy: "Fourth Down is 1 projected call back. Key differences: HOU and NYG."),
           MobileLiveRacePlayer(userId: "player-3", displayName: "Hail Mary", profilePhotoUrl: nil, isCurrentUser: false, rank: 3, baselineRank: 3, rankChange: 0, correct: 4, incorrect: 2, live: 2, pending: 8, projectedCorrect: 6, maxCorrect: 14, mondayPrediction: 51, tiebreakerDiff: nil, livePickCodes: ["IND", "CLE"], unresolvedPickCodes: ["IND", "CLE", "DAL"], pathLabel: "1 swing call", pathCopy: "Hail Mary is 1 projected call back. Key difference: CLE."),
-        ]
+        ],
+        mondayTiebreaker: MobileMondayTiebreaker(gameId: "monday", awayTeamCode: "KC", homeTeamCode: "BAL",
+          status: "in_progress", combinedTotal: 31)
       )
     )
   }

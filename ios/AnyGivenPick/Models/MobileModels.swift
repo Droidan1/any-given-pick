@@ -91,6 +91,14 @@ struct MobileLivePlayerPicks: Decodable, Sendable, Identifiable {
   let displayName: String
   let picks: [String: String]
   let updatedAt: String?
+  var mondayPrediction: Int? = nil
+  var cardState: String? = nil
+
+  func visibleAfterLock(_ locked: Bool) -> MobileLivePlayerPicks {
+    guard locked && cardState != "official" else { return self }
+    return MobileLivePlayerPicks(userId: userId, displayName: displayName, picks: [:], updatedAt: nil,
+      mondayPrediction: nil, cardState: cardState)
+  }
 
   var id: String { userId }
 }
@@ -190,6 +198,25 @@ struct MobileLiveRace: Decodable, Sendable {
   let waitingCount: Int
   let gamesToFeature: [MobileLiveRaceGame]
   let players: [MobileLiveRacePlayer]
+  var mondayTiebreaker: MobileMondayTiebreaker? = nil
+}
+
+struct MobileMondayTiebreaker: Decodable, Sendable {
+  let gameId: String
+  let awayTeamCode: String
+  let homeTeamCode: String
+  let status: String
+  let combinedTotal: Int?
+
+  var totalLabel: String { status == "final" ? "Final total" : "Live total" }
+  var waitingLabel: String {
+    switch status {
+    case "canceled": "Game canceled"
+    case "postponed": "Game postponed"
+    case "scheduled": "Awaiting kickoff"
+    default: "Score pending"
+    }
+  }
 }
 
 struct MobileLiveRaceGame: Decodable, Sendable, Identifiable {

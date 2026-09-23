@@ -101,6 +101,22 @@ struct LiveRaceView: View {
       }
 
       VStack(alignment: .leading, spacing: 0) {
+        if let monday = race.mondayTiebreaker {
+          VStack(alignment: .leading, spacing: 6) {
+            Text("MONDAY TIEBREAKER · \(monday.awayTeamCode) @ \(monday.homeTeamCode)")
+              .font(.headline.weight(.bold).width(.condensed))
+            Text(monday.combinedTotal.map { "\(monday.totalLabel): \($0)" } ?? monday.waitingLabel)
+              .font(.subheadline.bold())
+            Text("Official submitted totals. Correct picks come first; the final difference breaks ties.")
+              .font(.caption)
+              .foregroundStyle(AGPTheme.inkSoft)
+          }
+          .fixedSize(horizontal: false, vertical: true)
+          .padding(20)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .background(AGPTheme.paper200)
+          .overlay(alignment: .bottom) { rule }
+        }
         HStack(alignment: .firstTextBaseline) {
           VStack(alignment: .leading, spacing: 4) {
             Text("PROJECTED ORDER")
@@ -117,7 +133,7 @@ struct LiveRaceView: View {
         .overlay(alignment: .bottom) { rule }
 
         ForEach(race.players) { player in
-          LiveRacePlayerRow(player: player)
+          LiveRacePlayerRow(player: player, monday: race.mondayTiebreaker)
         }
       }
     }
@@ -135,6 +151,9 @@ struct LiveRaceView: View {
   }
 
   private func refreshLoop() async {
+    #if DEBUG
+    guard !ProcessInfo.processInfo.arguments.contains("-preview-live-race") else { return }
+    #endif
     if case .idle = appModel.liveRaceState {
       await refresh()
     }
@@ -151,6 +170,7 @@ struct LiveRaceView: View {
   }
 
   private func refresh() async {
+    guard !appModel.isPreview else { return }
     do {
       guard let token = try await clerk.auth.getToken() else { return }
       await appModel.refreshLiveRace(token: token)
@@ -251,6 +271,7 @@ private struct LiveRaceGameRow: View {
 
 private struct LiveRacePlayerRow: View {
   let player: MobileLiveRacePlayer
+  let monday: MobileMondayTiebreaker?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -294,6 +315,15 @@ private struct LiveRacePlayerRow: View {
         Spacer(minLength: 0)
       }
 
+      if let monday {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Monday total: \(player.mondayPrediction)").font(.subheadline.bold())
+          Text(mondayDetail(monday)).font(.caption)
+        }
+        .foregroundStyle(AGPTheme.ink)
+        .fixedSize(horizontal: false, vertical: true)
+      }
+
       Text(player.pathCopy)
         .font(.caption)
         .foregroundStyle(AGPTheme.inkSoft)
@@ -304,7 +334,15 @@ private struct LiveRacePlayerRow: View {
     .background(player.isCurrentUser ? AGPTheme.maize.opacity(0.26) : Color.clear)
     .overlay(alignment: .bottom) { Rectangle().fill(AGPTheme.sage).frame(height: 1) }
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("Rank \(player.rank), \(player.displayName), \(player.projectedCorrect) projected correct, \(player.correct) currently correct. \(player.pathCopy)")
+    .accessibilityLabel("Rank \(player.rank), \(player.displayName), \(player.projectedCorrect) projected correct, \(player.correct) currently correct. \(monday.map { "Monday total: \(player.mondayPrediction). \(mondayDetail($0)). " } ?? "")\(player.pathCopy)")
+  }
+
+  private func mondayDetail(_ monday: MobileMondayTiebreaker) -> String {
+    var detail = monday.combinedTotal.map { "\(monday.totalLabel): \($0)" } ?? monday.waitingLabel
+    if monday.status == "final", let difference = player.tiebreakerDiff {
+      detail += " · Off by \(difference)"
+    }
+    return detail
   }
 
   @ViewBuilder
@@ -382,6 +420,8 @@ struct LiveRaceDebugHost: View {
     NavigationStack {
       LiveRaceView()
     }
+    .frame(maxWidth: ProcessInfo.processInfo.arguments.contains("-race-narrow") ? 320 : .infinity)
+    .dynamicTypeSize(ProcessInfo.processInfo.arguments.contains("-race-large-type") ? .accessibility3 : .large)
     .task {
       appModel.loadLiveRacePreview()
     }

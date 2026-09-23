@@ -35,7 +35,37 @@ export type LiveWeekRace = {
   waitingCount: number;
   gamesToFeature: LiveRaceGame[];
   players: LiveRacePlayer[];
+  mondayTiebreaker: MondayTiebreaker | null;
 };
+
+export type MondayTiebreaker = {
+  gameId: string;
+  awayTeamCode: string;
+  homeTeamCode: string;
+  status: RevealedGame["status"];
+  combinedTotal: number | null;
+};
+
+function mondayTiebreakerFor(results: WeeklyResults): MondayTiebreaker | null {
+  const game = results.games.find((candidate) => candidate.isMondayTiebreaker);
+  if (!game) return null;
+  // Use the designated game's Eastern calendar day, including preseason/reschedules.
+  // Keep it visible afterward so Tuesday's final difference can still be reviewed.
+  const easternDay = (value: string) => new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date(value));
+  if (easternDay(results.serverNow) < easternDay(game.kickoffAt)
+    && game.status !== "in_progress" && game.status !== "final") return null;
+  return {
+    gameId: game.id,
+    awayTeamCode: game.awayTeamCode,
+    homeTeamCode: game.homeTeamCode,
+    status: game.status,
+    combinedTotal: ["in_progress", "final"].includes(game.status)
+      && game.awayScore !== null && game.homeScore !== null
+      ? game.awayScore + game.homeScore : null,
+  };
+}
 
 type PlayerDraft = Omit<LiveRacePlayer, "rank" | "baselineRank" | "rankChange" | "pathLabel" | "pathCopy"> & {
   picksByGame: Map<string, string>;
@@ -153,6 +183,7 @@ export function buildLiveWeekRace(results: WeeklyResults): LiveWeekRace {
       waitingCount,
       gamesToFeature: [],
       players: [],
+      mondayTiebreaker: null,
     };
   }
 
@@ -224,5 +255,6 @@ export function buildLiveWeekRace(results: WeeklyResults): LiveWeekRace {
     waitingCount,
     gamesToFeature,
     players,
+    mondayTiebreaker: mondayTiebreakerFor(results),
   };
 }

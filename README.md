@@ -32,7 +32,10 @@ The Vercel project has Clerk Hobby and Neon Free resources connected to Producti
 - Variable-size weekly picks flow using imported matchup data
 - Monday combined-score tiebreaker
 - Local recovery plus authenticated server-side draft sync
-- Authenticated live scoreboard showing every active player's autosaved team selections
+- Authenticated shared Picks scoreboard showing active players' saved selections and Monday-total predictions beneath the designated game, with a Monday totals shortcut on web/PWA and native iOS
+- Post-lock shared picks and totals use each player's latest official submission; unsubmitted drafts are excluded
+- Live Race shows official Monday predictions from the designated game's Eastern calendar day onward, with live/final combined scores and “Off by” only after the game is final
+- Monday-total visibility reuses stored predictions and existing scoring rules; no database migration required
 - Explicit submit/edit flow with immutable version history and timestamped receipts
 - Database-time deadline enforcement for drafts and submissions
 - Home, picks, standings, weekly results, activity archive, and profile surfaces

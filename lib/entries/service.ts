@@ -34,12 +34,16 @@ function formatDeadline(deadline: Date): string {
   }).format(deadline);
 }
 
-async function loadLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[]> {
+async function loadLivePlayerPicks(weekId: string, isLocked: boolean): Promise<LivePlayerPicks[]> {
   const rows = await getDb()
     .select({
       userId: users.id,
       displayName: profiles.displayName,
       picks: contestEntries.draftPicks,
+      mondayPrediction: contestEntries.draftMondayPrediction,
+      officialVersionId: entryVersions.id,
+      officialMondayPrediction: entryVersions.mondayPrediction,
+      committedAt: entryVersions.committedAt,
       updatedAt: contestEntries.updatedAt,
     })
     .from(users)
@@ -51,25 +55,46 @@ async function loadLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[]> {
         eq(contestEntries.contestWeekId, weekId),
       ),
     )
+    .leftJoin(entryVersions, and(
+      eq(entryVersions.contestEntryId, contestEntries.id),
+      eq(entryVersions.versionNumber, contestEntries.currentVersionNumber),
+    ))
     .where(eq(users.accountState, "active"))
     .orderBy(asc(profiles.normalizedDisplayName));
 
+  // At lock, never mix an unsubmitted draft with the official tiebreaker.
+  const versionIds = rows.flatMap((row) => row.officialVersionId ? [row.officialVersionId] : []);
+  const officialPicks = isLocked && versionIds.length > 0
+    ? await getDb().select({
+      versionId: entryVersionPicks.entryVersionId,
+      gameId: entryVersionPicks.gameId,
+      team: entryVersionPicks.selectedTeamCode,
+    }).from(entryVersionPicks).where(inArray(entryVersionPicks.entryVersionId, versionIds))
+    : [];
+  const picksByVersion = new Map<string, Record<string, string>>();
+  for (const pick of officialPicks) {
+    const picks = picksByVersion.get(pick.versionId) ?? {};
+    picks[pick.gameId] = pick.team;
+    picksByVersion.set(pick.versionId, picks);
+  }
   return rows.map((row) => ({
     userId: row.userId,
     displayName: row.displayName,
-    picks: row.picks ?? {},
-    updatedAt: row.updatedAt?.toISOString() ?? null,
+    picks: isLocked ? picksByVersion.get(row.officialVersionId ?? "") ?? {} : row.picks ?? {},
+    mondayPrediction: (isLocked ? row.officialMondayPrediction : row.mondayPrediction) ?? null,
+    cardState: isLocked ? (row.officialVersionId ? "official" : "none") : "saved",
+    updatedAt: (isLocked ? row.committedAt : row.updatedAt)?.toISOString() ?? null,
   }));
 }
 
 export async function getLivePlayerPicks(weekId: string): Promise<LivePlayerPicks[] | null> {
   const [week] = await getDb()
-    .select({ id: contestWeeks.id })
+    .select({ id: contestWeeks.id, status: contestWeeks.status, entryDeadline: contestWeeks.entryDeadline })
     .from(contestWeeks)
-    .where(and(eq(contestWeeks.id, weekId), eq(contestWeeks.status, "published")))
+    .where(and(eq(contestWeeks.id, weekId), inArray(contestWeeks.status, ["published", "locked", "final"])))
     .limit(1);
   if (!week) return null;
-  return loadLivePlayerPicks(week.id);
+  return loadLivePlayerPicks(week.id, week.status !== "published" || new Date() >= week.entryDeadline);
 }
 
 export async function getCurrentPlayerWeek(
@@ -147,7 +172,7 @@ export async function getCurrentPlayerWeek(
           eq(contestEntries.userId, userId),
         ),
       ),
-    input.includeLivePicks ? loadLivePlayerPicks(week.id) : Promise.resolve([]),
+    input.includeLivePicks ? loadLivePlayerPicks(week.id, isLocked) : Promise.resolve([]),
   ]);
 
   const entry = entryRows[0] ?? null;

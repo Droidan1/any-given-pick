@@ -24,7 +24,7 @@ struct ScoreboardEntryMatrix: View {
   private var userHeight: CGFloat { pickHeight + (games.contains(where: \.isMondayTiebreaker) ? totalHeight : 0) }
 
   private var otherPlayers: [MobileLivePlayerPicks] {
-    players.filter { $0.userId != currentUserId }
+    players.filter { $0.userId != currentUserId }.map { $0.visibleAfterLock(isLocked) }
   }
 
   private var selectedCount: Int {
@@ -41,8 +41,9 @@ struct ScoreboardEntryMatrix: View {
   }
 
   var body: some View {
+    ScrollViewReader { scroll in
     VStack(alignment: .leading, spacing: 0) {
-      toolbar
+      toolbar(scroll: scroll)
 
       GeometryReader { geometry in
       HStack(alignment: .top, spacing: 0) {
@@ -59,6 +60,9 @@ struct ScoreboardEntryMatrix: View {
         }
         .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: $visibleGameId, anchor: .leading)
+        .onChange(of: visibleGameId) { _, gameId in
+          if let gameId { scroll.scrollTo(gameId, anchor: .leading) }
+        }
         .scrollIndicators(.visible)
         .accessibilityLabel("Games. Swipe left or right to review every matchup.")
       }
@@ -68,7 +72,7 @@ struct ScoreboardEntryMatrix: View {
 
       HStack(spacing: 8) {
         Image(systemName: "arrow.left.and.right")
-        Text(isLocked ? "Your row shows your official card. Other rows show saved picks."
+        Text(isLocked ? "Rows show official submitted picks and totals. Unsubmitted drafts are not official."
           : "Swipe across games. Only your yellow row can be edited.")
       }
       .font(.caption)
@@ -77,12 +81,13 @@ struct ScoreboardEntryMatrix: View {
       .padding(.vertical, 11)
     }
     .background(AGPTheme.paper100)
+    }
   }
 
-  private var toolbar: some View {
+  private func toolbar(scroll: ScrollViewProxy) -> some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack(alignment: .firstTextBaseline) {
-        Text("SAVED PICKS BOARD")
+        Text(isLocked ? "OFFICIAL PICKS BOARD" : "SAVED PICKS BOARD")
           .font(.headline.weight(.bold).width(.condensed))
           .foregroundStyle(AGPTheme.paper100)
 
@@ -91,10 +96,26 @@ struct ScoreboardEntryMatrix: View {
         if !isLocked { FeedStateBadge(state: feedState) }
       }
 
-      Text("Game \((games.firstIndex { $0.id == visibleGameId } ?? 0) + 1) of \(games.count) · swipe for more")
+      HStack(spacing: 12) {
+      Text("Game \((games.firstIndex { $0.id == visibleGameId } ?? 0) + 1) of \(games.count)")
         .font(.caption)
         .foregroundStyle(AGPTheme.paper200)
         .fixedSize(horizontal: false, vertical: true)
+      Spacer(minLength: 0)
+      if let monday = games.first(where: \.isMondayTiebreaker) {
+        Button {
+          visibleGameId = monday.id
+          scroll.scrollTo(monday.id, anchor: .leading)
+        } label: {
+          Label("Monday totals", systemImage: "arrow.right.to.line")
+            .font(.subheadline.bold())
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(AGPTheme.maize)
+        .accessibilityHint("Jump to everyone's Monday picks and combined points predictions")
+      }
+      }
     }
     .padding(14)
     .background(AGPTheme.field950)
@@ -111,7 +132,7 @@ struct ScoreboardEntryMatrix: View {
           Text("\(games.count) GAMES")
             .font(.headline.weight(.bold).width(.condensed))
             .foregroundStyle(AGPTheme.paper100)
-          Text("Live saved cards")
+          Text(isLocked ? "Official cards" : "Live saved cards")
             .font(.caption2)
             .foregroundStyle(AGPTheme.paper200)
         }
@@ -143,7 +164,7 @@ struct ScoreboardEntryMatrix: View {
               .font(.subheadline.weight(.semibold).width(.condensed))
               .foregroundStyle(AGPTheme.ink)
               .lineLimit(1)
-            Text("\(savedPickCount(player))/\(games.count) saved")
+            Text("\(savedPickCount(player))/\(games.count) \(isLocked ? "official" : "saved")")
               .font(.caption2)
               .foregroundStyle(AGPTheme.inkSoft)
           }
@@ -161,9 +182,9 @@ struct ScoreboardEntryMatrix: View {
       gameHeader(game)
       yourPickCell(game)
       ForEach(otherPlayers) { player in
-        savedPickCell(player.picks[game.id], game: game)
+        savedPickCell(player.picks[game.id], game: game, prediction: player.mondayPrediction)
           .accessibilityElement(children: .ignore)
-          .accessibilityLabel("\(player.displayName), \(game.away.name) at \(game.home.name), saved pick: \(player.picks[game.id] ?? "not picked")")
+          .accessibilityLabel("\(player.displayName), \(game.away.name) at \(game.home.name), \(isLocked ? "official" : "saved") pick: \(player.picks[game.id] ?? "not picked")\(game.isMondayTiebreaker ? ", Monday total: \(player.mondayPrediction.map(String.init) ?? "Not set")" : "")")
       }
     }
     .frame(width: width)
@@ -311,7 +332,7 @@ struct ScoreboardEntryMatrix: View {
     .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 
-  private func savedPickCell(_ selection: String?, game: MobileGame) -> some View {
+  private func savedPickCell(_ selection: String?, game: MobileGame, prediction: Int?) -> some View {
     let validCode: String? = if selection == game.away.abbreviation || selection == game.home.abbreviation {
       selection
     } else {
@@ -319,7 +340,7 @@ struct ScoreboardEntryMatrix: View {
     }
 
     return boardCell(height: playerHeight, background: AGPTheme.paper100) {
-      Group {
+      VStack(spacing: 3) {
         if let validCode {
           HStack(spacing: 7) {
             NativeTeamCrest(code: validCode, size: 28)
@@ -331,6 +352,11 @@ struct ScoreboardEntryMatrix: View {
           Text("—")
             .font(AGPTheme.display(20))
             .foregroundStyle(AGPTheme.sage)
+        }
+        if game.isMondayTiebreaker {
+          Text("Total: \(prediction.map(String.init) ?? "Not set")")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(AGPTheme.ink)
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)

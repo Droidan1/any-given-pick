@@ -827,7 +827,18 @@ function PicksView(props: PicksViewProps) {
             <ProgressMeasure selected={props.selectedCount} total={props.games.length} tiebreakerSet={props.mondayTotal !== null} />
 
             <div className="scoreboard-toolbar">
-          <p>Your highlighted row is editable. Every active player&apos;s saved calls appear below.</p>
+          <p>Your highlighted row is editable. Saved calls and Monday totals appear below.</p>
+          {props.games.some((game) => game.isMondayTiebreaker) ? (
+            <button type="button" className="scoreboard-monday-jump" onClick={() => {
+              const target = document.getElementById("scoreboard-monday-game");
+              const scroller = target?.closest(".scoreboard-scroll");
+              if (target && scroller) {
+                const frozenWidth = scroller.querySelector(".scoreboard-player-column")?.getBoundingClientRect().width ?? 0;
+                scroller.scrollLeft += target.getBoundingClientRect().left - scroller.getBoundingClientRect().left - frozenWidth;
+                (scroller as HTMLElement).focus({ preventScroll: true });
+              }
+            }}>Monday totals <Icon name="arrow" /></button>
+          ) : null}
           <span className={`scoreboard-live-state scoreboard-live-state--${props.livePicksFeedState}`} aria-live="polite">
             {props.livePicksFeedState === "refreshing" ? "Refreshing…" : props.livePicksFeedState === "stale" ? "Refresh paused" : "Live board"}
           </span>
@@ -844,7 +855,7 @@ function PicksView(props: PicksViewProps) {
                     ? game.odds?.overUnder ?? null
                     : null;
                   return (
-                    <th scope="col" key={game.id}>
+                    <th scope="col" key={game.id} id={game.isMondayTiebreaker ? "scoreboard-monday-game" : undefined}>
                       <strong className="scoreboard-matchup-label">
                         <span><TeamCrest code={game.away.abbreviation} size="xs" />{game.away.abbreviation}</span>
                         <b>@</b>
@@ -902,6 +913,18 @@ function PicksView(props: PicksViewProps) {
                           );
                         })}
                       </fieldset>
+                      {game.isMondayTiebreaker ? (
+                        <label className="scoreboard-monday-total" htmlFor="monday-total">
+                          Your Monday total
+                          <input id="monday-total" type="number" inputMode="numeric" min="0" max="200" step="1"
+                            value={props.mondayTotal ?? ""} placeholder="Not set"
+                            disabled={!props.canParticipate || props.isPending}
+                            onChange={(event) => {
+                              const value = event.target.valueAsNumber;
+                              props.onMondayTotal(Number.isFinite(value) ? Math.min(200, Math.max(0, Math.trunc(value))) : null);
+                            }} />
+                        </label>
+                      ) : null}
                     </td>
                   );
                 })}
@@ -922,6 +945,7 @@ function PicksView(props: PicksViewProps) {
                           <span className={`scoreboard-saved-pick${validSelection ? " scoreboard-saved-pick--selected" : ""}`}>
                             {validSelection ? <><TeamCrest code={selection} size="xs" />{selection}</> : "—"}
                           </span>
+                          {game.isMondayTiebreaker ? <span className="scoreboard-monday-total">Total: <strong>{player.mondayPrediction ?? "Not set"}</strong></span> : null}
                         </td>
                       );
                     })}
@@ -945,7 +969,7 @@ function PicksView(props: PicksViewProps) {
         ) : (
           <>
             <div className="desktop-progress"><ProgressMeasure selected={props.selectedCount} total={props.games.length} tiebreakerSet={props.mondayTotal !== null} /></div>
-            <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isPending} />
+            {!props.games.some((game) => game.isMondayTiebreaker) ? <MondayTotal label={tiebreakerLabel} value={props.mondayTotal} onChange={props.onMondayTotal} disabled={props.isPending} /> : null}
             <div className="rules-note">
               <RouteSketch mirrored /><h2>How this week works</h2>
               <ul><li>Pick one team in each matchup.</li><li>Each correct pick counts as one point.</li><li>{tiebreakerLabel} Total breaks a tie.</li><li>Your latest submitted version before the deadline is official.</li></ul>

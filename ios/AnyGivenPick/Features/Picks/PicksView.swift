@@ -194,6 +194,11 @@ struct PicksView: View {
   }
   private func keepBoardFresh() async {
     guard !appModel.isPreview else { return }
+    if scenePhase == .active, appModel.selectedTab == .picks,
+      let week = appModel.bootstrap?.currentWeek, appModel.isLocked(week) {
+      await refreshBoard(refreshWeek: true)
+      return
+    }
     var pass = 0
     while !Task.isCancelled, scenePhase == .active, appModel.selectedTab == .picks,
       let week = appModel.bootstrap?.currentWeek, !appModel.isLocked(week) {

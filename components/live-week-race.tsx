@@ -50,6 +50,11 @@ export function LiveWeekRaceBoard({ race, weekOptions }: { race: LiveWeekRace; w
     ?? "";
   const [selectedPlayerId, setSelectedPlayerId] = useState(initialPlayerId);
   const selectedPlayer = race.players.find((player) => player.userId === selectedPlayerId) ?? race.players[0];
+  const monday = race.mondayTiebreaker;
+  const mondayTotalLabel = monday?.status === "final" ? "Final total" : "Live total";
+  const mondayStatus = monday?.status === "canceled" ? "Game canceled"
+    : monday?.status === "postponed" ? "Game postponed"
+      : monday?.status === "scheduled" ? "Awaiting kickoff" : "Score pending";
 
   const allGamesComplete = race.gamesToFeature.length > 0
     && race.liveCount === 0
@@ -124,6 +129,13 @@ export function LiveWeekRaceBoard({ race, weekOptions }: { race: LiveWeekRace; w
           <h2 id="live-race-field-title">The field right now</h2>
           <p>Select a player to see the calls that can move them toward first.</p>
         </header>
+        {monday ? (
+          <div className="live-race-monday-summary">
+            <strong>Monday tiebreaker · {monday.awayTeamCode} @ {monday.homeTeamCode}</strong>
+            <span>{monday.combinedTotal === null ? mondayStatus : `${mondayTotalLabel}: ${monday.combinedTotal}`}</span>
+            <p>Official submitted totals. Correct picks come first; the final difference breaks ties.</p>
+          </div>
+        ) : null}
         <div className="live-race-table-head" aria-hidden="true">
           <span>Rank</span><span>Player</span><span>Right</span><span>Wrong</span><span>Live</span><span>Max</span><span>Move</span>
         </div>
@@ -141,7 +153,15 @@ export function LiveWeekRaceBoard({ race, weekOptions }: { race: LiveWeekRace; w
                   <strong className="live-race-player__rank"><small>Rank</small>{player.rank}</strong>
                   <span className="live-race-player__identity">
                     <PlayerAvatar displayName={player.displayName} photoUrl={player.profilePhotoUrl} size={36} />
-                    <span><strong>{player.displayName}{player.isCurrentUser ? " · You" : ""}</strong><small>{player.unresolvedPickCodes.length > 0 ? `${player.unresolvedPickCodes.join(" · ")} still open` : "All calls settled"}</small></span>
+                    <span>
+                      <strong>{player.displayName}{player.isCurrentUser ? " · You" : ""}</strong>
+                      <small>{player.unresolvedPickCodes.length > 0 ? `${player.unresolvedPickCodes.join(" · ")} still open` : "All calls settled"}</small>
+                      {monday ? <span className="live-race-monday-prediction">
+                        <span>Monday total: <b>{player.mondayPrediction}</b></span>
+                        <span>{monday.combinedTotal === null ? mondayStatus : `${mondayTotalLabel}: ${monday.combinedTotal}`}</span>
+                        {monday.status === "final" && player.tiebreakerDiff !== null ? <b>Off by {player.tiebreakerDiff}</b> : null}
+                      </span> : null}
+                    </span>
                   </span>
                   <strong className="live-race-number"><small>Right</small>{player.correct}</strong>
                   <strong className="live-race-number"><small>Wrong</small>{player.incorrect}</strong>

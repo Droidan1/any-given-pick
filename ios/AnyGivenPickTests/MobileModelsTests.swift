@@ -2,6 +2,32 @@ import XCTest
 @testable import AnyGivenPick
 
 final class MobileModelsTests: XCTestCase {
+  func testSharedMondayTotalDecodingAndOldPayloadCompatibility() throws {
+    let base: [String: Any] = ["userId": "one", "displayName": "Example", "picks": ["game": "KC"]]
+    for total in [nil, 0, 45] as [Int?] {
+      var json = base
+      if let total { json["mondayPrediction"] = total }
+      let player = try JSONDecoder().decode(MobileLivePlayerPicks.self, from: JSONSerialization.data(withJSONObject: json))
+      XCTAssertEqual(player.mondayPrediction, total)
+      XCTAssertEqual(player.visibleAfterLock(false).picks, ["game": "KC"])
+      XCTAssertTrue(player.visibleAfterLock(true).picks.isEmpty)
+      XCTAssertNil(player.visibleAfterLock(true).mondayPrediction)
+    }
+    let official = MobileLivePlayerPicks(userId: "one", displayName: "Example", picks: ["game": "BAL"], updatedAt: nil,
+      mondayPrediction: 45, cardState: "official")
+    XCTAssertEqual(official.visibleAfterLock(true).mondayPrediction, 45)
+    XCTAssertEqual(official.visibleAfterLock(true).picks["game"], "BAL")
+  }
+
+  func testMondayRaceContextDecodesZeroAndStatus() throws {
+    let json = #"{"gameId":"monday","awayTeamCode":"KC","homeTeamCode":"BAL","status":"in_progress","combinedTotal":0}"#
+    let monday = try JSONDecoder().decode(MobileMondayTiebreaker.self, from: Data(json.utf8))
+    XCTAssertEqual(monday.combinedTotal, 0)
+    XCTAssertEqual(monday.totalLabel, "Live total")
+    let final = MobileMondayTiebreaker(gameId: "monday", awayTeamCode: "KC", homeTeamCode: "BAL", status: "final", combinedTotal: 48)
+    XCTAssertEqual(final.totalLabel, "Final total")
+  }
+
   @MainActor func testDraftRecoveryIsScopedAndLogoutRemovesCurrentDraft() throws {
     let name = "picks-test-\(UUID())"
     let defaults = try XCTUnwrap(UserDefaults(suiteName: name))

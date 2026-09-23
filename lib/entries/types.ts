@@ -40,6 +40,8 @@ export type LivePlayerPicks = {
   displayName: string;
   picks: Record<string, string>;
   updatedAt: string | null;
+  mondayPrediction: number | null;
+  cardState?: "saved" | "official" | "none";
 };
 
 export type PlayerWeek = {
