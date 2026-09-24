@@ -46,6 +46,18 @@ struct APIClient: Sendable {
     )
   }
 
+  func fetchAdmin(token: String, view: String, weekId: String? = nil) async throws -> AdminPayload {
+    var url = URLComponents(url: baseURL.appending(path: "api/mobile/v1/admin"), resolvingAgainstBaseURL: false)!
+    url.queryItems = [URLQueryItem(name: "view", value: view)]
+    if let weekId { url.queryItems?.append(URLQueryItem(name: "weekId", value: weekId)) }
+    return try await authenticatedRequest(url: url.url!, method: "GET", token: token, responseType: AdminPayload.self)
+  }
+
+  func administer(token: String, command: AdminCommand) async throws -> AdminActionResult {
+    try await authenticatedRequest(path: "api/mobile/v1/admin", method: "POST", token: token,
+      body: command, responseType: AdminActionResult.self)
+  }
+
   func liveActivitySettings(token: String, installationId: String) async throws -> LiveActivitySettings {
     var url = URLComponents(url: baseURL.appending(path: "api/mobile/v1/live-activities/device"), resolvingAgainstBaseURL: false)!
     url.queryItems = [URLQueryItem(name: "installationId", value: installationId)]

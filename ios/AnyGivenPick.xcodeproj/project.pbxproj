@@ -7,6 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AF400000000000000000000C /* AdminPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF400000000000000000000D; };
+		AF400000000000000000000E /* AdminTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF400000000000000000000F; };
+		AF4000000000000000000001 /* AdminModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4000000000000000000002; };
+		AF4000000000000000000003 /* AdminHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4000000000000000000004; };
+		AF4000000000000000000005 /* AdminUsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4000000000000000000006; };
+		AF4000000000000000000007 /* AdminAnnouncementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4000000000000000000008; };
+		AF4000000000000000000009 /* AdminReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF400000000000000000000A; };
+		AF3000000000000000000001 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AF3000000000000000000002 /* LaunchScreen.storyboard */; };
+		AF3000000000000000000003 /* BrandingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF3000000000000000000004 /* BrandingTests.swift */; };
+		AF2000000000000000000001 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2000000000000000000002 /* AppLock.swift */; };
+		AF2000000000000000000003 /* AppLockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2000000000000000000004 /* AppLockView.swift */; };
+		AF2000000000000000000005 /* AppLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2000000000000000000006 /* AppLockTests.swift */; };
 		AF1000000000000000000001 /* HomeWeekState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1000000000000000000002 /* HomeWeekState.swift */; };
 		AF1000000000000000000003 /* LiveGamesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1000000000000000000004 /* LiveGamesView.swift */; };
 		097B85B7F8800003F460BB38 /* WeekRaceAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5750423D4BD3D6E210C55A /* WeekRaceAttributes.swift */; };
@@ -45,7 +57,7 @@
 		E5604655FA3D52AED1CFF2AA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D22AEFD071D9D90CC32C34F /* Assets.xcassets */; };
 		E76B7F84DE6B8C72615DD42A /* PickActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856BFC95F7483E96A82A8346 /* PickActivityAttributes.swift */; };
 		E8FD86985F006286573395AB /* ClerkKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 43AF3AAFD10B4CA24AF73333 /* ClerkKitUI */; };
-		E9B853610180DF5DBCADE6C3 /* AnyGivenPickWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B87068BDE0217B21E7E0FC50 /* AnyGivenPickWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E9B853610180DF5DBCADE6C3 /* Any Given Pick Widgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B87068BDE0217B21E7E0FC50 /* Any Given Pick Widgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F1397E6EDEBEA826507C1591 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37EEC0776C66BA5521E0080E /* LiveActivityManager.swift */; };
 		F832589DC6716F282BE51F85 /* PickActivityCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 998187EC2D3273C0BC238DE5 /* PickActivityCard.swift */; };
 /* End PBXBuildFile section */
@@ -74,7 +86,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				E9B853610180DF5DBCADE6C3 /* AnyGivenPickWidgets.appex in Embed Foundation Extensions */,
+				E9B853610180DF5DBCADE6C3 /* Any Given Pick Widgets.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -82,6 +94,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AF400000000000000000000D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminPreview.swift; sourceTree = "<group>"; };
+		AF400000000000000000000F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminTests.swift; sourceTree = "<group>"; };
+		AF4000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModels.swift; sourceTree = "<group>"; };
+		AF4000000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminHubView.swift; sourceTree = "<group>"; };
+		AF4000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminUsersView.swift; sourceTree = "<group>"; };
+		AF4000000000000000000008 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminAnnouncementsView.swift; sourceTree = "<group>"; };
+		AF400000000000000000000A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminReportsView.swift; sourceTree = "<group>"; };
+		AF3000000000000000000002 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		AF3000000000000000000004 /* BrandingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandingTests.swift; sourceTree = "<group>"; };
+		AF2000000000000000000002 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
+		AF2000000000000000000004 /* AppLockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockView.swift; sourceTree = "<group>"; };
+		AF2000000000000000000006 /* AppLockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLockTests.swift; sourceTree = "<group>"; };
 		AF1000000000000000000002 /* HomeWeekState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWeekState.swift; sourceTree = "<group>"; };
 		AF1000000000000000000004 /* LiveGamesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveGamesView.swift; sourceTree = "<group>"; };
 		108932C275BE7310F12564D6 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -90,13 +114,13 @@
 		1D22AEFD071D9D90CC32C34F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2179BCD8A981A0DE60D44783 /* WeekRaceLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekRaceLiveActivity.swift; sourceTree = "<group>"; };
 		25071AF6C7F9A7C63722BFD1 /* PickLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickLiveActivity.swift; sourceTree = "<group>"; };
-		29EF169E1EBCFA88C0BE85EC /* AnyGivenPickTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AnyGivenPickTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		29EF169E1EBCFA88C0BE85EC /* AnyGivenPickTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnyGivenPickTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B030758FC7800DDD107EABA /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
 		34BA1EB628624EBA9E30629A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3554A899AA865C9234B38472 /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
 		3780FD2D579218E585F6C73C /* AchievementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementsView.swift; sourceTree = "<group>"; };
 		37EEC0776C66BA5521E0080E /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
-		3854C7BB6DFA0F778CB80CF4 /* AnyGivenPick.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AnyGivenPick.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3854C7BB6DFA0F778CB80CF4 /* AnyGivenPick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnyGivenPick.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		391D2C9932F5929DD30E1528 /* AnyGivenPickApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnyGivenPickApp.swift; sourceTree = "<group>"; };
 		417982B2AC8AB5FD4B4E3777 /* AnyGivenPick.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnyGivenPick.entitlements; sourceTree = "<group>"; };
 		4330460F631E1C0B686C0AB3 /* NativeTeamCrest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTeamCrest.swift; sourceTree = "<group>"; };
@@ -117,7 +141,7 @@
 		A803F48CDD7996006979D55E /* ProductionLiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductionLiveActivityManager.swift; sourceTree = "<group>"; };
 		B0A132899FCEFA4EEA36D29C /* PicksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PicksView.swift; sourceTree = "<group>"; };
 		B7D198922FFE35B8C1D64AAD /* MobileModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileModelsTests.swift; sourceTree = "<group>"; };
-		B87068BDE0217B21E7E0FC50 /* AnyGivenPickWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = AnyGivenPickWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B87068BDE0217B21E7E0FC50 /* Any Given Pick Widgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Any Given Pick Widgets.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6A7ECE1E778AB55298205BF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DF2545437F4992782B964BD0 /* ScoreboardEntryMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreboardEntryMatrix.swift; sourceTree = "<group>"; };
 		EF5750423D4BD3D6E210C55A /* WeekRaceAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekRaceAttributes.swift; sourceTree = "<group>"; };
@@ -138,6 +162,12 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		AF400000000000000000000B /* Admin */ = {
+			isa = PBXGroup;
+			children = (AF4000000000000000000002, AF4000000000000000000004, AF4000000000000000000006, AF4000000000000000000008, AF400000000000000000000A, AF400000000000000000000D);
+			path = Admin;
+			sourceTree = "<group>";
+		};
 		10DA9ADD28056C295E3598E9 /* LiveRace */ = {
 			isa = PBXGroup;
 			children = (
@@ -196,6 +226,8 @@
 		7DB7F3F6A54C07C24035FD8C /* Authentication */ = {
 			isa = PBXGroup;
 			children = (
+				AF2000000000000000000002 /* AppLock.swift */,
+				AF2000000000000000000004 /* AppLockView.swift */,
 				7CE9983C39BAA697AEC99A4A /* AppConfiguration.swift */,
 				60436C093789ABD0B0239172 /* AppRootView.swift */,
 			);
@@ -242,6 +274,9 @@
 		9A192A8E297F266197B555F1 /* AnyGivenPickTests */ = {
 			isa = PBXGroup;
 			children = (
+				AF3000000000000000000004 /* BrandingTests.swift */,
+				AF2000000000000000000006 /* AppLockTests.swift */,
+				AF400000000000000000000F /* AdminTests.swift */,
 				1D11044919F40B0205956554 /* HealthStatusTests.swift */,
 				5A5F540B501664FB25764D00 /* LiveActivityTests.swift */,
 				B7D198922FFE35B8C1D64AAD /* MobileModelsTests.swift */,
@@ -261,6 +296,7 @@
 		9C84F48E858827AA212B9F30 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				AF3000000000000000000002 /* LaunchScreen.storyboard */,
 				C6A7ECE1E778AB55298205BF /* Assets.xcassets */,
 			);
 			path = Resources;
@@ -289,7 +325,7 @@
 			children = (
 				3854C7BB6DFA0F778CB80CF4 /* AnyGivenPick.app */,
 				29EF169E1EBCFA88C0BE85EC /* AnyGivenPickTests.xctest */,
-				B87068BDE0217B21E7E0FC50 /* AnyGivenPickWidgets.appex */,
+				B87068BDE0217B21E7E0FC50 /* Any Given Pick Widgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -326,6 +362,7 @@
 		F854B4AD7956DF1FDF4A6D84 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				AF400000000000000000000B /* Admin */,
 				927458F814742A319F03E29A /* Achievements */,
 				E56EAA2E7BBD9C0D9615EBA2 /* Home */,
 				10DA9ADD28056C295E3598E9 /* LiveRace */,
@@ -396,7 +433,7 @@
 			packageProductDependencies = (
 			);
 			productName = AnyGivenPickWidgets;
-			productReference = B87068BDE0217B21E7E0FC50 /* AnyGivenPickWidgets.appex */;
+			productReference = B87068BDE0217B21E7E0FC50 /* Any Given Pick Widgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -406,7 +443,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					0FCF2F77535EEBCEBC42628E = {
 						DevelopmentTeam = 225457KEGM;
@@ -451,6 +488,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AF3000000000000000000001 /* LaunchScreen.storyboard in Resources */,
 				C441A7E86293BE3D11821FD5 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -483,6 +521,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AF4000000000000000000001 /* AdminModels.swift in Sources */,
+				AF400000000000000000000C /* AdminPreview.swift in Sources */,
+				AF4000000000000000000003 /* AdminHubView.swift in Sources */,
+				AF4000000000000000000005 /* AdminUsersView.swift in Sources */,
+				AF4000000000000000000007 /* AdminAnnouncementsView.swift in Sources */,
+				AF4000000000000000000009 /* AdminReportsView.swift in Sources */,
+				AF2000000000000000000001 /* AppLock.swift in Sources */,
+				AF2000000000000000000003 /* AppLockView.swift in Sources */,
 				41A375539F49CE794D94CC6E /* AGPTheme.swift in Sources */,
 				BBBF18E8CB7F689ACE5BAEE8 /* APIClient.swift in Sources */,
 				DCD853F71C2049D1DEE75B0B /* AchievementsView.swift in Sources */,
@@ -517,6 +563,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AF2000000000000000000005 /* AppLockTests.swift in Sources */,
+				AF400000000000000000000E /* AdminTests.swift in Sources */,
+				AF3000000000000000000003 /* BrandingTests.swift in Sources */,
 				2D0D84D420A26042EF7674ED /* HealthStatusTests.swift in Sources */,
 				2775ACB3D0BDFE9D3A77F75F /* LiveActivityTests.swift in Sources */,
 				AE06893BED69A37BA9048579 /* MobileModelsTests.swift in Sources */,
@@ -678,6 +727,7 @@
 				DEVELOPMENT_TEAM = 225457KEGM;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -692,6 +742,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
@@ -755,6 +806,7 @@
 				DEVELOPMENT_TEAM = 225457KEGM;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -776,6 +828,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;

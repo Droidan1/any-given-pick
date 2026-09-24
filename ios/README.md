@@ -36,6 +36,7 @@ Do not place a Clerk secret key in the iOS project. The checked-in value is the 
 ## Current native milestone
 
 - Clerk email-code sign-in and sign-up
+- Optional Face ID / Touch ID / device-passcode app unlock from Profile → App Security
 - Commissioner approval and account-state handling
 - Versioned `/api/mobile/v1` bootstrap, results, draft-save, and official-submit endpoints
 - Native scoreboard entry matrix with an editable player row and draft-conflict recovery
@@ -75,6 +76,28 @@ September 23, 2026 validation: simulator build, 32 native tests, 230 web/server 
 - Install a signed build and verify sign-in, approved-account access, shared-board synchronization, and official receipt persistence using an authorized test card.
 - Verify offline/relaunch recovery, both conflict choices, interrupted-response retry, and account/week isolation.
 - Check keyboard dismissal, VoiceOver, large text, tab-safe actions, and whole-card locking on the iPhone. No production changes or physical install were performed during this validation.
+
+## Face ID app unlock
+
+This is an optional, device-local privacy gate for an existing Clerk session, not a replacement for account sign-in or server authorization. It is off by default. Profile → App Security → Use Face ID asks iOS to verify the device owner before enabling (or disabling) it. Devices without Face ID use Touch ID or their passcode.
+
+An enabled account locks after backgrounding and on cold launch. One automatic unlock attempt is made on return; canceling keeps the app locked with an explicit retry. The app-switcher cover hides account content, and notification/Live Activity destinations wait until unlock. Notification previews and Live Activities themselves remain controlled separately and are not hidden by app unlock. No face data or device passcode is collected by the app. This setting does not encrypt local draft files.
+
+Sign out instead is the recovery route to normal Clerk sign-in, with confirmation about unsynced local work. Completed sign-out clears that account's device-local opt-in. No server deployment, migration, or Clerk setting is required; install the updated native build through Xcode.
+
+Tests cover opt-in verification, cold start, background/inactive transitions, cancellation without prompt loops, verified opt-out, account isolation, missing passcode, stale authentication completions, and concurrent attempts. DEBUG-only `-preview-app-unlock` opens an isolated fixture with no player data; add `-unlock-locked`, `-unlock-narrow` (320pt), or `-unlock-large-type` (accessibility3) for UI checks.
+
+The approved Field Green unlock treatment uses solid `field950`, cream Dynamic Type, the exact transparent `AppBrandMark`, maize SF Symbols, and a left-aligned “BACK TO THE GAME.” headline. The separate privacy window reuses this player-data-free design above presented sheets. “Verifying with Face ID…” appears during authentication; otherwise the privacy cover says “Account locked.” Recovery remains scrollable, with a yellow retry, passcode guidance, and confirmed sign-out. Apple's authentication UI is not customized. Add `-unlock-verifying` to the DEBUG unlock fixture to inspect verification, or `-unlock-cover` to exercise the actual privacy window. Neither flag contacts production.
+
+September 23, 2026 Field Green validation: simulator build and 47 native tests passed. The full-width privacy cover, 320pt recovery, and accessibility3 layout were inspected; retry opened the system passcode prompt, and sign-out confirmation could be canceled. The installed app icon is unchanged. No production deployment or physical-device installation was performed for this design change.
+
+Before release, verify on a signed iPhone: enable, successful Face ID, canceled/failed scan, passcode fallback, background/reopen, cold launch, app-switcher privacy while a sheet is presented, notification/Live Activity tap while locked, and sign-out recovery. Simulator tests do not prove physical Face ID recognition.
+
+## App branding
+
+`AppBrandMark` is the shared native logo for Home, Picks, page headers, sign-in, account loading/error, and the app-unlock screen. It uses the transparent vector in `HomeBrandMark.imageset`: the approved `public/favicon.svg` card artwork with only its outer cream tile removed. Keep the white card outlines. Do not use the opaque app-icon PNG inside the app or recreate the mark with system symbols. The installed app icon is unchanged.
+
+`LaunchScreen.storyboard` uses the same asset on the existing paper background; `UILaunchStoryboardName` is declared in both the checked-in plist and `project.yml`. Branding tests verify the bundled asset, transparent outer area, and storyboard image. DEBUG launch arguments `-preview-account-loading` and `-preview-launch-screen` show the actual loading view and bundled launch storyboard without signing out, delaying startup, or changing player data. Reinstall/run the native build from Xcode to see changes; a web deployment does not update these bundled views.
 
 ## Production roadmap
 
@@ -140,3 +163,7 @@ saw an alert (Focus mode, connectivity, and OS policies can delay delivery).
 
 References: [APNs registration](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns),
 [APNs token authentication](https://developer.apple.com/documentation/usernotifications/establishing-a-token-based-connection-to-apns).
+
+## Native admin tools
+
+Administrators enter through **Profile → Admin tools**. Native approvals, announcements, official pick-card reports, and read-only operations/privacy views live in `AnyGivenPick/Features/Admin/`; week management, imports, score changes, and privacy processing remain labeled browser handoffs. See [Native admin](../docs/native-admin.md) for the parity inventory, security boundary, fixture arguments, and validation status. This extension needs no migration, but the updated backend must be deployed before installing/running the native build from Xcode. No release was performed.

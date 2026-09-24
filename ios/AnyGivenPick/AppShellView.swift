@@ -9,6 +9,7 @@ enum AppRoute: Hashable {
   case notifications
   case liveActivities
   case followGames
+  case admin
 }
 
 enum AppTab: Hashable, CaseIterable {
@@ -62,6 +63,8 @@ struct AppShellView: View {
                 LiveActivitySettingsView()
               case .followGames:
                 FollowGamesView()
+              case .admin:
+                AdminHubView()
               }
             }
         }
@@ -97,5 +100,6 @@ struct AppShellView: View {
     .environment(AppModel(apiClient: .preview))
     .environment(LiveActivityManager())
     .environment(NotificationManager())
+    .environment(AppLock())
     .environment(Clerk.preview())
 }

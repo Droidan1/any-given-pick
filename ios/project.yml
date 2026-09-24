@@ -34,12 +34,13 @@ targets:
         ClerkPublishableKey: pk_live_Y2xlcmsuYW55Z2l2ZW5waWNrLmFwcCQ
         LSApplicationCategoryType: public.app-category.sports
         NSSupportsLiveActivities: true
+        NSFaceIDUsageDescription: Use Face ID to unlock your picks and player account on this iPhone.
         CFBundleURLTypes:
           - CFBundleURLName: app.anygivenpick.activities
             CFBundleURLSchemes: [anygivenpick]
         APNsEnvironment: $(APNS_ENVIRONMENT)
         UIApplicationSupportsIndirectInputEvents: true
-        UILaunchScreen: {}
+        UILaunchStoryboardName: LaunchScreen
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
     sources:

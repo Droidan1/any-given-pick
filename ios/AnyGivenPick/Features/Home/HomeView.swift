@@ -76,7 +76,7 @@ struct HomeView: View {
   }
   private var brand: some View {
     HStack(spacing: 8) {
-      Image("HomeBrandMark").resizable().scaledToFit().frame(width: 34, height: 34).accessibilityHidden(true)
+      AppBrandMark().frame(width: 34, height: 34).accessibilityHidden(true)
       Text("ANY GIVEN PICK").font(.subheadline.weight(.heavy).width(.condensed))
     }
   }
@@ -253,7 +253,7 @@ struct HomeDebugHost: View {
   @State private var model = AppModel()
   private var mode: String { ProcessInfo.processInfo.environment["HOME_PREVIEW_STATE"] ?? "draft" }
   var body: some View {
-    AppShellView().environment(model).environment(Clerk.preview()).environment(LiveActivityManager.preview())
+    AppShellView().environment(model).environment(Clerk.preview()).environment(LiveActivityManager.preview()).environment(AppLock())
       .environment(\.dynamicTypeSize, ProcessInfo.processInfo.arguments.contains("-preview-large-text") ? .accessibility3 : .large)
       .task {
         model.loadHomePreview(mode)

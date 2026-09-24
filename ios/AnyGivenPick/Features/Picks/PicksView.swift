@@ -59,7 +59,7 @@ struct PicksView: View {
   private func header(_ week: MobilePlayerWeek) -> some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(spacing: 16) {
-        RouteMark().frame(width: 42, height: 42).accessibilityHidden(true)
+        AppBrandMark().frame(width: 42, height: 42).accessibilityHidden(true)
         Text(appModel.isLocked(week) ? "\(week.label.uppercased()) · LOCKED" : "\(week.label.uppercased()) PICKS")
           .font(.title2.weight(.bold).width(.condensed))
       }
@@ -323,7 +323,7 @@ private struct EntryReviewSheet: View {
 struct PicksDebugHost: View {
   @State private var model = AppModel(draftStore: nil)
   var body: some View {
-    AppShellView().environment(model).environment(Clerk.preview())
+    AppShellView().environment(model).environment(Clerk.preview()).environment(AppLock())
       .environment(LiveActivityManager.preview()).environment(NotificationManager())
       .task {
         let args = ProcessInfo.processInfo.arguments

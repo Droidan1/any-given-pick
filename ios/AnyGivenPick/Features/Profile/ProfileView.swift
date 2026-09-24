@@ -23,6 +23,18 @@ struct ProfileView: View {
 
           accountSection
 
+          if appModel.bootstrap?.user.isAdmin == true {
+            NavigationLink(value: AppRoute.admin) {
+              Label("Admin tools", systemImage: "person.badge.shield.checkmark")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(CallSheetActionStyle())
+            .padding(20)
+            .accessibilityIdentifier("profile-admin-tools")
+          }
+
+          AppSecuritySection()
+
           deviceTestSection(
             number: "1",
             title: "Live Activity",
@@ -157,6 +169,39 @@ struct ProfileView: View {
 
       actions()
     }
+    .padding(20)
+    .overlay(alignment: .bottom) { Rectangle().fill(AGPTheme.sage).frame(height: 1) }
+  }
+}
+
+struct AppSecuritySection: View {
+  @Environment(AppLock.self) private var lock
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text("APP SECURITY").font(AGPTheme.label()).foregroundStyle(AGPTheme.clay)
+      Toggle(isOn: Binding(get: { lock.isEnabled }, set: { enabled in
+        Task { await lock.setEnabled(enabled) }
+      })) {
+        Label("Use \(lock.name)", systemImage: lock.symbol)
+          .font(.headline).fixedSize(horizontal: false, vertical: true)
+      }
+      .tint(AGPTheme.field950)
+      .disabled(lock.isBusy || lock.userID == nil)
+      .accessibilityIdentifier("app-lock-toggle")
+      Text("Require an unlock when you reopen the app. Your iPhone passcode is the fallback. Turning this on starts a verification now.")
+        .font(.subheadline).foregroundStyle(AGPTheme.inkSoft)
+      if lock.isBusy { ProgressView("Verifying…") }
+      if let message = lock.errorMessage { Text(message).font(.subheadline) }
+      if lock.isEnabled {
+        Button("Lock now") { lock.lockNow() }
+          .font(.body.weight(.semibold)).frame(minHeight: 44).disabled(lock.isBusy)
+          .accessibilityIdentifier("app-lock-now")
+      }
+      Text("Only on this iPhone. Face data is handled by iOS, not stored by Any Given Pick. Notification previews and Live Activities are separate.")
+        .font(.footnote).foregroundStyle(AGPTheme.inkSoft)
+    }
+    .foregroundStyle(AGPTheme.ink)
     .padding(20)
     .overlay(alignment: .bottom) { Rectangle().fill(AGPTheme.sage).frame(height: 1) }
   }

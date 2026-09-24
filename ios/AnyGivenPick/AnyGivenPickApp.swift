@@ -8,6 +8,7 @@ struct AnyGivenPickApp: App {
   @State private var appModel = AppModel()
   @State private var liveActivityManager = LiveActivityManager()
   @State private var notificationManager = NotificationManager.shared
+  @State private var appLock = AppLock()
 
   init() {
     Clerk.configure(
@@ -22,16 +23,33 @@ struct AnyGivenPickApp: App {
         .environment(appModel)
         .environment(liveActivityManager)
         .environment(notificationManager)
+        .environment(appLock)
         .environment(Clerk.shared)
         .onOpenURL { liveActivityManager.pendingDestination = ActivityDestination(url: $0) }
-        .preferredColorScheme(.light)
+        .preferredColorScheme(preferredAppColorScheme)
     }
+  }
+
+  private var preferredAppColorScheme: ColorScheme {
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains("-preview-app-unlock") { return .dark }
+    #endif
+    // Match the solid privacy surface without changing the signed-in app's appearance.
+    return appLock.userID != nil && (appLock.isLocked || appLock.shouldCoverApp) ? .dark : .light
   }
 
   @ViewBuilder
   private var rootContent: some View {
     #if DEBUG
-    if ProcessInfo.processInfo.arguments.contains("-preview-picks") {
+    if ProcessInfo.processInfo.arguments.contains("-preview-admin") {
+      AdminDebugHost()
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-account-loading") {
+      AccountConnectionView(error: nil, retry: {})
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-launch-screen") {
+      LaunchScreenDebugHost().ignoresSafeArea()
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-app-unlock") {
+      AppLockDebugHost()
+    } else if ProcessInfo.processInfo.arguments.contains("-preview-picks") {
       PicksDebugHost()
     } else if ProcessInfo.processInfo.arguments.contains("-preview-home") {
       HomeDebugHost()

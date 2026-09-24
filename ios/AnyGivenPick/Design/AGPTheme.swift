@@ -37,7 +37,7 @@ struct BrandHeader: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack(spacing: 12) {
-        RouteMark()
+        AppBrandMark()
           .frame(width: 42, height: 42)
           .accessibilityHidden(true)
 
@@ -77,38 +77,17 @@ struct BrandHeader: View {
   }
 }
 
-struct RouteMark: View {
-  var body: some View {
-    ZStack {
-      Rectangle()
-        .fill(AGPTheme.paper100)
-      Path { path in
-        path.move(to: CGPoint(x: 8, y: 32))
-        path.addCurve(
-          to: CGPoint(x: 31, y: 10),
-          control1: CGPoint(x: 10, y: 18),
-          control2: CGPoint(x: 19, y: 13)
-        )
-        path.addLine(to: CGPoint(x: 27, y: 10))
-        path.move(to: CGPoint(x: 31, y: 10))
-        path.addLine(to: CGPoint(x: 30, y: 15))
-      }
-      .stroke(AGPTheme.field950, style: StrokeStyle(lineWidth: 3, lineCap: .square, lineJoin: .miter))
+/// Approved card artwork, without the app icon's outer cream tile.
+/// The transparent image works on both paper and field backgrounds.
+struct AppBrandMark: View {
+  static let assetName = "HomeBrandMark"
 
-      Circle()
-        .stroke(AGPTheme.field950, lineWidth: 3)
-        .frame(width: 9, height: 9)
-        .offset(x: -13, y: 13)
-    }
-    .overlay(alignment: .bottomTrailing) {
-      Image(systemName: "checkmark")
-        .font(.system(size: 13, weight: .black))
-        .foregroundStyle(AGPTheme.field950)
-        .frame(width: 24, height: 24)
-        .background(AGPTheme.maize)
-        .offset(x: 5, y: 5)
-    }
-    .accessibilityLabel("Any Given Pick")
+  var body: some View {
+    Image(Self.assetName)
+      .renderingMode(.original)
+      .resizable()
+      .scaledToFit()
+      .accessibilityLabel("Any Given Pick")
   }
 }
 
