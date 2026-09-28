@@ -16,6 +16,9 @@ final class AppModel {
     case refreshing
     case live(Date)
     case stale
+    case paused
+    case retrying(Date)
+    case blocked(String)
   }
 
   enum LiveRaceState {
@@ -180,8 +183,10 @@ final class AppModel {
     notificationNavigationID = UUID()
   }
 
-  func refreshLivePicks(token: String, weekId: String) async {
-    guard bootstrap?.currentWeek?.id == weekId else { return }
+  @discardableResult
+  func refreshLivePicks(token: String, weekId: String) async -> FeedRefreshOutcome {
+    guard !Task.isCancelled else { return .cancelled }
+    guard bootstrap?.currentWeek?.id == weekId else { return .skipped }
     let generation = accountGeneration
 
     livePicksFeedState = .refreshing
@@ -189,7 +194,7 @@ final class AppModel {
       let players = try await apiClient.fetchLivePicks(token: token, weekId: weekId)
       guard generation == accountGeneration, !Task.isCancelled, let current = bootstrap,
             let week = current.currentWeek,
-            week.id == weekId else { return }
+            week.id == weekId else { return .cancelled }
       let refreshedWeek = MobilePlayerWeek(
         id: week.id,
         season: week.season,
@@ -210,10 +215,13 @@ final class AppModel {
         results: current.results
       )
       livePicksFeedState = .live(Date())
-    } catch is CancellationError {
-      return
+      return .success
     } catch {
+      guard !Task.isCancelled, generation == accountGeneration else { return .cancelled }
+      let outcome = FeedRefreshOutcome.failure(error)
+      guard outcome != .cancelled else { return outcome }
       if generation == accountGeneration { livePicksFeedState = .stale }
+      return outcome
     }
   }
 
@@ -357,9 +365,13 @@ final class AppModel {
     }
   }
 
-  func refreshLiveRace(token: String) async {
+  @discardableResult
+  func refreshLiveRace(token: String) async -> FeedRefreshOutcome {
+    guard !Task.isCancelled else { return .cancelled }
+    let generation = accountGeneration
+    let weekId = liveRaceWeekId
     let hadLoadedRace: Bool
-    if case .loaded = liveRaceState {
+    if case .loaded(let race) = liveRaceState, weekId == nil || race.week?.id == weekId {
       hadLoadedRace = true
     } else {
       hadLoadedRace = false
@@ -368,16 +380,19 @@ final class AppModel {
 
     do {
       let accountId = bootstrap?.user.id
-      let weekId = liveRaceWeekId
       let race = try await apiClient.fetchLiveRace(token: token, weekId: weekId)
-      guard bootstrap?.user.id == accountId, liveRaceWeekId == weekId else { return }
+      guard !Task.isCancelled, generation == accountGeneration,
+        bootstrap?.user.id == accountId, liveRaceWeekId == weekId else { return .cancelled }
       liveRaceState = .loaded(race)
-    } catch is CancellationError {
-      return
+      return .success
     } catch {
+      guard !Task.isCancelled, generation == accountGeneration, liveRaceWeekId == weekId else { return .cancelled }
+      let outcome = FeedRefreshOutcome.failure(error)
+      guard outcome != .cancelled else { return outcome }
       if !hadLoadedRace {
         liveRaceState = .failed(error.localizedDescription)
       }
+      return outcome
     }
   }
 
@@ -550,10 +565,12 @@ final class AppModel {
     bootstrap = MobileBootstrap(serverNow: current.serverNow, user: current.user, currentWeek: updatedWeek, results: current.results)
   }
 
-  func refreshHome(token: String, weekId: String? = nil) async {
-    guard let accountId = bootstrap?.user.id, !isPreview, !isSavingEntry else { return }
+  @discardableResult
+  func refreshHome(token: String, weekId: String? = nil) async -> FeedRefreshOutcome {
+    guard !Task.isCancelled else { return .cancelled }
+    guard let accountId = bootstrap?.user.id, !isPreview, !isSavingEntry else { return .skipped }
     let key = weekId ?? "current"
-    if isRefreshingHome && homeRequestKey == key { return }
+    if isRefreshingHome && homeRequestKey == key { return .skipped }
     let requestID = UUID()
     let generation = accountGeneration
     homeRequestID = requestID
@@ -563,20 +580,20 @@ final class AppModel {
     do {
       let response = try await apiClient.fetchHome(token: token, weekId: weekId)
       guard !Task.isCancelled, homeRequestID == requestID, generation == accountGeneration,
-        bootstrap?.user.id == accountId, response.user.id == accountId else { return }
+        bootstrap?.user.id == accountId, response.user.id == accountId else { return .cancelled }
       if response.user.account.accountState != "active" && !response.user.isAdmin {
         acceptAccount(response)
         liveGamesWeek = nil
         homeRace = nil
         pendingHomeWeek = nil
         homeFeedError = "Account access has changed. Return to Home to review your account status."
-        return
+        return .blocked(homeFeedError!)
       }
       if let weekId, response.currentWeek?.id != weekId { throw APIError.invalidResponse }
       if weekId == nil, hasUnsavedDraft, response.currentWeek?.id != bootstrap?.currentWeek?.id {
         pendingHomeWeek = response
         homeFeedError = "The published week changed. Your unsaved picks are still on the Picks page. Review that card or choose to switch weeks."
-        return
+        return .success
       }
       if weekId == nil || response.currentWeek?.id == bootstrap?.currentWeek?.id {
         acceptAccount(response, compact: true)
@@ -590,14 +607,18 @@ final class AppModel {
         homeRace?.week?.id != week.id || (homeRaceCheckedAt?.timeIntervalSinceNow ?? -121) < -120 {
         let race = try? await apiClient.fetchLiveRace(token: token, weekId: week.id)
         guard !Task.isCancelled, homeRequestID == requestID, generation == accountGeneration,
-          bootstrap?.currentWeek?.id == week.id else { return }
+          bootstrap?.currentWeek?.id == week.id else { return .cancelled }
         homeRace = race?.week?.id == week.id ? race : nil
         homeRaceCheckedAt = Date()
       }
+      return .success
     } catch {
-      guard !Task.isCancelled, homeRequestID == requestID, generation == accountGeneration else { return }
+      guard !Task.isCancelled, homeRequestID == requestID, generation == accountGeneration else { return .cancelled }
+      let outcome = FeedRefreshOutcome.failure(error)
+      guard outcome != .cancelled else { return outcome }
       homeFeedError = "Couldn't refresh scores. Showing the last available game data. Pull down or tap Retry to try again."
       homeFailureCount = min(homeFailureCount + 1, 4)
+      return outcome
     }
   }
 

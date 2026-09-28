@@ -154,15 +154,19 @@ async function buildContent(session: Session, device: Device, now: Date) {
 
 async function queueAutomatic(now: Date) {
   const db = getDb();
-  const recipients = await db.select({ device: devices }).from(devices).innerJoin(users, eq(users.id, devices.userId))
+  const candidates = await db.select({ device: devices }).from(devices).innerJoin(users, eq(users.id, devices.userId))
     .where(and(eq(devices.enabled, true), eq(devices.authorized, true), eq(users.accountState, "active")));
+  const recipients = candidates.filter(({ device }) => device.pushToStartToken && (device.deadline || device.race)
+    && apnsConfigured(device.environment as APNsEnvironment));
+  // Automatic-start discovery has no work without eligible recipients. The worker
+  // still claims existing/manual/ending sessions and records its heartbeat.
+  if (!recipients.length) return;
   const weeks = await db.select().from(contestWeeks).where(inArray(contestWeeks.status, ["published", "locked"]));
   for (const week of weeks) {
     const weekGames = await db.select().from(games).where(eq(games.contestWeekId, week.id));
     const entries = await db.select().from(contestEntries).where(eq(contestEntries.contestWeekId, week.id));
     const dailyWindows = raceWindows(weekGames, now);
     for (const { device } of recipients) {
-      if (!device.pushToStartToken || !apnsConfigured(device.environment as APNsEnvironment)) continue;
       const entry = entries.find((row) => row.userId === device.userId);
       if (entry?.status === "disqualified") continue;
       const deadline = device.deadline ? deadlineWindow({ weekStatus: week.status, deadline: week.entryDeadline, submitted: Boolean(entry && entry.currentVersionNumber > 0), now }) : null;

@@ -2,8 +2,11 @@ import ClerkKit
 import SwiftUI
 
 struct LiveRaceView: View {
+  var hostingTab: AppTab = .home
   @Environment(Clerk.self) private var clerk
   @Environment(AppModel.self) private var appModel
+  @Environment(\.scenePhase) private var scenePhase
+  @State private var polling = FeedPolling(baseInterval: 30)
 
   var body: some View {
     ZStack {
@@ -17,11 +20,12 @@ struct LiveRaceView: View {
             message: "Track the projected leader, every swing call, and the path to the top as scores change."
           )
 
+          refreshStatus
           raceContent
         }
       }
       .refreshable {
-        await refresh()
+        await refreshManually()
       }
     }
     .navigationTitle("Live Race")
@@ -31,7 +35,7 @@ struct LiveRaceView: View {
     .toolbarBackground(.visible, for: .navigationBar)
     .toolbarColorScheme(.dark, for: .navigationBar)
     .tint(AGPTheme.maize)
-    .task {
+    .task(id: "\(pollingContext)-\(canPoll)") {
       await refreshLoop()
     }
   }
@@ -46,7 +50,7 @@ struct LiveRaceView: View {
         symbol: "flag.checkered",
         label: "Live race unavailable",
         message: message,
-        retry: refresh
+        retry: refreshManually
       )
     case .loaded(let race):
       switch race.status {
@@ -87,9 +91,6 @@ struct LiveRaceView: View {
             Text("ON THE FIELD")
               .font(AGPTheme.display(27))
             Spacer()
-            Label("Auto refresh", systemImage: "arrow.clockwise")
-              .font(AGPTheme.label(10))
-              .foregroundStyle(AGPTheme.inkSoft)
           }
           .padding(20)
           .overlay(alignment: .bottom) { rule }
@@ -150,32 +151,65 @@ struct LiveRaceView: View {
     Rectangle().fill(AGPTheme.sage).frame(height: 1)
   }
 
+  private var refreshStatus: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      FeedStateBadge(state: polling.status(), liveLabel: "SCORES UPDATED", onDark: false)
+      if let reason = polling.blockedReason {
+        Text(reason).font(.caption)
+      } else if polling.retryAt != nil {
+        Text("Couldn't refresh. Showing the last available scores; retrying automatically.").font(.caption)
+      } else if case .loaded(let race) = appModel.liveRaceState {
+        Text(race.liveCount > 0 ? "Refreshes every 30 seconds while you're here."
+          : race.pollingInterval == nil ? "Games finished. Pull down to check for corrections."
+          : "No games live. Checking every 5 minutes; pull down to check now.").font(.caption)
+      }
+    }
+    .foregroundStyle(AGPTheme.inkSoft)
+    .fixedSize(horizontal: false, vertical: true)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.horizontal, 20)
+    .padding(.bottom, 16)
+  }
+
+  private var pollingContext: String {
+    "\(appModel.bootstrap?.user.id ?? "none")-\(appModel.liveRaceWeekId ?? "current")"
+  }
+  private var canPoll: Bool {
+    scenePhase == .active && appModel.selectedTab == hostingTab
+      && appModel.navigationPaths[hostingTab]?.last == .liveRace
+  }
+
   private func refreshLoop() async {
     #if DEBUG
-    guard !ProcessInfo.processInfo.arguments.contains("-preview-live-race") else { return }
-    #endif
-    if case .idle = appModel.liveRaceState {
-      await refresh()
+    if ProcessInfo.processInfo.arguments.contains("-preview-live-race") {
+      polling.loadPreviewStatus()
+      return
     }
-
-    while !Task.isCancelled {
-      do {
-        try await Task.sleep(for: .seconds(30))
-      } catch {
-        return
-      }
-      guard !Task.isCancelled else { return }
+    #endif
+    guard !appModel.isPreview else { return }
+    await polling.run(context: pollingContext, shouldContinue: { canPoll }, interval: {
+      if case .loaded(let race) = appModel.liveRaceState { return race.pollingInterval }
+      return 30
+    }) {
       await refresh()
     }
   }
 
-  private func refresh() async {
-    guard !appModel.isPreview else { return }
+  private func refreshManually() async {
+    guard canPoll else { return }
+    polling.prepare(context: pollingContext)
+    await polling.refresh(manual: true) { await refresh() }
+  }
+
+  private func refresh() async -> FeedRefreshOutcome {
+    guard !Task.isCancelled, canPoll else { return .cancelled }
+    guard !appModel.isPreview else { return .skipped }
     do {
-      guard let token = try await clerk.auth.getToken() else { return }
-      await appModel.refreshLiveRace(token: token)
+      guard let token = try await clerk.auth.getToken() else { return .blocked("Sign in again to refresh the race.") }
+      guard !Task.isCancelled, canPoll else { return .cancelled }
+      return await appModel.refreshLiveRace(token: token)
     } catch {
-      return
+      return .failure(error)
     }
   }
 }

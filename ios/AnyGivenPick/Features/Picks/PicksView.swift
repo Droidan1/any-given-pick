@@ -12,6 +12,7 @@ struct PicksView: View {
   @Environment(\.dynamicTypeSize) private var typeSize
   @State private var visibleGameId: String?
   @State private var review: EntryReviewSnapshot?
+  @State private var polling = FeedPolling(baseInterval: 15)
 
   var body: some View {
     ZStack {
@@ -35,7 +36,7 @@ struct PicksView: View {
             }
           }
           .scrollDismissesKeyboard(.interactively)
-          .refreshable { await refreshBoard(refreshWeek: true) }
+          .refreshable { await refreshBoardManually() }
           .safeAreaInset(edge: .bottom, spacing: 0) {
             if let week = appModel.bootstrap?.currentWeek, appModel.bootstrap?.user.account.canParticipate == true,
               !week.games.isEmpty {
@@ -46,10 +47,10 @@ struct PicksView: View {
             }
           }
         }
-        .task(id: refreshKey) { await keepBoardFresh() }
       }
     }
     .foregroundStyle(AGPTheme.ink)
+    .task(id: refreshKey) { await keepBoardFresh() }
     .toolbar(.hidden, for: .navigationBar)
     .sheet(item: $review) { snapshot in
       EntryReviewSheet(snapshot: snapshot) { await submit(snapshot) }
@@ -102,7 +103,7 @@ struct PicksView: View {
         currentUserId: user.id, currentDisplayName: user.displayName ?? "Your picks",
         selections: locked ? week.entry?.officialPicks ?? [:] : appModel.draftPicks,
         isEnabled: !locked && !appModel.isSavingEntry,
-        feedState: appModel.livePicksFeedState, isLocked: locked,
+        feedState: polling.status(fallback: appModel.livePicksFeedState), isLocked: locked,
         prediction: locked ? .constant(week.entry?.officialMondayPrediction) : $model.mondayPrediction,
         visibleGameId: $visibleGameId) { gameId, code in appModel.select(teamCode: code, for: gameId) }
     }
@@ -190,30 +191,50 @@ struct PicksView: View {
 
   private var refreshKey: String {
     let week = appModel.bootstrap?.currentWeek
-    return "\(week?.id ?? "none")-\(scenePhase == .active)-\(appModel.selectedTab == .picks)-\(week.map(appModel.isLocked) ?? true)"
+    return "\(pollingContext)-\(canPoll)-\(week.map(appModel.isLocked) ?? true)"
+  }
+  private var pollingContext: String {
+    "\(appModel.bootstrap?.user.id ?? "none")-\(appModel.bootstrap?.currentWeek?.id ?? "none")"
+  }
+  private var canPoll: Bool {
+    scenePhase == .active && appModel.selectedTab == .picks
+      && (appModel.navigationPaths[.picks] ?? []).isEmpty && review == nil
   }
   private func keepBoardFresh() async {
-    guard !appModel.isPreview else { return }
-    if scenePhase == .active, appModel.selectedTab == .picks,
-      let week = appModel.bootstrap?.currentWeek, appModel.isLocked(week) {
-      await refreshBoard(refreshWeek: true)
+    if appModel.isPreview {
+      #if DEBUG
+      polling.loadPreviewStatus()
+      #endif
       return
     }
     var pass = 0
-    while !Task.isCancelled, scenePhase == .active, appModel.selectedTab == .picks,
-      let week = appModel.bootstrap?.currentWeek, !appModel.isLocked(week) {
-      await refreshBoard(refreshWeek: pass % 4 == 0)
-      pass += 1
-      do { try await Task.sleep(for: .seconds(15)) } catch { return }
+    await polling.run(context: pollingContext, shouldContinue: { canPoll && appModel.bootstrap?.currentWeek != nil }, interval: {
+      guard let week = appModel.bootstrap?.currentWeek, !appModel.isLocked(week) else { return nil }
+      return 15
+    }) {
+      let outcome = await refreshBoard(refreshWeek: pass % 4 == 0)
+      if outcome == .success { pass += 1 }
+      return outcome
     }
   }
-  private func refreshBoard(refreshWeek: Bool) async {
-    guard !appModel.isPreview, let week = appModel.bootstrap?.currentWeek else { return }
+  private func refreshBoardManually() async {
+    guard canPoll else { return }
+    polling.prepare(context: pollingContext)
+    await polling.refresh(manual: true) { await refreshBoard(refreshWeek: true) }
+  }
+  private func refreshBoard(refreshWeek: Bool) async -> FeedRefreshOutcome {
+    guard !Task.isCancelled, canPoll else { return .cancelled }
+    guard !appModel.isPreview, let week = appModel.bootstrap?.currentWeek else { return .skipped }
     do {
-      guard let token = try await clerk.auth.getToken() else { appModel.markLivePicksStale(); return }
-      if refreshWeek { await appModel.refreshHome(token: token, weekId: week.id) }
-      await appModel.refreshLivePicks(token: token, weekId: week.id)
-    } catch { if !Task.isCancelled { appModel.markLivePicksStale() } }
+      guard let token = try await clerk.auth.getToken() else { return .blocked("Sign in again to refresh the board.") }
+      guard !Task.isCancelled, canPoll else { return .cancelled }
+      if refreshWeek {
+        let outcome = await appModel.refreshHome(token: token, weekId: week.id)
+        guard outcome == .success else { return outcome }
+      }
+      guard !Task.isCancelled, canPoll else { return .cancelled }
+      return await appModel.refreshLivePicks(token: token, weekId: week.id)
+    } catch { return .failure(error) }
   }
   private func save() async {
     #if DEBUG
@@ -224,7 +245,7 @@ struct PicksView: View {
         appModel.showEntryError("Sign in again to save. Your changes remain on this iPhone."); return
       }
       await appModel.saveDraft(token: token)
-      await refreshBoard(refreshWeek: false)
+      await polling.refresh(manual: true) { await refreshBoard(refreshWeek: false) }
     } catch { appModel.showEntryError("Sign in again to save. Your changes remain on this iPhone.") }
   }
   private func submit(_ snapshot: EntryReviewSnapshot) async -> Bool {

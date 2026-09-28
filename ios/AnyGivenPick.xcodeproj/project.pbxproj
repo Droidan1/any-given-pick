@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9577F97189B9C6D77EC344E8 /* FeedPollingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9057A189E54F2B92EF05B671 /* FeedPollingTests.swift */; };
+		555E6DFD4B4D7CE06E4A92A0 /* FeedPolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3F6E859DADEE8E11A84F3A /* FeedPolling.swift */; };
 		AF400000000000000000000C /* AdminPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF400000000000000000000D; };
 		AF400000000000000000000E /* AdminTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF400000000000000000000F; };
 		AF4000000000000000000001 /* AdminModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4000000000000000000002; };
@@ -94,6 +96,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9057A189E54F2B92EF05B671 /* FeedPollingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedPollingTests.swift; sourceTree = "<group>"; };
+		3B3F6E859DADEE8E11A84F3A /* FeedPolling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedPolling.swift; sourceTree = "<group>"; };
 		AF400000000000000000000D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminPreview.swift; sourceTree = "<group>"; };
 		AF400000000000000000000F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminTests.swift; sourceTree = "<group>"; };
 		AF4000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModels.swift; sourceTree = "<group>"; };
@@ -278,6 +282,7 @@
 				AF2000000000000000000006 /* AppLockTests.swift */,
 				AF400000000000000000000F /* AdminTests.swift */,
 				1D11044919F40B0205956554 /* HealthStatusTests.swift */,
+				9057A189E54F2B92EF05B671 /* FeedPollingTests.swift */,
 				5A5F540B501664FB25764D00 /* LiveActivityTests.swift */,
 				B7D198922FFE35B8C1D64AAD /* MobileModelsTests.swift */,
 			);
@@ -334,6 +339,7 @@
 			isa = PBXGroup;
 			children = (
 				F6CD14D5781AEA3BF1BA0753 /* APIClient.swift */,
+				3B3F6E859DADEE8E11A84F3A /* FeedPolling.swift */,
 				37EEC0776C66BA5521E0080E /* LiveActivityManager.swift */,
 				A1BBF78A6F285530B4DBDB08 /* NotificationManager.swift */,
 				A803F48CDD7996006979D55E /* ProductionLiveActivityManager.swift */,
@@ -531,6 +537,7 @@
 				AF2000000000000000000003 /* AppLockView.swift in Sources */,
 				41A375539F49CE794D94CC6E /* AGPTheme.swift in Sources */,
 				BBBF18E8CB7F689ACE5BAEE8 /* APIClient.swift in Sources */,
+				555E6DFD4B4D7CE06E4A92A0 /* FeedPolling.swift in Sources */,
 				DCD853F71C2049D1DEE75B0B /* AchievementsView.swift in Sources */,
 				9A252F940F1CAB500025E6B0 /* AnyGivenPickApp.swift in Sources */,
 				D142D1626AE3B19648E7DEBF /* AppConfiguration.swift in Sources */,
@@ -567,6 +574,7 @@
 				AF400000000000000000000E /* AdminTests.swift in Sources */,
 				AF3000000000000000000003 /* BrandingTests.swift in Sources */,
 				2D0D84D420A26042EF7674ED /* HealthStatusTests.swift in Sources */,
+				9577F97189B9C6D77EC344E8 /* FeedPollingTests.swift in Sources */,
 				2775ACB3D0BDFE9D3A77F75F /* LiveActivityTests.swift in Sources */,
 				AE06893BED69A37BA9048579 /* MobileModelsTests.swift in Sources */,
 			);

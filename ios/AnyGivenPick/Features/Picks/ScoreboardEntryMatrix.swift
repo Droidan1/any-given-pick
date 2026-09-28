@@ -96,6 +96,11 @@ struct ScoreboardEntryMatrix: View {
         if !isLocked { FeedStateBadge(state: feedState) }
       }
 
+      if !isLocked, case .blocked(let reason) = feedState {
+        Text(reason).font(.caption).foregroundStyle(AGPTheme.paper100)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+
       HStack(spacing: 12) {
       Text("Game \((games.firstIndex { $0.id == visibleGameId } ?? 0) + 1) of \(games.count)")
         .font(.caption)
@@ -396,8 +401,10 @@ struct ScoreboardEntryMatrix: View {
   }
 }
 
-private struct FeedStateBadge: View {
+struct FeedStateBadge: View {
   let state: AppModel.LivePicksFeedState
+  var liveLabel = "LIVE BOARD"
+  var onDark = true
 
   var body: some View {
     HStack(spacing: 5) {
@@ -408,7 +415,8 @@ private struct FeedStateBadge: View {
         .font(.caption2.weight(.bold))
         .tracking(0.5)
     }
-    .foregroundStyle(AGPTheme.paper100)
+    .foregroundStyle(onDark ? AGPTheme.paper100 : AGPTheme.ink)
+    .fixedSize(horizontal: false, vertical: true)
     .accessibilityLabel(accessibilityLabel)
   }
 
@@ -416,23 +424,28 @@ private struct FeedStateBadge: View {
     switch state {
     case .idle: "CONNECTING"
     case .refreshing: "UPDATING"
-    case .live: "LIVE BOARD"
-    case .stale: "REFRESH PAUSED"
+    case .live: liveLabel
+    case .stale, .paused: "REFRESH PAUSED"
+    case .retrying: "RETRYING"
+    case .blocked: "REFRESH UNAVAILABLE"
     }
   }
 
   private var color: Color {
     switch state {
     case .idle, .refreshing: AGPTheme.maize
-    case .live: AGPTheme.paper100
-    case .stale: AGPTheme.clay
+    case .live: onDark ? AGPTheme.paper100 : AGPTheme.field800
+    case .stale, .paused, .retrying, .blocked: AGPTheme.clay
     }
   }
 
   private var accessibilityLabel: String {
     switch state {
     case .live(let date):
-      "Live board updated \(date.formatted(date: .omitted, time: .shortened))"
+      "\(liveLabel.lowercased()) at \(date.formatted(date: .omitted, time: .shortened))"
+    case .retrying(let date):
+      "Refresh failed. Retrying at \(date.formatted(date: .omitted, time: .shortened))"
+    case .blocked(let reason): reason
     default:
       label.lowercased()
     }

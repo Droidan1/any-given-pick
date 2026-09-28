@@ -153,7 +153,7 @@ final class LiveActivityManager {
       sessions = settings.sessions; canTest = settings.canTest == true
     } catch {
       if generation == requestGeneration {
-        if case APIError.server(_, let code) = error, (400..<500).contains(code) { pendingTest = nil }
+        if case APIError.server(_, let code, _) = error, (400..<500).contains(code) { pendingTest = nil }
         testMessage = "\(error.localizedDescription) Refresh the connection before retrying."
       }
     }

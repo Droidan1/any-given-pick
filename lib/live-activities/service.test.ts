@@ -69,7 +69,7 @@ describe("Private test creation", () => {
 });
 describe("Private test scheduled delivery", () => {
   function worker(row = session, fresh = device) {
-    return database([[], [], [], [row], [device], [{ accountState: "active", clerkUserId: "clerk-u" }], [fresh], [row], []]);
+    return database([[], [], [row], [device], [{ accountState: "active", clerkUserId: "clerk-u" }], [fresh], [row], []]);
   }
   it("uses the real worker for start, update and end, never writes contest data", async () => {
     for (const event of ["start", "update", "end"]) {
@@ -89,5 +89,25 @@ describe("Private test scheduled delivery", () => {
   it("never remotely starts a manual game test or reroutes a test to production", async () => {
     worker({ ...session, kind: "game" }); await runLiveActivities(now); expect(mocks.send).not.toHaveBeenCalled();
     worker(session, { ...device, environment: "production" }); await runLiveActivities(now); expect(mocks.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("Idle automatic discovery", () => {
+  it("skips week and entry scans with no recipients but still checks queued sessions", async () => {
+    const { db, writes } = database([[], [], []]);
+    expect(await runLiveActivities(now)).toEqual({ enabled: true, processed: 0, failed: 0 });
+    expect(db.select).toHaveBeenCalledTimes(3); // interested device, recipients, queued session
+    expect(mocks.scores).not.toHaveBeenCalled();
+    expect(writes.some(({ table }) => [contestWeeks, contestEntries, games].includes(table as typeof games))).toBe(false);
+  });
+  it.each([{ pushToStartToken: null }, { deadline: false, race: false }])("skips unavailable automatic starts: %j", async (changes) => {
+    const { db } = database([[], [{ device: { ...device, ...changes } }], []]);
+    await runLiveActivities(now);
+    expect(db.select).toHaveBeenCalledTimes(3);
+  });
+  it("still discovers weeks with an eligible recipient", async () => {
+    const { db } = database([[], [{ device }], [], []]);
+    await runLiveActivities(now);
+    expect(db.select).toHaveBeenCalledTimes(4);
   });
 });

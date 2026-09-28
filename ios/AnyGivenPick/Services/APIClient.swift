@@ -255,7 +255,9 @@ struct APIClient: Sendable {
     _ request: URLRequest,
     responseType: Response.Type
   ) async throws -> Response {
+    try Task.checkCancellation()
     let (data, response) = try await session.data(for: request)
+    try Task.checkCancellation()
     guard let httpResponse = response as? HTTPURLResponse else {
       throw APIError.invalidResponse
     }
@@ -263,10 +265,23 @@ struct APIClient: Sendable {
       let body = try? JSONDecoder().decode(APIErrorEnvelope.self, from: data)
       throw APIError.server(
         message: body?.error ?? "The server returned an unexpected response.",
-        statusCode: httpResponse.statusCode
+        statusCode: httpResponse.statusCode,
+        retryAfter: Self.retryAfter(httpResponse.value(forHTTPHeaderField: "Retry-After"))
       )
     }
     return try JSONDecoder().decode(responseType, from: data)
+  }
+
+  static func retryAfter(_ value: String?, now: Date = Date()) -> TimeInterval? {
+    guard let value else { return nil }
+    if let seconds = TimeInterval(value.trimmingCharacters(in: .whitespaces)), seconds.isFinite {
+      return max(0, seconds)
+    }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss z"
+    return formatter.date(from: value).map { max(0, $0.timeIntervalSince(now)) }
   }
 }
 
@@ -276,13 +291,13 @@ private struct APIErrorEnvelope: Decodable {
 
 enum APIError: LocalizedError {
   case invalidResponse
-  case server(message: String, statusCode: Int)
+  case server(message: String, statusCode: Int, retryAfter: TimeInterval? = nil)
 
   var errorDescription: String? {
     switch self {
     case .invalidResponse:
       "The server returned an unreadable response."
-    case .server(let message, _):
+    case .server(let message, _, _):
       message
     }
   }

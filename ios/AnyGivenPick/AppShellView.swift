@@ -52,7 +52,7 @@ struct AppShellView: View {
               case .liveGames(let weekId):
                 LiveGamesView(weekId: weekId)
               case .liveRace:
-                LiveRaceView()
+                LiveRaceView(hostingTab: tab)
               case .standings:
                 StandingsView()
               case .achievements:
